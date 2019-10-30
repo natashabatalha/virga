@@ -20,30 +20,87 @@ def justdoit(atmo, directory = None, do_optics=False):
 	gas_mw = np.zeros(ngas)
 	gas_mmr = np.zeros(ngas)
 	rho_p = np.zeros(ngas)
+	wave=np.zeros(shape=(nwave))
+	qext=np.zeros(shape=(nwave,nrad,ngas))
+	qscat = np.zeros(shape=(nwave,nrad,ngas))
+	cos_qscat=np.zeros(shape=(nwave,nrad,ngas))
+	radius=np.zeros(shape=(nrad))
+	rup=np.zeros(shape=(nrad))
+	dr=np.zeros(shape=(nrad))
+	vrat = 2.2
+	rmin = 1e-5
+	pw = 1. / 3.
+	f1 = ( 2.0*vrat / ( 1.0 + vrat) )**pw
+	f2 = (( 2.0 / ( 1.0 + vrat ) )**pw) * (vrat**pw-1.0)
+	nrad=40
+	
 	for i, igas in zip(range(ngas),condensibles) : 
 
 		#GET GAS PROPETIES
 		run_gas = getattr(gas_properties, igas)
 		gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh)
+		
+		
 
 		#GET OR READ IN OPTICS
-		if do_optics: 
-
+		if do_optics:
+			## Calculates optics by reading refrind files
+			thetd=0.0   # incident wave angle
+			n_thetd=1
+			
+			## obtaining refrind data for ith gas
+			wave_in,nn,kk = get_refrind(igas,directory)
+			wave=wave_in*1e-4  ## converting to cm 
+			nwave=len(wave)  #number of wavalength bin centres for calculation
+			
 			#Setup up a particle size grid on first run and calculate single-particle scattering
-			if i==0: 
-				radius, rup, dr = get_r_grid(rmin, nradii)
+			if i==0:
+				for irad in range(nrad):
+    				radius[irad],rup[irad],dr[irad] = rmin * vrat**(float(irad)/3.),f1*radius[irad],f2*radius[irad]
+ 
 				
 			#compute individual parameters for each gas
-			#nwave is taken from refrind file
-			qext_gas , qscat_gas , cos_qscat_gas ,nwave = calc_mie(igas,radius, rup, dr)
+			
+			for iwave in range(nwave):
+				for irad in range(nrad):
+					if irad== 0 :
+                				dr5= (( rup[0] - radius[0] ) / 5.)
+                				rr= radius[0]
+            				else:
+                				dr5 = ( rup[irad] - rup[irad-1] ) / 5.
+                				rr  = rup[irad-1]
+					corerad = 0.
+            				corereal = 1.
+            				coreimag = 0.
+					## averaging over 6 radial bins to avoid fluctuations
+					bad_mie= False
+					for isub in range(6):
+                				wvno=2*pi/wave[iwave]
+                				qe_pass, qs_pass, c_qs_pass,istatus= calc_mie(rr, nn[iwave], kk[iwave], thetd, n_thetd, corerad, corereal, coreimag, wvno)
+                				if istatus == 0:
+                    					qe=qe_pass
+                    					qs=qs_pass
+                    					c_qs=c_qs_pass
+                				else:
+                    					if bad_mie == False :
+                        				bad_mie = True
+                    					raise Exception('do_optics(): no Mie solution for irad, r(um), iwave, wave(um), n, k, gas = ')
+                    					
+             
+                
+                				qext[iwave,irad,i]+= qe
+                				qscat[iwave,irad,i]+= qs
+                				cos_qscat[iwave,irad,i] += c_qs
+                				rr+=dr5
+					## adding to master arrays
+					qext[iwave,irad,igas] = qext[iwave,irad,i] / 6.     
+            				qscat[iwave,irad,igas] = qscat[iwave,irad,i] / 6.
+            				cos_qscat[iwave,irad,igas] = cos_qscat[iwave,irad,i] / 6.
+        
+            
 
-			if i ==0 : 
-				qext = np.zeros((nwave,nradii,ngas))
-				qscat = np.zeros((nwave,nradii,ngas))
-				cos_qscat = np.zeros((nwave,nradii,ngas))
-
-			#add to master matrix 
-			qext[:,:,i], qscat[:,:,i], cos_qscat[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas
+			
+			
 		
 		else: 
 			#get optics from database
