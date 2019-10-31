@@ -93,9 +93,9 @@ def justdoit(atmo, directory = None, do_optics=False):
                 				cos_qscat[iwave,irad,i] += c_qs
                 				rr+=dr5
 					## adding to master arrays
-					qext[iwave,irad,igas] = qext[iwave,irad,i] / 6.     
-            				qscat[iwave,irad,igas] = qscat[iwave,irad,i] / 6.
-            				cos_qscat[iwave,irad,igas] = cos_qscat[iwave,irad,i] / 6.
+					qext[iwave,irad,i] = qext[iwave,irad,i] / 6.     
+            				qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
+            				cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i] / 6.
         
             
 
