@@ -7,7 +7,7 @@ import pvaps
 import os
 from scipy import optimize 
 from root_functions import advdiff, vfall
-def justdoit(atmo, directory = None, do_optics=False):
+def justdoit(atmo, directory = None, do_optics=False, calc_mie=True):
 	#loop through gases to get properties and optics/Mie params
 
 
@@ -44,58 +44,98 @@ def justdoit(atmo, directory = None, do_optics=False):
 
 		#GET OR READ IN OPTICS
 		if do_optics:
+			if calc_mie:
 			## Calculates optics by reading refrind files
-			thetd=0.0   # incident wave angle
-			n_thetd=1
+				thetd=0.0   # incident wave angle
+				n_thetd=1
 			
 			## obtaining refrind data for ith gas
-			wave_in,nn,kk = get_refrind(igas,directory)
-			wave=wave_in*1e-4  ## converting to cm 
-			nwave=len(wave)  #number of wavalength bin centres for calculation
+				wave_in,nn,kk = get_refrind(igas,directory)
+				wave=wave_in*1e-4  ## converting to cm 
+				nwave=len(wave)  #number of wavalength bin centres for calculation
 			
 			#Setup up a particle size grid on first run and calculate single-particle scattering
-			if i==0:
-				for irad in range(nrad):
-    				radius[irad],rup[irad],dr[irad] = rmin * vrat**(float(irad)/3.),f1*radius[irad],f2*radius[irad]
+				if i==0:
+					for irad in range(nrad):
+    					radius[irad],rup[irad],dr[irad] = rmin * vrat**(float(irad)/3.),f1*radius[irad],f2*radius[irad]
  
 				
 			#compute individual parameters for each gas
 			
-			for iwave in range(nwave):
-				for irad in range(nrad):
-					if irad== 0 :
-                				dr5= (( rup[0] - radius[0] ) / 5.)
-                				rr= radius[0]
-            				else:
-                				dr5 = ( rup[irad] - rup[irad-1] ) / 5.
-                				rr  = rup[irad-1]
-					corerad = 0.
-            				corereal = 1.
-            				coreimag = 0.
+				for iwave in range(nwave):
+					for irad in range(nrad):
+						if irad== 0 :
+                					dr5= (( rup[0] - radius[0] ) / 5.)
+                					rr= radius[0]
+            					else:
+                					dr5 = ( rup[irad] - rup[irad-1] ) / 5.
+                					rr  = rup[irad-1]
+						corerad = 0.
+            					corereal = 1.
+            					coreimag = 0.
 					## averaging over 6 radial bins to avoid fluctuations
-					bad_mie= False
-					for isub in range(6):
-                				wvno=2*pi/wave[iwave]
-                				qe_pass, qs_pass, c_qs_pass,istatus= calc_mie(rr, nn[iwave], kk[iwave], thetd, n_thetd, corerad, corereal, coreimag, wvno)
-                				if istatus == 0:
-                    					qe=qe_pass
-                    					qs=qs_pass
-                    					c_qs=c_qs_pass
-                				else:
-                    					if bad_mie == False :
-                        				bad_mie = True
-                    					raise Exception('do_optics(): no Mie solution for irad, r(um), iwave, wave(um), n, k, gas = ')
+						bad_mie= False
+						for isub in range(6):
+                					wvno=2*pi/wave[iwave]
+                					qe_pass, qs_pass, c_qs_pass,istatus= calc_mie(rr, nn[iwave], kk[iwave], thetd, n_thetd, corerad, corereal, coreimag, wvno)
+                					if istatus == 0:
+                    						qe=qe_pass
+                    						qs=qs_pass
+                    						c_qs=c_qs_pass
+                					else:
+                    						if bad_mie == False :
+                        					bad_mie = True
+                    						raise Exception('do_optics(): no Mie solution for irad, r(um), iwave, wave(um), n, k, gas = ')
                     					
              
                 
-                				qext[iwave,irad,i]+= qe
-                				qscat[iwave,irad,i]+= qs
-                				cos_qscat[iwave,irad,i] += c_qs
-                				rr+=dr5
+                					qext[iwave,irad,i]+= qe
+                					qscat[iwave,irad,i]+= qs
+                					cos_qscat[iwave,irad,i] += c_qs
+                					rr+=dr5
 					## adding to master arrays
-					qext[iwave,irad,i] = qext[iwave,irad,i] / 6.     
-            				qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
-            				cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i] / 6.
+						qext[iwave,irad,i] = qext[iwave,irad,i] / 6.     
+            					qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
+            					cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i] / 6.
+			else :
+				if i == 0:
+					import PyMieScatt as ps
+					for irad in range(nrad):
+    					radius[irad],rup[irad],dr[irad] = rmin * vrat**(float(irad)/3.),f1*radius[irad],f2*radius[irad]
+			
+			## obtaining refrind data for ith gas
+				wave_in,nn,kk = get_refrind(igas,directory)
+				wave=wave_in*1e3  ## converting to nm 
+				nwave=len(wave)  #number of wavalength bin centres for calculatio
+					
+ 
+				
+			#compute individual parameters for each gas
+			
+				for iwave in range(nwave):
+					for irad in range(nrad):
+						if irad== 0 :
+                					dr5= (( rup[0] - radius[0] ) / 5.)
+                					rr= radius[0]
+            					else:
+                					dr5 = ( rup[irad] - rup[irad-1] ) / 5.
+                					rr  = rup[irad-1]
+						corerad = 0.
+            					corereal = 1.
+            					coreimag = 0.
+					## averaging over 6 radial bins to avoid fluctuations
+	
+						for isub in range(6):
+                					arr= ps.MieQCoreShell( corereal+(1j)*coreimag, nn[iwave]+(1j)*kk[iwave], wave[iwave],dCore=2.0*corerad*1e3,dShell=2.0*rr*1e3)
+                		                        qext[iwave,irad,i]+= arr[0]
+                					qscat[iwave,irad,i]+= arr[1]
+                					cos_qscat[iwave,irad,i] += arr[3]
+                					rr+=dr5
+					## adding to master arrays
+						qext[iwave,irad,i] = qext[iwave,irad,i] / 6.     
+            					qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
+            					cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i]*qscat[iwave,irad,i] / 6.
+				
         
             
 
