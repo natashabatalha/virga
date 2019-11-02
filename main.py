@@ -6,7 +6,7 @@ import numpy as np
 import pvaps
 import os
 from scipy import optimize 
-from root_functions import advdiff, vfall
+from root_functions import advdiff, vfall,vfall_find_root
 def justdoit(atmo, directory = None, do_optics=False):
 	#loop through gases to get properties and optics/Mie params
 
@@ -125,15 +125,15 @@ def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 				#parameters for finding root 
 			
 		for iz in range(nz-1,-1,-1): #goes from BOA to TOA
-
 			if not isinstance(kz,(float,int)): kz_in = kz[iz]
 			else: kz_in = kz
 
-			layer( igas, rho_p, t_mid[iz], p_mid[iz], 
+			qc_layer, qt_layer, rg_layer, ndz_layer, opd_layer,q_below = layer( igas, rho_p, t_mid[iz], p_mid[iz], 
 				t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
 				 kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat
 			 )
-
+			print(iz, qc_layer, qt_layer, rg_layer, ndz_layer)
+	print(asdf)
 	return kz, qt, qc, ndz, rg, reff 
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
@@ -196,6 +196,9 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 	#   no less than minimum value (for radiative regions)
 	kz = np.max( [kz, kz_min])
 
+	#   convective velocity scale (cm/s)
+	w_convect = kz / mixl #when dont know kz
+
 	#   cloud fractional coverage
 	#cloudf = (cloudf_min +
 	#		  max( 0., min( 1., 1.-lapse_ratio )) *
@@ -240,8 +243,10 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 			qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
 					gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
-						qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,rho_p)
-			
+						qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
+						rho_p,w_convect)
+
+
 			#   vertical sums
 			qc_layer = qc_layer + qc_sub*dp_sub/gravity
 			qt_layer = qt_layer + qt_sub*dp_sub/gravity
@@ -270,7 +275,6 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 			opd_test = opd_layer
 		
 		nsub = nsub * 2
-
 	#   Update properties at bottom of next layer
 
 	q_below = qt_top
@@ -279,7 +283,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 	if opd_layer > 0. : 
 		reff_layer = 1.5*qc_layer / (rho_p*opd_layer)
-		lnsig2 = 0.5*np.log( sig_layer )**2
+		lnsig2 = 0.5*np.log( sig_all )**2
 		rg_layer = reff_layer*np.exp( -5*lnsig2 )
 	else : 
 		reff_layer = 0.
@@ -288,9 +292,11 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 	qc_layer = qc_layer*gravity / dp_layer
 	qt_layer = qt_layer*gravity / dp_layer
 
+	return qc_layer, qt_layer, rg_layer, ndz_layer, opd_layer,q_below
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
-	,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos,mfp,visc,rho_p):
+	,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
+	,mfp,visc,rho_p,w_convect):
 
 	get_pvap = getattr(pvaps, gas_name)
 	if gas_name == 'Mg2SiO4':
@@ -350,6 +356,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 		#   -- should integrate exponential
 		qt_layer = 0.5*( q_below + qt_top )
 
+
 		#   Diagnose condensate mixing ratio
 		qc_layer = np.max( [0., qt_layer - qvs] )
 
@@ -363,12 +370,44 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 		#   precision of vfall solution (cm/s)
 		#delta_v = w_convect / 1000.
 
-		rw_layer = optimize.root_scalar(vfall, bracket=[rlo, rhi], method='brentq', 
-				args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p))
+		rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+				args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
 
-		print(rw_layer.root)
-		print('TRYING TO GET THE SAME ROOM HERE')
+		rw_layer = rw_layer.root
 		
+		#   geometric std dev of lognormal size distribution
+		lnsig2 = 0.5*np.log( sig_all )**2
+		#   sigma floor for the purpose of alpha calculation
+		sig_alpha = np.max( [1.1, sig_all] )    
+
+		if rainf_all > 1 :
+
+			#   Bulk of precip at r > rw: exponent between rw and rw*sig
+			alpha = (np.log(
+							vfall( rw_layer*sig_alpha,gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p ) 
+							/ w_convect )
+								/ np.log( sig_alpha ))
+
+		else:
+
+			#   Bulk of precip at r < rw: exponent between rw/sig and rw
+			alpha = (np.log(
+							w_convect / vfall( rw_layer/sig_alpha,gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p) )
+								/ np.log( sig_alpha ))
+
+		#     EQN. 13 A&M 
+		#   geometric mean radius of lognormal size distribution
+		rg_layer = (rainf_all**(1./alpha) *
+					rw_layer * np.exp( -(alpha+6)*lnsig2 ))
+
+		#   droplet effective radius (cm)
+		reff_layer = rg_layer*np.exp( 5*lnsig2 )
+
+		#      EQN. 14 A&M
+		#   column droplet number concentration (cm^-2)
+		ndz_layer = (3*rho_atmos*qc_layer*dz_layer /
+					( 4*np.pi*rho_p*rg_layer**3 ) * np.exp( -9*lnsig2 ))
+
 
 
 	return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
