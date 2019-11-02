@@ -38,8 +38,8 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
 
 
 
-def vfall(r, grav=None,mw_atmos=None,mfp=None,visc=None,
-			  t=None,p=None, rhop=None ):
+def vfall(r, grav,mw_atmos,mfp,visc,
+			  t,p, rhop):
 	"""
 	Calculate fallspeed for a spherical particle at one layer in an
 	atmosphere, depending on Reynolds number for Stokes flow.
@@ -79,17 +79,16 @@ def vfall(r, grav=None,mw_atmos=None,mfp=None,visc=None,
 	NOTE: WHAT ARE THESE NUMBERS?!?
 	"""
 	b1 = 0.8           #Ackerman
-	b1 = 0.86 # Rossow
-	b1 = 0.72 #Carlson
+	#b1 = 0.86 # Rossow
+	#b1 = 0.72 #Carlson
 	b2 = -0.01 
 	cdrag = 0.45 #Ackerman
-	cdrag = 0.2 #Rossow
-	cdrag = 2.0 #Carlson
+	#cdrag = 0.2 #Rossow
+	#cdrag = 2.0 #Carlson
 
 	R_GAS = 8.3143e7 
 
 	#calculate vfall based on Knudsen and Reynolds numbers
-
 	knudsen = mfp / r
 	rho_atmos = p / ( (R_GAS/mw_atmos) * t )
 	drho = rhop - rho_atmos
@@ -108,12 +107,26 @@ def vfall(r, grav=None,mw_atmos=None,mfp=None,visc=None,
 		x = np.log( reynolds )
 		y = b1*x + b2*x**2
 		reynolds = np.exp(y)
-		vfall_r = vf_visc*reynolds / (2.*r*rho_atmos)
+		vfall_r = visc*reynolds / (2.*r*rho_atmos)
 
 	elif reynolds > 1e3 :
 		#   drag coefficient independent of Reynolds number
 		vfall_r = slip*np.sqrt( 8.*drho*r*grav / (3.*cdrag*rho_atmos) )
 
-	return vfall_r
+	return vfall_r#np.log10(vfall_r)
+
+def vfall_find_root(r, grav=None,mw_atmos=None,mfp=None,visc=None,
+			  t=None,p=None, rhop=None,w_convect=None ):
+	"""
+	This is used to find F(X)-y=0 where F(X) is the fall speed for 
+	a spherical particle and `y` is the convective velocity scale. 
 
 
+	Therefore, it is the same as the `vfall` function but with the 
+	subtraction of the convective velocity scale (cm/s) w_convect. 
+	"""
+	vfall_r = vfall(r, grav,mw_atmos,mfp,visc,
+			  t,p, rhop )
+
+	return vfall_r - w_convect
+	
