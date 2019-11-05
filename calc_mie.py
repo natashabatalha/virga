@@ -1,7 +1,7 @@
 import numpy as np
 pi=np.pi
 from numba import jit 
-#@jit(nopython=True, cache=True)
+
 
 def mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
     """
