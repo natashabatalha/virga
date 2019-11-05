@@ -7,8 +7,10 @@ import pvaps
 import os
 from scipy import optimize 
 from root_functions import advdiff, vfall,vfall_find_root
+import PyMieScatt as ps
+from calc_mie import mie_calc
 
-def justdoit(atmo, directory = None, do_optics=False, calc_mie=True):
+def justdoit(atmo, directory = None, do_optics=False, calc_mie=True, rmin = 1e-5, nradii = 40):
 	#loop through gases to get properties and optics/Mie params
 
 
@@ -21,11 +23,6 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True):
 	gas_mw = np.zeros(ngas)
 	gas_mmr = np.zeros(ngas)
 	rho_p = np.zeros(ngas)
-
-	wave=np.zeros(shape=(nwave))
-	qext=np.zeros(shape=(nwave,nrad,ngas))
-	qscat = np.zeros(shape=(nwave,nrad,ngas))
-	cos_qscat=np.zeros(shape=(nwave,nrad,ngas))
 	
 	for i, igas in zip(range(ngas),condensibles) : 
 
@@ -48,12 +45,15 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True):
 			#Setup up a particle size grid on first run and calculate single-particle scattering
 				if i==0:
 					radius, rup, dr = get_r_grid(rmin, nradii)
- 
+					qext=np.zeros(shape=(nwave,nradii,ngas))
+					qscat = np.zeros(shape=(nwave,nradii,ngas))
+					cos_qscat=np.zeros(shape=(nwave,nradii,ngas))
 				
 			#compute individual parameters for each gas
 			
 				for iwave in range(nwave):
-					for irad in range(nrad):
+					print (iwave)
+					for irad in range(nradii):
 						if irad== 0 :
 							dr5= (( rup[0] - radius[0] ) / 5.)
 							rr= radius[0]
@@ -66,14 +66,14 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True):
 					## averaging over 6 radial bins to avoid fluctuations
 						bad_mie= False
 						for isub in range(6):
-									wvno=2*pi/wave[iwave]
-									qe_pass, qs_pass, c_qs_pass,istatus= calc_mie(rr, nn[iwave], kk[iwave], thetd, n_thetd, corerad, corereal, coreimag, wvno)
+									wvno=2*np.pi/wave[iwave]
+									qe_pass, qs_pass, c_qs_pass,istatus= mie_calc(rr, nn[iwave], kk[iwave], thetd, n_thetd, corerad, corereal, coreimag, wvno)
 									if istatus == 0:
 											qe=qe_pass
 											qs=qs_pass
 											c_qs=c_qs_pass
 									else:
-											if bad_mie == False :
+										if bad_mie == False :
 											bad_mie = True
 											raise Exception('do_optics(): no Mie solution for irad, r(um), iwave, wave(um), n, k, gas = ')
 
@@ -83,23 +83,25 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True):
 									rr+=dr5
 					## adding to master arrays
 						qext[iwave,irad,i] = qext[iwave,irad,i] / 6.	 
-								qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
-								cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i] / 6.
+						qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
+						cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i] / 6.
 			else :
-				if i == 0:
-					import PyMieScatt as ps
-					for irad in range(nrad):
-						radius, rup, dr = get_r_grid(rmin, nradii)
-			
 			## obtaining refrind data for ith gas
 				wave_in,nn,kk = get_refrind(igas,directory)
 				wave=wave_in*1e3  ## converting to nm 
 				nwave=len(wave)  #number of wavalength bin centres for calculatio
-					
+
+				if i == 0:
+					radius, rup, dr = get_r_grid(rmin, nradii)
+					qext=np.zeros(shape=(nwave,nradii,ngas))
+					qscat = np.zeros(shape=(nwave,nradii,ngas))
+					cos_qscat=np.zeros(shape=(nwave,nradii,ngas))
+
 			#compute individual parameters for each gas
 			
 				for iwave in range(nwave):
-					for irad in range(nrad):
+					print (iwave)
+					for irad in range(nradii):
 						if irad== 0 :
 							dr5= (( rup[0] - radius[0] ) / 5.)
 							rr= radius[0]
@@ -113,7 +115,7 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True):
 	
 						for isub in range(6):
 							arr= ps.MieQCoreShell( corereal+(1j)*coreimag, nn[iwave]+(1j)*kk[iwave], wave[iwave],dCore=2.0*corerad*1e3,dShell=2.0*rr*1e3)
-												qext[iwave,irad,i]+= arr[0]
+							qext[iwave,irad,i]+= arr[0]
 							qscat[iwave,irad,i]+= arr[1]
 							cos_qscat[iwave,irad,i] += arr[3]
 							rr+=dr5
@@ -757,6 +759,24 @@ def get_mie(gas, directory):
 
 	return qext,qscat, cos_qscat, nwave, radii
 
+def get_refrind(igas,directory): 
+	"""
+	Reads reference files with wavelength, and refractory indecies. 
+	This function relies on input files being structured as a 4 column file with 
+	columns: index, wavelength (micron), nn, kk 
+
+	Parameters
+	----------
+	igas : str 
+		Gas name 
+	directory : str 
+		Directory were reference files are located. 
+	"""
+	filename = os.path.join(directory ,igas+".refrind")
+	#put skiprows=1 in loadtxt to skip first line
+	idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
+
+	return wave_in,nn,kk
 
 def get_r_grid(r_min=1e-5, n_radii=40):
 	"""
@@ -783,11 +803,6 @@ def get_r_grid(r_min=1e-5, n_radii=40):
 
 #INPUTS REQUIRED 
 
-#directory of the refrind and mieff files
-dirr = "/Users/natashabatalha/Documents/LP_Project/input/optics/"
-
-#mean molecular weight of atmo
-mmw = 2.2 
 condensibles = ['H2O','Fe', 'Al2O3' ,'Na2S','NH3', 'KCl',
  				'MnS','ZnS','Cr' 'MgSiO3' ,'Mg2SiO4'  ]
 
@@ -797,10 +812,7 @@ kzz_min = 1e5
 #geometric standard deviation of lognormal size distribution 
 sig_all = 2.0 
 
-#minimum cloud coverage (a diagnostic not applied to the clouds)
-cloudf_min = 0.75 #keep tabs on this.... 
-
-#minimum cloud coverage 
+#Maximimum subgridding to arrive at solution 
 nsub_max = 2*64 #why two of these... 
 
 #ramp up optical depth below cloud base in calc_optics()
