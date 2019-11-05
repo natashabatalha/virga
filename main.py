@@ -114,7 +114,9 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True, rmin = 1e-5
 					## averaging over 6 radial bins to avoid fluctuations
 	
 						for isub in range(6):
-							arr= ps.MieQCoreShell( corereal+(1j)*coreimag, nn[iwave]+(1j)*kk[iwave], wave[iwave],dCore=2.0*corerad*1e3,dShell=2.0*rr*1e3)
+							arr= ps.MieQCoreShell( corereal+(1j)*coreimag, 
+													nn[iwave]+(1j)*kk[iwave], 
+													wave[iwave],dCore=0,dShell=2.0*rr*1e7)
 							qext[iwave,irad,i]+= arr[0]
 							qscat[iwave,irad,i]+= arr[1]
 							cos_qscat[iwave,irad,i] += arr[3]
@@ -126,7 +128,7 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True, rmin = 1e-5
 		else: 
 			#get optics from database
 			qext_gas, qscat_gas, cos_qscat_gas, nwave, radius = get_mie(igas,directory)
-			radius, rup, dr = get_r_grid(1e-5, 40)
+			radius, rup, dr = get_r_grid(rmin, nradii)
 			if i==0: 
 				nradii = len(radius)
 				qext = np.zeros((nwave,nradii,ngas))
@@ -783,7 +785,7 @@ def get_r_grid(r_min=1e-5, n_radii=40):
 	Get spacing of radii to run Mie code
 
 	r_min : float 
-		Minimum radius to compute 
+		Minimum radius to compute (cm)
 
 	n_radii : int
 		Number of radii to compute 
