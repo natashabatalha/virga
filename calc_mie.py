@@ -4,66 +4,50 @@ from numba import jit
 #@jit(nopython=True, cache=True)
 
 def mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
-    #     THIS SUBROUTINE COMPUTES MIE SCATTERING BY A STRATIFIED SPHERE,
-#    I.E. A PARTICLE CONSISTING OF A SPHERICAL CORE SURROUNDED BY A
-#    SPHERICAL SHELL.  THE BASIC CODE USED WAS THAT DESCRIBED IN THE
-#    REPORT: " SUBROUTINES FOR COMPUTING THE PARAMETERS OF THE
-#    ELECTROMAGNETIC RADIATION SCATTERED BY A SPHERE " J.V. DAVE,
-#    I B M SCIENTIFIC CENTER, PALO ALTO , CALIFORNIA.
-#    REPORT NO. 320 - 3236 .. MAY 1968 .
-#
-#    THE MODIFICATIONS FOR STRATIFIED SPHERES ARE DESCRIBED IN
-#       TOON AND ACKERMAN, APPL. OPTICS, IN PRESS, 1981
-#
-#    THE PARAMETERS IN THE CALLING STATEMENT ARE DEFINED AS FOLLOWS :
-#      RO IS THE OUTER (SHELL) RADIUS;
-#      R  IS THE CORE RADIUS;
-#      RFR, RFI  ARE THE REAL AND IMAGINARY PARTS OF THE SHELL INDEX
-#          OF REFRACTION IN THE FORM (RFR - I* RFI);
-#      RE2, TMAG2  ARE THE INDEX PARTS FOR THE CORE;
-#          ( WE ASSUME SPACE HAS UNIT INDEX. )
-#      THET: ANGLE IN DEGREES BETWEEN THE DIRECTIONS OF THE INCIDENT
-#          AND THE SCATTERED RADIATION.  THETD(J) IS< OR= 90.0
-#          IF THETD(J) SHOULD HAPPEN TO BE GREATER THAN 90.0, ENTER WITH
-#          SUPPLEMENTARY VALUE, SEE COMMENTS BELOW ON ELTRMX;
-#      JX: TOTAL NUMBER OF THETD FOR WHICH THE COMPUTATIONS ARE
-#          REQUIRED.  JX SHOULD NOT EXCEED IT UNLESS THE DIMENSIONS
-#          STATEMENTS ARE APPROPRIATEDLY MODIFIED;
-#
-#      THE DEFINITIONS FOR THE FOLLOWING SYMBOLS CAN BE FOUND IN"LIGHT
-#          SCATTERING BY SMALL PARTICLES,H.C.VAN DE HULST, JOHN WILEY '
-#          SONS, INC., NEW YORK, 1957" .
-#      THIS MODULE GIVES BACK QEXT,QSCAT & CTBRQS
-#      QEXT: EFFICIENCY FACTOR FOR EXTINCTION,VAN DE HULST,P.14 ' 127.
-#      QSCAT: EFFICIENCY FACTOR FOR SCATTERING,V.D. HULST,P.14 ' 127.
-#      CTBRQS: AVERAGE(COSINE THETA) * QSCAT,VAN DE HULST,P.128
-#      ELTRMX(I,J,K): ELEMENTS OF THE TRANSFORMATION MATRIX F,V.D.HULST
-#          ,P.34,45 ' 125. I=1: ELEMENT M SUB 2..I=2: ELEMENT M SUB 1..
-#          I = 3: ELEMENT S SUB 21.. I = 4: ELEMENT D SUB 21..
-#      ELTRMX(I,J,1) REPRESENTS THE ITH ELEMENT OF THE MATRIX FOR
-#          THE ANGLE THETD(J).. ELTRMX(I,J,2) REPRESENTS THE ITH ELEMENT
-#          OF THE MATRIX FOR THE ANGLE 180.0 - THETD(J) ..
-#      QBS IS THE BACK SCATTER CROSS SECTION.
-#
-#      IT: IS THE DIMENSION OF THETD, ELTRMX, CSTHT, PI, TAU, SI2THT,
-#          IT MUST CORRESPOND EXACTLY TO THE SECOND DIMENSION OF ELTRMX.  
-#      nacap IS THE DIMENSION OF ACAP 
-#          IN THE ORIGINAL PROGRAM THE DIMENSION OF ACAP WAS 7000.
-#          FOR CONSERVING SPACE THIS SHOULD BE NOT MUCH HIGHER THAN
-#          THE VALUE, N=1.1*(NREAL**2 + NIMAG**2)**.5 * X + 1
-#      WVNO: 2*PI / WAVELENGTH
-#
-#    ALSO THE SUBROUTINE COMPUTES THE CAPITAL A FUNCTION BY MAKING USE O
-#    DOWNWARD RECURRENCE RELATIONSHIP.
-#
-#      TA(1): REAL PART OF WFN(1).  TA(2): IMAGINARY PART OF WFN(1).
-#      TA(3): REAL PART OF WFN(2).  TA(4): IMAGINARY PART OF WFN(2).
-#      TB(1): REAL PART OF FNA.     TB(2): IMAGINARY PART OF FNA.
-#      TC(1): REAL PART OF FNB.     TC(2): IMAGINARY PART OF FNB.
-#      TD(1): REAL PART OF FNAP.    TD(2): IMAGINARY PART OF FNAP.
-#      TE(1): REAL PART OF FNBP.    TE(2): IMAGINARY PART OF FNBP.
-#      FNAP, FNBP  ARE THE PRECEDING VALUES OF FNA, FNB RESPECTIVELY.
-# **********************************************************************
+    """
+	Given the refractive indices at a certain wavelength this module
+    calculates the Mie scattering by a stratified sphere.The basic code used 
+    was that described in the report: " Subroutines for computing the parameters of 
+    the electromagnetic radiation scattered by a sphere " J.V. Dave,
+    I B M Scientific Center, Palo Alto , California.
+    Report NO. 320 - 3236 .. MAY 1968 .
+
+	Parameters
+	----------
+	RO : float
+		Outer Shell Radius (cm)
+	RFR : float
+		Real refractive index of shell layer (in the form n= RFR-i*RFI)
+	RFI : float
+		Imaginary refractive index of shell layer (in the form n= RFR-i*RFI)
+	THET : ndarray 
+		Angle in degrees between the directions of the incident and the scattered radiation.
+	JX : integer
+		Total number of THET for which calculations are required
+	R : float
+		Radius of core (cm)`
+	RE2 : float 
+		Real refractive index of core (in the form n= RE2-i*TMAG2)
+	TMAG2 : float
+        Imaginary refractive index of core (in the form n= RE2-i*TMAG2)
+		
+	WVNO : float
+        Wave-number corresponding to the wavelength. (cm^-1)
+	
+	Returns
+	-------
+    QEXT: float
+        Efficiency factor for extinction,VAN DE HULST,P.14 ' 127
+    QSCAT: float
+        Efficiency factor for scattering,VAN DE HULST,P.14 ' 127
+    CTBQRS: float
+        Average(cos(theta))*QSCAT,VAN DE HULST,P.14 ' 127
+    ISTATUS: integer
+        Convergence indicator, 0 if converged, -1 if otherwise.
+        
+        
+	"""
+    
     EPSILON_MIE = 1e-7  ## Tolerance for convergence
 
     nacap, IT = 1000000, 1
