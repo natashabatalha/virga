@@ -5,37 +5,37 @@ from numba import jit
 
 def mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
     """
-	Given the refractive indices at a certain wavelength this module
+    Given the refractive indices at a certain wavelength this module
     calculates the Mie scattering by a stratified sphere.The basic code used 
     was that described in the report: " Subroutines for computing the parameters of 
     the electromagnetic radiation scattered by a sphere " J.V. Dave,
     I B M Scientific Center, Palo Alto , California.
     Report NO. 320 - 3236 .. MAY 1968 .
 
-	Parameters
-	----------
-	RO : float
-		Outer Shell Radius (cm)
-	RFR : float
-		Real refractive index of shell layer (in the form n= RFR-i*RFI)
-	RFI : float
-		Imaginary refractive index of shell layer (in the form n= RFR-i*RFI)
-	THET : ndarray 
-		Angle in degrees between the directions of the incident and the scattered radiation.
-	JX : integer
-		Total number of THET for which calculations are required
-	R : float
-		Radius of core (cm)`
-	RE2 : float 
-		Real refractive index of core (in the form n= RE2-i*TMAG2)
-	TMAG2 : float
+    Parameters
+    ----------
+    RO : float
+        Outer Shell Radius (cm)
+    RFR : float
+        Real refractive index of shell layer (in the form n= RFR-i*RFI)
+    RFI : float
+        Imaginary refractive index of shell layer (in the form n= RFR-i*RFI)
+    THET : ndarray 
+        Angle in degrees between the directions of the incident and the scattered radiation.
+    JX : integer
+        Total number of THET for which calculations are required
+    R : float
+        Radius of core (cm)`
+    RE2 : float 
+        Real refractive index of core (in the form n= RE2-i*TMAG2)
+    TMAG2 : float
         Imaginary refractive index of core (in the form n= RE2-i*TMAG2)
-		
-	WVNO : float
+        
+    WVNO : float
         Wave-number corresponding to the wavelength. (cm^-1)
-	
-	Returns
-	-------
+    
+    Returns
+    -------
     QEXT: float
         Efficiency factor for extinction,VAN DE HULST,P.14 ' 127
     QSCAT: float
@@ -46,7 +46,7 @@ def mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
         Convergence indicator, 0 if converged, -1 if otherwise.
         
         
-	"""
+    """
     
     EPSILON_MIE = 1e-7  ## Tolerance for convergence
 
