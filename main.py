@@ -7,6 +7,7 @@ import pvaps
 import os
 from scipy import optimize 
 from root_functions import advdiff, vfall,vfall_find_root
+
 def justdoit(atmo, directory = None, do_optics=False):
 	#loop through gases to get properties and optics/Mie params
 
@@ -48,7 +49,7 @@ def justdoit(atmo, directory = None, do_optics=False):
 		else: 
 			#get optics from database
 			qext_gas, qscat_gas, cos_qscat_gas, nwave, radius = get_mie(igas,directory)
-			
+			radius, rup, dr = get_r_grid(1e-5, 40)
 			if i==0: 
 				nradii = len(radius)
 				qext = np.zeros((nwave,nradii,ngas))
@@ -58,12 +59,135 @@ def justdoit(atmo, directory = None, do_optics=False):
 			#add to master matrix 
 			qext[:,:,i], qscat[:,:,i], cos_qscat[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas
 
+	qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
+		condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz)
 
-	kz, qt, qc, ndz, rg, reff = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
-		condensibles, gas_mw, gas_mmr, rho_p[i] , mmw, atmo.g, atmo.kz)
+	opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat)
+
+
+	return opd, w0, g0, opd_gas
+
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
+	"""
+	Calculate spectrally-resolved profiles of optical depth, single-scattering
+	albedo, and asymmetry parameter.
+
+	Parameters
+	----------
+	nwave : int 
+		Number of wave points 
+	qc : ndarray
+		Condensate mixing ratio 
+	qt : ndarray 
+		Gas + condensate mixing ratio 
+	rg : ndarray 
+		Geometric mean radius of condensate 
+	reff : ndarray
+		Effective (area-weighted) radius of condensate (cm)
+	ndz : ndarray
+		Column of particle concentration in layer (#/cm^2)
+	radius : ndarray
+		Radius bin centers (cm)
+	dr : ndarray
+		Width of radius bins (cm)
+	qscat : 
+		Scattering efficiency
+	qext : ndarray
+		scattering efficiency
+	cos_qscat : 
+		qscat-weighted <cos (scattering angle)>
+
+	Returns
+	-------
+	opd : ndarray 
+		extinction optical depth due to all condensates in layer
+	w0 : ndarray 
+		single scattering albedo
+	g0 : ndarray 
+		asymmetry parameter = Q_scat wtd avg of <cos theta>
+	opd_gas : ndarray
+		cumulative (from top) opd by condensing vapor as geometric conservative scatterers
+	"""
+
+	PI=np.pi
+	nz = qc.shape[0]
+	ngas = qc.shape[1]
+	nrad = len(radius)
+
+	opd_layer = np.zeros((nz, ngas))
+	scat_gas = np.zeros((nz,nwave,ngas))
+	ext_gas = np.zeros((nz,nwave,ngas))
+	cqs_gas = np.zeros((nz,nwave,ngas))
+	opd = np.zeros((nz,nwave))
+	opd_gas = np.zeros((nz,ngas))
+	w0 = np.zeros((nz,nwave))
+	g0 = np.zeros((nz,nwave))
+
+	for iz in range(nz):
+		for igas in range(ngas):
+			# Optical depth for conservative geometric scatterers 
+			if ndz[iz,igas] > 0:
+				r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig_all )**2 )
+				opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
+
+				#  Calculate normalization factor (forces lognormal sum = 1.0)
+				rsig = sig_all
+				norm = 0.
+				for irad in range(nrad):
+					rr = radius[irad]
+					arg1 = dr[irad] / ( np.sqrt(2.*PI)*rr*np.log(rsig) )
+					arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
+					norm = norm + arg1*np.exp( arg2 )
+				# normalization 
+
+				norm = ndz[iz,igas] / norm
+
+				for irad in range(nrad):
+					rr = radius[irad]
+					arg1 = dr[irad] / ( np.sqrt(2.*PI)*np.log(rsig) )
+					arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
+					pir2ndz = norm*PI*rr*arg1*np.exp( arg2 )					
+
+					for iwave in range(nwave): 
+						scat_gas[iz,iwave,igas] = (scat_gas[iz,iwave,igas] + 
+													qscat[iwave,irad,igas]*pir2ndz)
+						ext_gas[iz,iwave,igas] = (ext_gas[iz,iwave,igas] + 
+													qext[iwave,irad,igas]*pir2ndz)
+						cqs_gas[iz,iwave,igas] = (cqs_gas[iz,iwave,igas] + 
+													cos_qscat[iwave,irad,igas]*pir2ndz)
+
+					#TO DO ADD IN CLOUD SUBLAYER KLUGE LATER 
+
+	#Sum over gases and compute spectral optical depth profile etc
+
+	for iz in range(nz):
+		for iwave in range(nwave): 
+			opd_scat = 0.
+			opd_ext = 0.
+			cos_qs = 0.
+			for igas in range(ngas):
+				opd_scat = opd_scat + scat_gas[iz,iwave,igas]
+				opd_ext = opd_ext + ext_gas[iz,iwave,igas]
+				cos_qs = cos_qs + cqs_gas[iz,iwave,igas]
+
+				if( opd_scat > 0. ):
+					opd[iz,iwave] = opd_ext
+					w0[iz,iwave] = opd_scat / opd_ext
+					g0[iz,iwave] = cos_qs / opd_scat
+					
+	#   cumulative optical depths for conservative geometric scatterers
+	opd_tot = 0.
+
+	for igas in range(ngas):
+		opd_gas[0,igas] = opd_layer[0,igas]
+
+		for iz in range(1,nz):
+			opd_gas[iz,igas] = opd_gas[iz-1,igas] + opd_layer[iz,igas]
+
+	return opd, w0, g0, opd_gas
 
 def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-	 mw_atmos,gravity, kz, do_virtual=True, supsat=0):
+	mw_atmos,gravity, kz, do_virtual=True, supsat=0):
 	"""
 	Given an atmosphere and condensates, calculate size and concentration
 	of condensates in balance between eddy diffusion and sedimentation.
@@ -100,10 +224,16 @@ def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 	"""
 	t_bot = t_top[-1]
 	p_bot = p_top[-1]
+	ngas =  len(condensibles)
 	nz = len(t_mid)
+	qc = np.zeros((nz,ngas))
+	qt  = np.zeros((nz, ngas))
+	rg = np.zeros((nz, ngas))
+	reff = np.zeros((nz, ngas))
+	ndz = np.zeros((nz, ngas))
+	qc_path = np.zeros(ngas)
 
-
-	for i, igas in zip(range(len(condensibles)), condensibles):
+	for i, igas in zip(range(ngas), condensibles):
 
 		q_below = gas_mmr[i]
 
@@ -121,20 +251,25 @@ def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
 			if qvs <= q_below :	
 				#find the pressure at cloud base 
-				return 'DO VIRTUAL NEEDS TO BE COMPLETED'
+				print('DO VIRTUAL NEEDS TO BE COMPLETED')
+				return np.nan,np.nan,np.nan,np.nan,np.nan,np.nan
 				#parameters for finding root 
 			
 		for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 			if not isinstance(kz,(float,int)): kz_in = kz[iz]
 			else: kz_in = kz
 
-			qc_layer, qt_layer, rg_layer, ndz_layer, opd_layer,q_below = layer( igas, rho_p, t_mid[iz], p_mid[iz], 
+			qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
 				t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
 				 kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat
 			 )
-			print(iz, qc_layer, qt_layer, rg_layer, ndz_layer)
-	print(asdf)
-	return kz, qt, qc, ndz, rg, reff 
+
+			qc_path[i] = (qc_path[i] + qc[iz,i]*
+							( p_top[iz+1] - p_top[iz] ) / gravity)
+
+			#print(iz,p_top[iz], qc_layer, qt_layer, rg_layer, ndz_layer)
+
+	return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 	kz, gravity, mw_atmos, gas_mw, q_below, supsat, kz_min = 1e5):
@@ -238,6 +373,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 			qt_below = qt_bot_sub
 			p_top_sub = p_bot_sub - dp_sub
 			dz_sub = scale_h * np.log( p_bot_sub/p_top_sub )
+			#print('dz',scale_h , p_bot_sub,p_top_sub )
 			p_sub = 0.5*( p_bot_sub + p_top_sub )
 			t_sub = t_bot + np.log( p_bot/p_sub )*dtdlnp
 
@@ -261,15 +397,13 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 			qt_bot_sub = qt_top
 			p_bot_sub = p_top_sub
 
-		#    Check convergence on optical depth
-
 		if nsub_max == 1 :
 			converge = True
 		elif  nsub == 1 : 
 			opd_test = opd_layer
-		elif (opd_layer == 0.) or (nsub > nsub_max): 
+		elif (opd_layer == 0.) or (nsub >= nsub_max): 
 			converge = True
-		elif ( abs( 1. - opd_test/opd_layer ) < 1e-2 ) : 
+		elif ( abs( 1. - opd_test/opd_layer ) <= 1e-2 ) : 
 			converge = True
 		else: 
 			opd_test = opd_layer
@@ -292,7 +426,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 	qc_layer = qc_layer*gravity / dp_layer
 	qt_layer = qt_layer*gravity / dp_layer
 
-	return qc_layer, qt_layer, rg_layer, ndz_layer, opd_layer,q_below
+	return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
 	,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
@@ -349,6 +483,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 		#   Find total condensate mixing ratio at top of layer
 		qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq', 
 				args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf))
+
 
 		qt_top = qt_top.root
 
@@ -407,8 +542,6 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 		#   column droplet number concentration (cm^-2)
 		ndz_layer = (3*rho_atmos*qc_layer*dz_layer /
 					( 4*np.pi*rho_p*rg_layer**3 ) * np.exp( -9*lnsig2 ))
-
-
 
 	return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
 
@@ -517,7 +650,6 @@ class Atmosphere():
 			2) Define constant kzz 
 		"""
 		if not isinstance(df, type(None)):
-			print(df,type(df))
 			self.kz = np.array(df['kzz'])
 		elif not isinstance(df, type(None)):
 			self.kz = constant
@@ -547,7 +679,7 @@ def get_mie(gas, directory):
 	qext = df['qext'].values.reshape((nradii,nwave)).T
 	cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
 
-	return qscat, qext, cos_qscat, nwave, radii
+	return qext,qscat, cos_qscat, nwave, radii
 
 
 def get_r_grid(r_min=1e-5, n_radii=40):
@@ -563,7 +695,7 @@ def get_r_grid(r_min=1e-5, n_radii=40):
 	vrat = 2.2 
 	pw = 1. / 3.
 	f1 = ( 2.0*vrat / ( 1.0 + vrat) )**pw
-	f2 = (( 2.0 / ( 1.0 + vrat ) )**pw) * (vrat**pw-1.0)
+	f2 = (( 2.0 / ( 1.0 + vrat ) )**pw) * (vrat**(pw-1.0))
 
 	radius = r_min * vrat**(np.linspace(0,n_radii-1,n_radii)/3.)
 	rup = f1*radius
@@ -593,10 +725,10 @@ sig_all = 2.0
 cloudf_min = 0.75 #keep tabs on this.... 
 
 #minimum cloud coverage 
-nsub_max = 64 #why two of these... 
+nsub_max = 2*64 #why two of these... 
 
 #ramp up optical depth below cloud base in calc_optics()
-do_subcloud = True 
+do_subcloud = False 
 
 #   saturation factor (after condensation)
 supsat = 0
