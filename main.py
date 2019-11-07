@@ -75,7 +75,7 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True, rmin = 1e-5
                                     else:
                                         if bad_mie == False :
                                             bad_mie = True
-                                            print ('do_optics(): no Mie solution. So previous grid value assigned)
+                                            print ('do_optics(): no Mie solution. So previous grid value assigned')
                                             ## The mie_calc routine fails to converge if the real refractive index is smaller than 1. This is true the
                                                   ## fortran counterpart as well. So previous step values are assigned
 
