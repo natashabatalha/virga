@@ -10,8 +10,25 @@ from root_functions import advdiff, vfall,vfall_find_root
 import PyMieScatt as ps
 from calc_mie import mie_calc
 
-def justdoit(atmo, directory = None, do_optics=False, calc_mie=True, rmin = 1e-5, nradii = 40):
-    #loop through gases to get properties and optics/Mie params
+def justdoit(atmo, directory = None, do_optics=False, calc_mie=False, rmin = 1e-5, nradii = 40):
+    """
+    Top level program to run eddysed. Requires running `Atmosphere` class 
+    before running this. 
+
+    atmo : class 
+        `Atmosphere` class 
+    directory : str, optional 
+        Directory string that describes where refrind files are 
+    do_optics : bool, optional
+        If True, computes mie optical properties 
+    calc_mie : bool, optional 
+        If True uses the original f2py version of the Mie code. If False, uses the 
+        python module PyMieScatt, which is much faster. Default is False. 
+    rmin : float 
+        Minimum particle radius size in cm, Default = 1e-5 cm
+    nradii : int
+        Number of radii for which to compute mie properties. Default=40.
+    """
 
 
     mmw = atmo.mmw
@@ -52,7 +69,6 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=True, rmin = 1e-5
             #compute individual parameters for each gas
             
                 for iwave in range(nwave):
-                    print (iwave)
                     for irad in range(nradii):
                         if irad== 0 :
                             dr5= (( rup[0] - radius[0] ) / 5.)
