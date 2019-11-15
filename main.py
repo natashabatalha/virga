@@ -157,7 +157,7 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=False, rmin = 1e-
             qext[:,:,i], qscat[:,:,i], cos_qscat[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas
 
     qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
-        condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz)
+        condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz, atmo.fsed)
 
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat)
 
@@ -284,7 +284,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
     return opd, w0, g0, opd_gas
 
 def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -305,19 +305,36 @@ def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         Array of gas mmw from `gas_properties`
     gas_mmr : ndarray 
         Array of gas mmr from `gas_properties`
+    rho_p : float 
+        density of condensed vapor (g/cm^3)
+    mw_atmos : float 
+        Mean molecular weight of the atmosphere
     gravity : float 
         Gravity of planet cgs
     kz : float or ndarray
         Kzz in cgs, either float or ndarray depending of whether or not 
         it is set as input
-    do_virtual : bool 
-        (Optional) include decrease in condensate mixing ratio below model domain
-    supsat : float
-        (Optional) Default = 0 , Saturation factor (after condensation)
+    fsed : float 
+        Sedimentation efficiency, unitless
+    do_virtual : bool,optional 
+        include decrease in condensate mixing ratio below model domain
+    supsat : float, optional
+        Default = 0 , Saturation factor (after condensation)
 
     Returns
     -------
-
+    qc : ndarray 
+        condenstate mixing ratio (g/g)
+    qt : ndarray 
+        gas + condensate mixing ratio (g/g)
+    rg : ndarray
+        geometric mean radius of condensate  cm 
+    reff : ndarray
+        droplet effective radius (second moment of size distrib, cm)
+    ndz : ndarray 
+        number column density of condensate (cm^-3)
+    qc_path : ndarray 
+        vertical path of condensate 
     """
     t_bot = t_top[-1]
     p_bot = p_top[-1]
@@ -358,19 +375,68 @@ def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat
+                 kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
              )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
-
-            #print(iz,p_top[iz], qc_layer, qt_layer, rg_layer, ndz_layer)
-
+ 
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, kz_min = 1e5):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed, kz_min = 1e5):
     """
+    Calculate layer condensate properties by iterating on optical depth
+    in one model layer (convering on optical depth over sublayers)
+
+    gas_name : str 
+        Name of condenstante 
+    rho_p : float 
+        density of condensed vapor (g/cm^3)
+    t_layer : float 
+        Temperature of layer mid-pt (K)
+    p_layer : float 
+        Pressure of layer mid-pt (dyne/cm^2)
+    t_top : float 
+        Temperature at top of layer (K)
+    t_bot : float 
+        Temperature at botton of layer (K)
+    p_top : float 
+        Pressure at top of layer (dyne/cm2)
+    p_bot : float 
+        Pressure at botton of layer 
+    kz : float 
+        eddy diffusion coefficient (cm^2/s)
+    gravity : float 
+        Gravity of planet cgs 
+    mw_atmos : float 
+        Molecular weight of the atmosphere 
+    gas_mw : float 
+        Gas molecular weight 
+    q_below : float 
+        total mixing ratio (vapor+condensate) below layer (g/g)
+    supsat : float 
+        Super saturation factor
+    fsed : float
+        Sedimentation efficiency (unitless) 
+    kz_min : float, optional
+        Minimum eddy diffusion. Everything lower than this gets set to this value.
+
+
+    Returns
+    -------
+    qc_layer : ndarray 
+        condenstate mixing ratio (g/g)
+    qt_layer : ndarray 
+        gas + condensate mixing ratio (g/g)
+    rg_layer : ndarray
+        geometric mean radius of condensate  cm 
+    reff_layer : ndarray
+        droplet effective radius (second moment of size distrib, cm)
+    ndz_layer : ndarray 
+        number column density of condensate (cm^-3)
+    q_below : ndarray 
+        total mixing ratio (vapor+condensate) below layer (g/g)
     """
     #   universal gas constant (erg/mol/K)
 
@@ -429,7 +495,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz = np.max( [kz, kz_min])
 
     #   convective velocity scale (cm/s)
-    w_convect = kz / mixl #when dont know kz
+    w_convect = kz / mixl 
 
     #   cloud fractional coverage
     #cloudf = (cloudf_min +
@@ -477,7 +543,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect)
+                        rho_p,w_convect,fsed)
 
 
             #   vertical sums
@@ -528,7 +594,59 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect):
+    ,mfp,visc,rho_p,w_convect, fsed):
+    """
+    Calculate condensate optical depth and effective radius for a layer,
+    assuming geometric scatterers. 
+
+    gas_name : str 
+        Name of condenstante 
+    supsat : float 
+        Super saturation factor 
+    t_layer : float 
+        Temperature of layer mid-pt (K)
+    p_layer : float 
+        Pressure of layer mid-pt (dyne/cm^2)
+    r_atmos : float 
+        specific gas constant for atmosphere (erg/K/g)
+    r_cloud : float 
+        specific gas constant for cloud species (erg/K/g)     
+    q_below : float 
+        total mixing ratio (vapor+condensate) below layer (g/g)
+    mxl : float 
+        convective mixing length scale (cm): no less than 1/10 scale height
+    dz_layer : float 
+        Altitude of layer cm 
+    gravity : float 
+        Gravity of planet cgs 
+    mw_atmos : float 
+        Molecular weight of the atmosphere 
+    mfp : float 
+        atmospheric mean free path (cm)
+    visc : float 
+        atmospheric viscosity (dyne s/cm^2)
+    rho_p : float 
+        density of condensed vapor (g/cm^3)
+    w_convect : float    
+        convective velocity scale (cm/s)
+    fsed : float 
+        Sedimentation efficiency (unitless)
+
+    Returns
+    -------
+    qt_top : float 
+        gas + condensate mixing ratio at top of layer(g/g)
+    qc_layer : float 
+        condenstate mixing ratio (g/g)
+    qt_layer : float 
+        gas + condensate mixing ratio (g/g)
+    rg_layer : float
+        geometric mean radius of condensate  cm 
+    reff_layer : float
+        droplet effective radius (second moment of size distrib, cm)
+    ndz_layer : float 
+        number column density of condensate (cm^-3)
+    """
 
     get_pvap = getattr(pvaps, gas_name)
     if gas_name == 'Mg2SiO4':
@@ -576,7 +694,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_qvs = qvs
         ad_mixl = mixl
         ad_dz = dz_layer
-        ad_rainf = rainf_all
+        ad_rainf = fsed
 
         #   Find total condensate mixing ratio at top of layer
         qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq', 
@@ -613,7 +731,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #   sigma floor for the purpose of alpha calculation
         sig_alpha = np.max( [1.1, sig_all] )    
 
-        if rainf_all > 1 :
+        if fsed > 1 :
 
             #   Bulk of precip at r > rw: exponent between rw and rw*sig
             alpha = (np.log(
@@ -630,7 +748,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
-        rg_layer = (rainf_all**(1./alpha) *
+        rg_layer = (fsed**(1./alpha) *
                     rw_layer * np.exp( -(alpha+6)*lnsig2 ))
 
         #   droplet effective radius (cm)
@@ -644,17 +762,24 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
 
 class Atmosphere():
-    def __init__(self,condensibles,mh=1,mmw=2.2) :
+    def __init__(self,condensibles,fsed = 0.5, mh=1,mmw=2.2) :
         """
         Parameters
         ----------
+        condensibles : list of str
+            list of gases for which to consider as cloud species 
+        fsed : float 
+            Sedimentation efficiency. Jupiter ~3-6. Hot Jupiters ~ 0.1-1.
+        mh : float 
+            metalicity 
         mmw : float 
             MMW of the atmosphere 
-
+    
         """
         self.mh = 1
         self.mmw = 2.2
         self.condensibles = condensibles
+        self.fsed = fsed
 
     def get_pt(self, df = None, filename=None,**pd_kwargs):
         """
