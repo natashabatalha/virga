@@ -8,9 +8,9 @@ import os
 from scipy import optimize 
 from root_functions import advdiff, vfall,vfall_find_root
 import PyMieScatt as ps
-from calc_mie import mie_calc
+from calc_mie import fort_mie_calc, calc_new_mieff
 
-def justdoit(atmo, directory = None, do_optics=False, calc_mie=False, rmin = 1e-5, nradii = 40):
+def justdoit(atmo, directory = None, do_optics=False, fort_calc_mie=False, rmin = 1e-5, nradii = 40):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -21,15 +21,15 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=False, rmin = 1e-
         Directory string that describes where refrind files are 
     do_optics : bool, optional
         If True, computes mie optical properties 
-    calc_mie : bool, optional 
-        If True uses the original f2py version of the Mie code. If False, uses the 
-        python module PyMieScatt, which is much faster. Default is False. 
+    fort_calc_mie : bool, optional 
+        If True uses the original converted fortran to python version of the Mie code. 
+        If False, uses the python module PyMieScatt, which is MUCHH faster. 
+        Default is False.
     rmin : float 
         Minimum particle radius size in cm, Default = 1e-5 cm
     nradii : int
         Number of radii for which to compute mie properties. Default=40.
     """
-
 
     mmw = atmo.mmw
     mh = atmo.mh
@@ -41,128 +41,61 @@ def justdoit(atmo, directory = None, do_optics=False, calc_mie=False, rmin = 1e-
     gas_mmr = np.zeros(ngas)
     rho_p = np.zeros(ngas)
     
+    #### First we need to either grab or compute Mie coefficients #### 
     for i, igas in zip(range(ngas),condensibles) : 
 
-        #GET GAS PROPETIES
+        #Get gas properties including gas mean molecular weight,
+        #gas mixing ratio, and the density
         run_gas = getattr(gas_properties, igas)
         gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh)
         
-        #GET OR READ IN OPTICS
+        #If do optics is true, then compute the Mie from scratch
+        #files will be saved in `directory`
         if do_optics:
-            if calc_mie:
-            ## Calculates optics by reading refrind files
-                thetd=0.0   # incident wave angle
-                n_thetd=1
-            
-            ## obtaining refrind data for ith gas
-                wave_in,nn,kk = get_refrind(igas,directory)
-                wave=wave_in*1e-4  ## converting to cm 
-                nwave=len(wave)  #number of wavalength bin centres for calculation
-            
+            # obtaining refractive index data for each gas
+            wave_in,nn,kk = get_refrind(igas,directory)
+            nwave = len(wave_in)
+
             #Setup up a particle size grid on first run and calculate single-particle scattering
-                if i==0:
-                    radius, rup, dr = get_r_grid(rmin, nradii)
-                    qext=np.zeros(shape=(nwave,nradii,ngas))
-                    qscat = np.zeros(shape=(nwave,nradii,ngas))
-                    cos_qscat=np.zeros(shape=(nwave,nradii,ngas))
-                
-            #compute individual parameters for each gas
-            
-                for iwave in range(nwave):
-                    for irad in range(nradii):
-                        if irad== 0 :
-                            dr5= (( rup[0] - radius[0] ) / 5.)
-                            rr= radius[0]
-                        else:
-                            dr5 = ( rup[irad] - rup[irad-1] ) / 5.
-                            rr  = rup[irad-1]
-                        corerad = 0.
-                        corereal = 1.
-                        coreimag = 0.
-                    ## averaging over 6 radial bins to avoid fluctuations
-                        bad_mie= False
-                        for isub in range(6):
-                                    wvno=2*np.pi/wave[iwave]
-                                    qe_pass, qs_pass, c_qs_pass,istatus= mie_calc(rr, nn[iwave], kk[iwave], thetd, n_thetd, corerad, corereal, coreimag, wvno)
-                                    if istatus == 0:
-                                            qe=qe_pass
-                                            qs=qs_pass
-                                            c_qs=c_qs_pass
-                                    else:
-                                        if bad_mie == False :
-                                            bad_mie = True
-                                            print ('do_optics(): no Mie solution. So previous grid value assigned')
-                                            ## The mie_calc routine fails to converge if the real refractive index is smaller than 1. This is true the
-                                                  ## fortran counterpart as well. So previous step values are assigned
+            if i == 0:
+                radius, rup, dr = get_r_grid(rmin, nradii)
+                qext=np.zeros(shape=(nwave,nradii,ngas))
+                qscat = np.zeros(shape=(nwave,nradii,ngas))
+                cos_qscat=np.zeros(shape=(nwave,nradii,ngas))
 
-                                    qext[iwave,irad,i]+= qe
-                                    qscat[iwave,irad,i]+= qs
-                                    cos_qscat[iwave,irad,i] += c_qs
-                                    rr+=dr5
-                    ## adding to master arrays
-                        qext[iwave,irad,i] = qext[iwave,irad,i] / 6.     
-                        qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
-                        cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i] / 6.
-            else :
-            ## obtaining refrind data for ith gas
-                wave_in,nn,kk = get_refrind(igas,directory)
-                wave=wave_in*1e3  ## converting to nm 
-                nwave=len(wave)  #number of wavalength bin centres for calculatio
-
-                if i == 0:
-                    radius, rup, dr = get_r_grid(rmin, nradii)
-                    qext=np.zeros(shape=(nwave,nradii,ngas))
-                    qscat = np.zeros(shape=(nwave,nradii,ngas))
-                    cos_qscat=np.zeros(shape=(nwave,nradii,ngas))
-
-            #compute individual parameters for each gas
-            
-                for iwave in range(nwave):
-                    print (iwave)
-                    for irad in range(nradii):
-                        if irad== 0 :
-                            dr5= (( rup[0] - radius[0] ) / 5.)
-                            rr= radius[0]
-                        else:
-                            dr5 = ( rup[irad] - rup[irad-1] ) / 5.
-                            rr  = rup[irad-1]
-                        corerad = 0.
-                        corereal = 1.
-                        coreimag = 0.
-                    ## averaging over 6 radial bins to avoid fluctuations
-    
-                        for isub in range(6):
-                            arr= ps.MieQCoreShell( corereal+(1j)*coreimag, 
-                                                    nn[iwave]+(1j)*kk[iwave], 
-                                                    wave[iwave],dCore=0,dShell=2.0*rr*1e7)
-                            qext[iwave,irad,i]+= arr[0]
-                            qscat[iwave,irad,i]+= arr[1]
-                            cos_qscat[iwave,irad,i] += arr[3]
-                            rr+=dr5
-                    ## adding to master arrays
-                        qext[iwave,irad,i] = qext[iwave,irad,i] / 6.     
-                        qscat[iwave,irad,i] = qscat[iwave,irad,i] / 6.
-                        cos_qscat[iwave,irad,i] = cos_qscat[iwave,irad,i]*qscat[iwave,irad,i] / 6.
+            #get extinction, scattering, and asymmetry
+            #all of these are  [nwave by nradii]
+            qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False)
         else: 
-            #get optics from database
+            #Otherwise, get mie files that are already saved in 
+            #directory
+            #eventually we will replace this with nice database 
             qext_gas, qscat_gas, cos_qscat_gas, nwave, radius = get_mie(igas,directory)
             radius, rup, dr = get_r_grid(rmin, nradii)
+
             if i==0: 
                 nradii = len(radius)
                 qext = np.zeros((nwave,nradii,ngas))
                 qscat = np.zeros((nwave,nradii,ngas))
                 cos_qscat = np.zeros((nwave,nradii,ngas))
 
-            #add to master matrix 
-            qext[:,:,i], qscat[:,:,i], cos_qscat[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas
+        #add to master matrix that contains the per gas Mie stuff
+        qext[:,:,i], qscat[:,:,i], cos_qscat[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas
 
+    #Next, calculate size and concentration
+    #of condensates in balance between eddy diffusion and sedimentation
+
+    #qc = condensate mixing ratio, qt = condensate+gas mr, rg = mean radius,
+    #reff = droplet eff radius, ndz = column dens of condensate, 
+    #qc_path = vertical path of condensate
     qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
         condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz, atmo.fsed)
 
+    #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
+    #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat)
 
-
-    return opd, w0, g0, opd_gas
+    return opd, w0, g0, opd_gas,rg
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
     """
@@ -256,7 +189,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
                     #TO DO ADD IN CLOUD SUBLAYER KLUGE LATER 
 
     #Sum over gases and compute spectral optical depth profile etc
-
     for iz in range(nz):
         for iwave in range(nwave): 
             opd_scat = 0.
@@ -272,7 +204,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
                     w0[iz,iwave] = opd_scat / opd_ext
                     g0[iz,iwave] = cos_qs / opd_scat
                     
-    #   cumulative optical depths for conservative geometric scatterers
+    #cumulative optical depths for conservative geometric scatterers
     opd_tot = 0.
 
     for igas in range(ngas):
@@ -283,7 +215,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
 
     return opd, w0, g0, opd_gas
 
-def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
+def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     mw_atmos,gravity, kz,fsed, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
@@ -370,8 +302,10 @@ def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                 #parameters for finding root 
             
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
-            if not isinstance(kz,(float,int)): kz_in = kz[iz]
-            else: kz_in = kz
+            if not isinstance(kz,(float,int)): 
+                kz_in = kz[iz]
+            else: 
+                kz_in = kz
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
@@ -384,7 +318,7 @@ def eddysed( t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed, kz_min = 1e5):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -419,9 +353,6 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Super saturation factor
     fsed : float
         Sedimentation efficiency (unitless) 
-    kz_min : float, optional
-        Minimum eddy diffusion. Everything lower than this gets set to this value.
-
 
     Returns
     -------
@@ -451,7 +382,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     #   (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
     d_molecule = 2.827e-8
 
-    #   parameter in Lennard-Jones potential for viscosity (K) (Rosner, 2000)
+    #   Depth of the Lennard-Jones potential well for the atmosphere 
+    # Used in the viscocity calculation (units are K) (Rosner, 2000)
     #   (78.6 for air, 71.4 for N2, 59.7 for H2)
     eps_k = 59.7
 
@@ -479,28 +411,15 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     scale_h = r_atmos * t_layer / gravity    
 
     #   convective mixing length scale (cm): no less than 1/10 scale height
+    # Eqn. 6 in A & M 01 
     mixl = np.max( [0.10, lapse_ratio ]) * scale_h
 
 
     #   scale factor for eddy diffusion: 1/3 is baseline
     scalef_kz = 1./3.
 
-    #   vertical eddy diffusion coefficient (cm^2/s)
-    #   from Gierasch and Conrath (1985)
-    if kz == np.nan : 
-        kz = (scalef_kz * scale_h * (mixl/scale_h)**(4./3.) * #when dont know kz
-              ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) #when dont know kz
-
-    #   no less than minimum value (for radiative regions)
-    kz = np.max( [kz, kz_min])
-
-    #   convective velocity scale (cm/s)
+    #   convective velocity scale (cm/s) from mixing length theory
     w_convect = kz / mixl 
-
-    #   cloud fractional coverage
-    #cloudf = (cloudf_min +
-    #          max( 0., min( 1., 1.-lapse_ratio )) *
-    #      ( 1. - cloudf_min ))
 
     #   atmospheric number density (molecules/cm^3)
     n_atmos = p_layer / ( K_BOLTZ*t_layer )
@@ -508,7 +427,9 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     #   atmospheric mean free path (cm)
     mfp = 1. / ( np.sqrt(2.)*n_atmos*PI*d_molecule**2 )
 
-    #   atmospheric viscosity (dyne s/cm^2)
+    # atmospheric viscosity (dyne s/cm^2)
+    # EQN B2 in A & M 2001, originally from Rosner+2000
+    # Rosner, D. E. 2000, Transport Processes in Chemically Reacting Flow Systems (Dover: Mineola)
     visc = (5./16.*np.sqrt( PI*K_BOLTZ*t_layer*(mw_atmos/AVOGADRO)) /
         ( PI*d_molecule**2 ) /
         ( 1.22 * ( t_layer / eps_k )**(-0.16) ))
@@ -696,7 +617,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_dz = dz_layer
         ad_rainf = fsed
 
-        #   Find total condensate mixing ratio at top of layer
+        #   Find total vapor mixing ratio at top of layer
         qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq', 
                 args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf))
 
@@ -708,7 +629,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         qt_layer = 0.5*( q_below + qt_top )
 
 
-        #   Diagnose condensate mixing ratio
+        #   Find total condensate mixing ratio
         qc_layer = np.max( [0., qt_layer - qvs] )
 
         #   --------------------------------------------------------------------
@@ -719,11 +640,10 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         rhi = 10.
 
         #   precision of vfall solution (cm/s)
-        #delta_v = w_convect / 1000.
-
         rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
                 args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
 
+        #fall velocity particle radius 
         rw_layer = rw_layer.root
         
         #   geometric std dev of lognormal size distribution
@@ -781,32 +701,43 @@ class Atmosphere():
         self.condensibles = condensibles
         self.fsed = fsed
 
-    def get_pt(self, df = None, filename=None,**pd_kwargs):
+    def get_pt(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
         """
-        Read in file or define dataframe
+        Read in file or define dataframe. 
     
         Parameters
         ----------
         df : dataframe or dict
-            Dataframe with "pressure"(bars),"temperature"(K),"z"(cm)
+            Dataframe with "pressure"(bars),"temperature"(K). Should have at least two 
+            columns with names "pressure" and "temperature". Can also include 'kz' in CGS units. 
         filename : str 
             Filename read in. Will be read in with pd.read_csv and should 
-            result in three named headers "pressure"(bars),"temperature"(K),"z"(cm). 
+            result in two named headers "pressure"(bars),"temperature"(K). Can also include 'kz' in 
+            CGS units. Use pd_kwargs to ensure file is read in properly.
+        kz_min : float, optional
+            Minimum Kz value. This will reset everything below kz_min to kz_min. 
+            Default = 1e5 cm2/s
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
-            skiprows=3, delim_whitespace=True, header=None, names=["ind","pressure","temperature","kzz"]
+            skiprows=3, delim_whitespace=True, header=None, names=["ind","pressure","temperature","kz"]
         """
         if not isinstance(df, type(None)):
             if isinstance(df, dict): df = pd.DataFrame(df)
             df = df.sort_values('pressure')
-            self.pressure = np.array(df['pressure'])
-            self.temperature = np.array(df['temperature'])
         elif not isinstance(filename, type(None)):
             df = pd.read_csv(filename, **pd_kwargs)
             df = df.sort_values('pressure')
-            self.pressure = np.array(df['pressure'])
-            self.temperature = np.array(df['temperature'])
+
+        self.pressure = np.array(df['pressure'])
+        self.temperature = np.array(df['temperature'])
+        if 'kz' in df.keys(): 
+            if df.loc[df['kz']<kz_min].shape[0] > 0:
+                df.loc[df['kz']<kz_min] = kz_min
+                print('Overwriting some Kz values to minimum value set by kz_min') 
+            self.kz = np.array(df['kz'])
+        else:
+            self.kz = np.nan
 
         r_atmos = 8.3143e7 / self.mmw
 
@@ -830,7 +761,6 @@ class Atmosphere():
         self.z_top = np.concatenate(([0],np.cumsum(self.dz_layer[::-1])))[::-1]
 
         self.z = self.z_top[1:]+self.dz_pmid
-
 
     def get_gravity(self, gravity=None, gravity_unit=None, radius=None, radius_unit=None, mass = None, mass_unit=None):
         """
@@ -866,19 +796,42 @@ class Atmosphere():
             raise Exception('Need to specify gravity or radius and mass + additional units')
 
 
-    def get_kz(self,df = None, filename = None, constant=None): 
+    def get_kz(self,df = None, constant=None,kz_min = 1e5): 
         """
-        Define Kzz in CGS. Should be on same grid as pressure. 
-            1) Defining DataFrame with keys 'pressure' (in bars), and 'kzz'
-            2) Define constant kzz 
-        """
-        if not isinstance(df, type(None)):
-            self.kz = np.array(df['kzz'])
-        elif not isinstance(df, type(None)):
-            self.kz = constant
-        else: 
-            self.kz=0
+        Define Kz in CGS. Should be on same grid as pressure. This overwrites whatever was 
+        defined in get_pt ! Users can define kz by: 
+            1) Defining a DataFrame with keys 'pressure' (in bars), and 'kz'
+            2) Defining constant kz 
 
+        Parameters
+        ----------
+        df : pandas.DataFrame, dict
+            Dataframe or dictionary with 'kz' as one of the fields. 
+        
+        """
+
+        if not isinstance(df, type(None)):
+            #reset to minimun value if specified by the user
+            if df.loc[df['kz']<kz_min].shape[0] > 0:
+                df.loc[df['kz']<kz_min] = kz_min
+                print('Overwriting some Kz values to minimum value set by kz_min') 
+            self.kz = np.array(df['kz'])
+            #make sure pressure and kz are the same size 
+            if len(self.kz) != len(self.pressure) : 
+                raise Exception('Kzz and pressure are not the same length')
+
+        elif not isinstance(constant, type(None)):
+            self.kz = constant
+            if self.kz<kz_min:
+                self.kz = kz_min
+                print('Overwriting kz constant value to minimum value set by kz_min')
+
+
+        #   vertical eddy diffusion coefficient (cm^2/s)
+        #   from Gierasch and Conrath (1985)
+        # we are discontinuing this formalism
+        # self.kz = (scalef_kz * scale_h * (mixl/scale_h)**(4./3.) * #when dont know kz
+        #  ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) #when dont know kz
 
 def get_mie(gas, directory):
     """
