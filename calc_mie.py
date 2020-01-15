@@ -1,9 +1,10 @@
 import numpy as np
 pi=np.pi
 from numba import jit 
+import PyMieScatt as ps
+import os 
 
-
-def mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
+def fort_mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
     """
     Given the refractive indices at a certain wavelength this module
     calculates the Mie scattering by a stratified sphere.The basic code used 
@@ -374,3 +375,117 @@ def mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
     istatus = 0
     
     return QEXT,QSCAT,CTBRQS,istatus
+
+
+
+def calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False):
+    ## Calculates optics by reading refrind files
+    thetd=0.0   # incident wave angle
+    n_thetd=1
+    #number of radii sub bins in order to smooth out fringe effects 
+    sub_radii = 6 
+    
+    nradii = len(radius)
+    nwave=len(wave_in)  #number of wavalength bin centres for calculation
+    
+    qext = np.zeros((nwave,nradii))
+    qscat = np.zeros((nwave,nradii))
+    cos_qscat = np.zeros((nwave,nradii))
+        
+    #compute individual parameters for each gas
+    for iwave in range(nwave):
+        for irad in range(nradii):
+            if irad== 0 :
+                dr5= (( rup[0] - radius[0] ) / 5.)
+                rr= radius[0]
+            else:
+                dr5 = ( rup[irad] - rup[irad-1] ) / 5.
+                rr  = rup[irad-1]
+            corerad = 0.
+            corereal = 1.
+            coreimag = 0.
+        ## averaging over 6 radial bins to avoid fluctuations
+            if fort_calc_mie:
+                wave=wave_in*1e-4  ## converting to cm 
+                bad_mie= False
+                for isub in range(sub_radii):
+                            wvno=2*np.pi/wave[iwave]
+                            qe_pass, qs_pass, c_qs_pass,istatus= fort_mie_calc(rr, nn[iwave], kk[iwave], thetd, n_thetd, corerad, corereal, coreimag, wvno)
+                            if istatus == 0:
+                                    qe=qe_pass
+                                    qs=qs_pass
+                                    c_qs=c_qs_pass
+                            else:
+                                if bad_mie == False :
+                                    bad_mie = True
+                                    print ('do_optics(): no Mie solution. So previous grid value assigned')
+                                    ## The mie_calc routine fails to converge if the real refractive index is smaller than 1. This is true the
+                                    ## fortran counterpart as well. So previous step values are assigned
+
+                            qext[iwave,irad]+= qe
+                            qscat[iwave,irad]+= qs
+                            cos_qscat[iwave,irad] += c_qs
+                            rr+=dr5
+            #this is the default.
+            #if no fortran crappy code, use PyMieScatt which does a much faster 
+            #more robust computation of the Mie parameters
+            else:
+                wave=wave_in*1e3  ## converting to nm 
+                ## averaging over 6 radial bins to avoid fluctuations
+                for isub in range(sub_radii):
+                    #arr = qext, qsca, qabs, g, qpr, qback, qratio
+                    arr= ps.MieQCoreShell( corereal+(1j)*coreimag, 
+                                            nn[iwave]+(1j)*kk[iwave], 
+                                            wave[iwave],dCore=0,dShell=2.0*rr*1e7)
+
+                    qext[iwave,irad]+= arr[0]
+                    qscat[iwave,irad]+= arr[1]
+                    cos_qscat[iwave,irad] += arr[3]*arr[1] 
+                    rr+=dr5
+
+            ## adding to master arrays
+            qext[iwave,irad] = qext[iwave,irad] / sub_radii     
+            qscat[iwave,irad] = qscat[iwave,irad] / sub_radii
+            cos_qscat[iwave,irad] = cos_qscat[iwave,irad]/ sub_radii
+
+    return qext, qscat, cos_qscat
+
+
+def get_refrind(igas,directory): 
+    """
+    Reads reference files with wavelength, and refractory indecies. 
+    This function relies on input files being structured as a 4 column file with 
+    columns: index, wavelength (micron), nn, kk 
+
+    Parameters
+    ----------
+    igas : str 
+        Gas name 
+    directory : str 
+        Directory were reference files are located. 
+    """
+    filename = os.path.join(directory ,igas+".refrind")
+    idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
+    return wave_in,nn,kk
+
+
+def get_r_grid(r_min=1e-5, n_radii=40):
+    """
+    Get spacing of radii to run Mie code
+
+    r_min : float 
+        Minimum radius to compute (cm)
+
+    n_radii : int
+        Number of radii to compute 
+    """
+    vrat = 2.2 
+    pw = 1. / 3.
+    f1 = ( 2.0*vrat / ( 1.0 + vrat) )**pw
+    f2 = (( 2.0 / ( 1.0 + vrat ) )**pw) * (vrat**(pw-1.0))
+
+    radius = r_min * vrat**(np.linspace(0,n_radii-1,n_radii)/3.)
+    rup = f1*radius
+    dr = f2*radius
+
+    return radius, rup, dr

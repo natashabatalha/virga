@@ -39,10 +39,10 @@ def KCl(mw_atmos, mh = 1):
 
 	if mh ==1: 
 		#SOLAR METALLICITY (abunds tables, 900K, 1 bar)
-		gas_mmr = 2.2627E-07 * (gas_mw(igas)/mw_atmos)
+		gas_mmr = 2.2627E-07 * (gas_mw/mw_atmos)
 	elif mh == 10:
 		#10x SOLAR METALLICITY (abunds tables, 900K, 1 bar)
-		gas_mmr = 2.1829E-06 * (gas_mw(igas)/mw_atmos)
+		gas_mmr = 2.1829E-06 * (gas_mw/mw_atmos)
 	elif mh==50:
 		#50x SOLAR METALLICITY (abunds tables, 900K, 1 bar)
 		gas_mmr = 8.1164E-06 * (gas_mw/mw_atmos)
