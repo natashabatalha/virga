@@ -1,5 +1,6 @@
 def CH4(mw_atmos, mh = 1):
 	"""Defines properties for CH4 as condensible"""
+	if mh != 1: print("Warning: no M/H Dependence in CH4")
 	gas_mw = 16.0
 	# Lodders(2003)
 	gas_mmr = 4.9e-4 * (gas_mw/mw_atmos) 
@@ -9,6 +10,7 @@ def CH4(mw_atmos, mh = 1):
 
 def NH3(mw_atmos, mh = 1):
 	"""Defines properties for  NH3 as condensible"""
+	if mh != 1: print("Warning: no M/H Dependence in NH3")
 	gas_mw = 17.
 	#Lodders(2003)
 	gas_mmr = 1.34e-4 * (gas_mw/mw_atmos) *1.0
@@ -18,6 +20,7 @@ def NH3(mw_atmos, mh = 1):
 
 def H2O(mw_atmos, mh = 1):
 	"""Defines properties for H2O as condensible"""
+	if mh != 1: print("Warning: no M/H Dependence in H2O")
 	gas_mw = 18.
 	#Lodders(2003)
 	gas_mmr = 7.54e-4 * (gas_mw/mw_atmos)  *1.0
@@ -27,6 +30,7 @@ def H2O(mw_atmos, mh = 1):
 
 def Fe(mw_atmos, mh = 1):
 	"""Defines properties for Fe as condensible"""
+	if mh != 1: print("Warning: no M/H Dependence in Fe")
 	gas_mw = 55.845
 	gas_mmr = 1.30e-3
 	#Lodders and Fegley (1998)
@@ -54,7 +58,7 @@ def KCl(mw_atmos, mh = 1):
 
 def MgSiO3(mw_atmos, mh = 1):
 	"""Defines properties for MgSiO3 as condensible"""	
-
+	if mh != 1: print("Warning: no M/H Dependence in MgSiO3")
 	gas_mw = 100.4
 	gas_mmr = 2.75e-3
 	#Lodders and Fegley (1998)
@@ -63,6 +67,7 @@ def MgSiO3(mw_atmos, mh = 1):
 
 def Mg2SiO4(mw_atmos, mh = 1):
 	"""Defines properties for Mg2SiO4 as condensible"""	
+	if mh != 1: print("Warning: no M/H Dependence in MgSiO4")
 	gas_mw = 140.7
 	#NEW FORSTERITE (from Lodders et al. table, 1000mbar, 1900K)
 	gas_mmr = 7.1625e-05/2 * (gas_mw/mw_atmos)  
@@ -72,6 +77,7 @@ def Mg2SiO4(mw_atmos, mh = 1):
 
 def MnS(mw_atmos,mh=1):	
 	"""Defines properties for MnS as condensible"""	
+
 	gas_mw = 87.00
 
 	gas_mmr =  mh * 6.37e-7 * (gas_mw/mw_atmos) 

@@ -6,7 +6,7 @@ import numpy as np
 import pvaps
 import os
 from scipy import optimize 
-from root_functions import advdiff, vfall,vfall_find_root
+from root_functions import advdiff, vfall,vfall_find_root,qvs_below_model
 import PyMieScatt as ps
 from calc_mie import fort_mie_calc, calc_new_mieff
 
@@ -88,14 +88,15 @@ def justdoit(atmo, directory = None, do_optics=False, fort_calc_mie=False, rmin 
     #qc = condensate mixing ratio, qt = condensate+gas mr, rg = mean radius,
     #reff = droplet eff radius, ndz = column dens of condensate, 
     #qc_path = vertical path of condensate
+
     qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
-        condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz, atmo.fsed)
+        condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz, atmo.fsed, mh)
 
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat)
 
-    return opd, w0, g0, opd_gas,rg
+    return opd, w0, g0, opd_gas
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
     """
@@ -216,7 +217,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -234,9 +235,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     condensibles : ndarray or list of str
         List or array of condensible gas names
     gas_mw : ndarray
-        Array of gas mmw from `gas_properties`
+        Array of gas mean molecular weight from `gas_properties`
     gas_mmr : ndarray 
-        Array of gas mmr from `gas_properties`
+        Array of gas mixing ratio from `gas_properties`
     rho_p : float 
         density of condensed vapor (g/cm^3)
     mw_atmos : float 
@@ -248,6 +249,8 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         it is set as input
     fsed : float 
         Sedimentation efficiency, unitless
+    mh : float 
+        Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     do_virtual : bool,optional 
         include decrease in condensate mixing ratio below model domain
     supsat : float, optional
@@ -289,18 +292,55 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
             if igas == 'Mg2SiO4':
-                pvap = get_pvap(t_bot, p_bot)
+                pvap = get_pvap(t_bot, p_bot, mh=np.log10(mh))
             else:
-                pvap = get_pvap(t_bot)
+                pvap = get_pvap(t_bot, mh=np.log10(mh))
 
-            qvs = qvs_factor*pvap/p_bot    
+            qvs = qvs_factor*pvap/p_bot   
 
-            if qvs <= q_below :    
+            print('q_below',q_below)
+            print('qvs',qvs)
+
+            if qvs <= q_below :   
+                print('ENTERING VIRTUAL',igas) 
                 #find the pressure at cloud base 
-                print('DO VIRTUAL NEEDS TO BE COMPLETED')
-                return np.nan,np.nan,np.nan,np.nan,np.nan,np.nan
-                #parameters for finding root 
-            
+                #   parameters for finding root 
+                p_lo = p_bot
+                p_hi = p_bot * 1e2
+
+                #temperature gradient 
+                dtdlnp = ( t_top[-2] - t_bot ) / np.log10( p_bot/p_top[-2] )
+
+                #   load parameters into qvs_below common block
+                print(dtdlnp,t_bot,p_bot,pvap)
+
+                qv_dtdlnp = dtdlnp
+                qv_p = p_bot
+                qv_t = t_bot
+                qv_gas_name = igas
+                qv_factor = qvs_factor
+
+                p_base = optimize.root_scalar(qvs_below_model, 
+                    bracket=[p_lo, p_hi], method='brentq', 
+                args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below))
+                p_base = p_base.root 
+                t_base = t_bot + np.log10( p_bot/p_base )*dtdlnp
+                
+                print(p_base,t_base)
+
+                #   Calculate temperature and pressure below bottom layer
+                #   by adding a virtual layer 
+
+                p_layer = 0.5*( p_bot + p_base )
+                t_layer = t_bot + np.log10( p_bot/p_layer )*dtdlnp
+
+                #we just need to overwrite 
+                #q_below from this output for the next routine
+                qc, qt, rg, reff,ndz,q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
+                    t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
+                     kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
+                 )
+
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
             if not isinstance(kz,(float,int)): 
                 kz_in = kz[iz]
@@ -696,8 +736,8 @@ class Atmosphere():
             MMW of the atmosphere 
     
         """
-        self.mh = 1
-        self.mmw = 2.2
+        self.mh = mh
+        self.mmw = mmw
         self.condensibles = condensibles
         self.fsed = fsed
 

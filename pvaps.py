@@ -1,6 +1,7 @@
 import numpy as np
 
-def Cr(temp):
+def Cr(temp, mh = 0 ):
+	if mh != 0 : print("Warning: no M/H Dependence in Cr")
 	#Cr vapor pressure above cloud 
 	pvap_cr_bars = 10.0**(7.2688-20353./temp)
 	#Then convert from bars to dynes/cm^2    
@@ -14,7 +15,8 @@ def ZnS(temp,mh = 0 ):
 	pvap_zns = pvap_zns_bars*1e6   
 	return pvap_zns
 
-def NH3(temp):
+def NH3(temp, mh = 0 ):
+	if mh != 0 : print("Warning: no M/H Dependence in NH3")
 	#NH3 vapor pressure above cloud 
 	pvap_nh3 = np.exp(-86596./temp**2 - 2161./temp + 10.53)
 	# convert from bars to dyne/cm^2
@@ -37,13 +39,14 @@ def MnS(temp, mh=0):
 	return 	pvap_mns
 
 def MgSiO3(temp, mh=0):
-	#MgSiO vapor pressure above cloud
-	pvap_mgsio3 = 10.0**(11.83 - 27250./temp - mh)
+	if mh != 0 : print("Warning: no M/H Dependence in MgSiO3")
+	#MgSiO3 vapor pressure above cloud
+	pvap_mgsio3 = np.exp(-58663./temp + 25.37)
 	#convert bars -> dynes/cm^2
 	pvap_mgsio3 = 1e6 * pvap_mgsio3 
 	return pvap_mgsio3
 
-def MgSiO4(temp, p, mh=0):
+def Mg2SiO4(temp, p, mh=0):
 	#Another new expression from Channon Visscher, correspondance on 10/6/11
 	#includes total pressure dependence and met dep. 
 	pvap_mg2sio4 = 10.0**(-32488./temp + 14.88 - 0.2*np.log10(p*1e6) 
@@ -51,13 +54,14 @@ def MgSiO4(temp, p, mh=0):
 	return pvap_mg2sio4
 
 
-def KCl(temp):
+def KCl(temp, mh=0):
+	if mh != 0 : print("Warning: no M/H Dependence in KCl")
 	pvap_kcl_bars = 10.0**(7.6106 - 11382./temp)
 	#Then convert from bars to dynes/cm^2    
 	pvap_kcl = pvap_kcl_bars*1e6  
 	return pvap_kcl
 
-def H2O(temp, do_buck = True):
+def H2O(temp,mh=0, do_buck = True):
 	"""
 	Parameters
 	----------
@@ -67,6 +71,7 @@ def H2O(temp, do_buck = True):
 		True means use Buck 1981 expresssion, False means use 
 		Wexler's
 	"""
+	if mh != 0 : print("Warning: no M/H Dependence in H2O")
 	if isinstance(temp, float): temp=np.array([temp]) 
 	pvap_h2o = np.zeros(len(temp))
 	#define constants used in Buck's expressions
@@ -130,13 +135,15 @@ def H2O(temp, do_buck = True):
 	if len(pvap_h2o) == 1 : pvap_h2o = pvap_h2o[0]
 	return pvap_h2o
 
-def Fe(temp):
+def Fe(temp,mh=0):
+	if mh != 0 : print("Warning: no M/H Dependence in Fe")
 	#EXPRESSION from Channon Visscher, correspondance on 6/3/11, added 7/27/11 (cvm)
 	pvap_fe = 10.0**(7.09-20833./temp)
 	pvap_fe = pvap_fe * 1e6   # convert from bars to dyne/cm^2
 	return pvap_fe
 
-def CH4(temp):
+def CH4(temp,mh=0):
+	if mh != 0 : print("Warning: no M/H Dependence in CH4")
 
 	#	  AMR   -- molecular weight / ideal gas constant
 	#     TCRIT -- triple point temperature
@@ -175,5 +182,6 @@ def CH4(temp):
 	return pvap_ch4
 
 def Al2O3(temp):
+	if mh != 0 : print("Warning: no M/H Dependence in Al2O3")
 	#Kozasa et al. Ap J. 344 325
 	return np.exp(-73503./temp + 22.01)*1e6
