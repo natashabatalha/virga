@@ -30,6 +30,9 @@ def justdoit(atmo, directory = None, do_optics=False, fort_calc_mie=False, rmin 
     nradii : int
         Number of radii for which to compute mie properties. Default=40.
     """
+    #if np.any(np.isnan(list([atmo.kz]) )): 
+    #    raise Exception('KZ was not specified on input. Ether add it to the Dataframe \
+    #        in Atmosphere.get_pt or you can input it separatly using Atmosphere.get_kz')
 
     mmw = atmo.mmw
     mh = atmo.mh
@@ -298,58 +301,52 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
             qvs = qvs_factor*pvap/p_bot   
 
-            print('q_below',q_below)
-            print('qvs',qvs)
-
             if qvs <= q_below :   
-                print('ENTERING VIRTUAL',igas) 
                 #find the pressure at cloud base 
                 #   parameters for finding root 
                 p_lo = p_bot
                 p_hi = p_bot * 1e2
 
                 #temperature gradient 
-                dtdlnp = ( t_top[-2] - t_bot ) / np.log10( p_bot/p_top[-2] )
+                dtdlnp = ( t_top[-2] - t_bot ) / np.log( p_bot/p_top[-2] )
 
                 #   load parameters into qvs_below common block
-                print(dtdlnp,t_bot,p_bot,pvap)
-
                 qv_dtdlnp = dtdlnp
                 qv_p = p_bot
                 qv_t = t_bot
                 qv_gas_name = igas
                 qv_factor = qvs_factor
-
-                p_base = optimize.root_scalar(qvs_below_model, 
+                try:
+                    p_base = optimize.root_scalar(qvs_below_model, 
                     bracket=[p_lo, p_hi], method='brentq', 
-                args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below))
-                p_base = p_base.root 
-                t_base = t_bot + np.log10( p_bot/p_base )*dtdlnp
-                
-                print(p_base,t_base)
+                    args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below))
+                    print('Virtual Cloud Found')
+                    root_was_found = True
+                except ValueError: 
+                    root_was_found = False
 
-                #   Calculate temperature and pressure below bottom layer
-                #   by adding a virtual layer 
+                if root_was_found:
+                    p_base = p_base.root 
+                    t_base = t_bot + np.log( p_bot/p_base )*dtdlnp
+                    
+                    #   Calculate temperature and pressure below bottom layer
+                    #   by adding a virtual layer 
 
-                p_layer = 0.5*( p_bot + p_base )
-                t_layer = t_bot + np.log10( p_bot/p_layer )*dtdlnp
+                    p_layer = 0.5*( p_bot + p_base )
+                    t_layer = t_bot + np.log10( p_bot/p_layer )*dtdlnp
 
-                #we just need to overwrite 
-                #q_below from this output for the next routine
-                qc, qt, rg, reff,ndz,q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
-                    t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                     kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
-                 )
+                    #we just need to overwrite 
+                    #q_below from this output for the next routine
+                    qc, qt, rg, reff,ndz,q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
+                        t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
+                         kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
+                     )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
-            if not isinstance(kz,(float,int)): 
-                kz_in = kz[iz]
-            else: 
-                kz_in = kz
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
+                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
              )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
