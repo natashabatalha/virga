@@ -39,9 +39,10 @@ def MnS(temp, mh=0):
 	return 	pvap_mns
 
 def MgSiO3(temp, mh=0):
-	if mh != 0 : print("Warning: no M/H Dependence in MgSiO3")
 	#MgSiO3 vapor pressure above cloud
-	pvap_mgsio3 = np.exp(-58663./temp + 25.37)
+	#the one that is in A&M is this : np.exp(-58663./temp + 25.37)
+	#this is a new one from Channon Visscher
+	pvap_mgsio3 = 10.0**(11.83 - 27250.0/temp - mh)
 	#convert bars -> dynes/cm^2
 	pvap_mgsio3 = 1e6 * pvap_mgsio3 
 	return pvap_mgsio3
