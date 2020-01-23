@@ -6,34 +6,42 @@ import numpy as np
 import pvaps
 import os
 from scipy import optimize 
-from root_functions import advdiff, vfall,vfall_find_root,qvs_below_model
+from root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t
 import PyMieScatt as ps
 from calc_mie import fort_mie_calc, calc_new_mieff
 
-def justdoit(atmo, directory = None, do_optics=False, fort_calc_mie=False, rmin = 1e-5, nradii = 40):
+def justdoit(atmo, directory = None, as_dict = False, do_optics=False, fort_calc_mie=False, rmin = 1e-5, nradii = 40):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
-
+    
+    Parameters
+    ----------
     atmo : class 
         `Atmosphere` class 
     directory : str, optional 
         Directory string that describes where refrind files are 
+    as_dict : bool 
+        Option to view full output as dictionary
     do_optics : bool, optional
         If True, computes mie optical properties 
-    fort_calc_mie : bool, optional 
-        If True uses the original converted fortran to python version of the Mie code. 
-        If False, uses the python module PyMieScatt, which is MUCHH faster. 
-        Default is False.
     rmin : float 
         Minimum particle radius size in cm, Default = 1e-5 cm
     nradii : int
         Number of radii for which to compute mie properties. Default=40.
-    """
-    #if np.any(np.isnan(list([atmo.kz]) )): 
-    #    raise Exception('KZ was not specified on input. Ether add it to the Dataframe \
-    #        in Atmosphere.get_pt or you can input it separatly using Atmosphere.get_kz')
+    fort_calc_mie : bool, optional 
+        If True uses the original converted fortran to python version of the Mie code. 
+        If False, uses the python module PyMieScatt, which is MUCHH faster. 
+        Default is False.
 
+    Returns 
+    -------
+    opd, w0, g0
+        Extinction per layer, single scattering abledo, asymmetry parameter, 
+        All are ndarrays that are nlayer by nwave
+    dict 
+        Dictionary output that contains full output. See tutorials for explanation of all output.
+    """
     mmw = atmo.mmw
     mh = atmo.mh
     condensibles = atmo.condensibles
@@ -73,7 +81,7 @@ def justdoit(atmo, directory = None, do_optics=False, fort_calc_mie=False, rmin 
             #Otherwise, get mie files that are already saved in 
             #directory
             #eventually we will replace this with nice database 
-            qext_gas, qscat_gas, cos_qscat_gas, nwave, radius = get_mie(igas,directory)
+            qext_gas, qscat_gas, cos_qscat_gas, nwave, radius,wave_in = get_mie(igas,directory)
             radius, rup, dr = get_r_grid(rmin, nradii)
 
             if i==0: 
@@ -93,15 +101,37 @@ def justdoit(atmo, directory = None, do_optics=False, fort_calc_mie=False, rmin 
     #qc_path = vertical path of condensate
 
     qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
-        condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz, atmo.fsed, mh)
+        condensibles, gas_mw, gas_mmr, rho_p , mmw, atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
 
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
-    opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat)
+    opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,atmo.sig)
 
-    return opd, w0, g0, opd_gas
+    if as_dict:
+        return as_dict(qc, qt, rg, reff, ndz, qc_path,opd, w0, g0, opd_gas,wave_in, atmo.p_top) 
+    else:
+        return opd, w0, g0
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
+def as_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure):
+    return {
+        "pressure":pressure/1e6, 
+        "pressure_unit":'bar',
+        "wave":wave,
+        "wave_unit":'micron',
+        "condensate_mmr":qc,
+        "condensate_and_gas_mmr":qt,
+        "mean_particle_r":rg*1e4,
+        "droplet_eff_r":reff*1e4, 
+        "r_units":'micron',
+        "column_density":ndz,
+        "column_density_unit":'#/cm^2',
+        "opd_per_layer":opd, 
+        "single_scattering" : w0, 
+        "asymmetry": g0, 
+        "opd_by_gas": opd_gas
+    }
+
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -119,17 +149,20 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
     reff : ndarray
         Effective (area-weighted) radius of condensate (cm)
     ndz : ndarray
-        Column of particle concentration in layer (#/cm^2)
+        Column density of particle concentration in layer (#/cm^2)
     radius : ndarray
         Radius bin centers (cm)
     dr : ndarray
         Width of radius bins (cm)
-    qscat : 
+    qscat : ndarray
         Scattering efficiency
     qext : ndarray
         scattering efficiency
-    cos_qscat : 
+    cos_qscat : ndarray
         qscat-weighted <cos (scattering angle)>
+    sig : float 
+        Width of the log normal particle distribution
+
 
     Returns
     -------
@@ -161,11 +194,11 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
         for igas in range(ngas):
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
-                r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig_all )**2 )
+                r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
 
                 #  Calculate normalization factor (forces lognormal sum = 1.0)
-                rsig = sig_all
+                rsig = sig
                 norm = 0.
                 for irad in range(nrad):
                     rr = radius[irad]
@@ -220,7 +253,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat):
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -254,6 +287,8 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         Sedimentation efficiency, unitless
     mh : float 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
+    sig : float 
+        Width of the log normal particle distribution
     do_virtual : bool,optional 
         include decrease in condensate mixing ratio below model domain
     supsat : float, optional
@@ -339,14 +374,14 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     #q_below from this output for the next routine
                     qc, qt, rg, reff,ndz,q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                         t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                         kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
+                         kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig
                      )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed
+                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig
              )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -355,7 +390,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -390,6 +425,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Super saturation factor
     fsed : float
         Sedimentation efficiency (unitless) 
+    sig : float 
+        Width of the log normal particle distribution 
 
     Returns
     -------
@@ -407,7 +444,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         total mixing ratio (vapor+condensate) below layer (g/g)
     """
     #   universal gas constant (erg/mol/K)
-
+    nsub_max = 128
     R_GAS = 8.3143e7
     AVOGADRO = 6.02e23
     K_BOLTZ = R_GAS / AVOGADRO
@@ -501,7 +538,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed)
+                        rho_p,w_convect,fsed,sig)
 
 
             #   vertical sums
@@ -539,7 +576,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
     if opd_layer > 0. : 
         reff_layer = 1.5*qc_layer / (rho_p*opd_layer)
-        lnsig2 = 0.5*np.log( sig_all )**2
+        lnsig2 = 0.5*np.log( sig )**2
         rg_layer = reff_layer*np.exp( -5*lnsig2 )
     else : 
         reff_layer = 0.
@@ -552,7 +589,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed):
+    ,mfp,visc,rho_p,w_convect, fsed,sig):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -589,6 +626,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         convective velocity scale (cm/s)
     fsed : float 
         Sedimentation efficiency (unitless)
+    sig : float 
+        Width of the log normal particle distrubtion 
 
     Returns
     -------
@@ -684,9 +723,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         rw_layer = rw_layer.root
         
         #   geometric std dev of lognormal size distribution
-        lnsig2 = 0.5*np.log( sig_all )**2
+        lnsig2 = 0.5*np.log( sig )**2
         #   sigma floor for the purpose of alpha calculation
-        sig_alpha = np.max( [1.1, sig_all] )    
+        sig_alpha = np.max( [1.1, sig] )    
 
         if fsed > 1 :
 
@@ -719,7 +758,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
 
 class Atmosphere():
-    def __init__(self,condensibles,fsed = 0.5, mh=1,mmw=2.2) :
+    def __init__(self,condensibles,fsed = 0.5, mh=1,mmw=2.2,sig=2.0):
         """
         Parameters
         ----------
@@ -731,12 +770,15 @@ class Atmosphere():
             metalicity 
         mmw : float 
             MMW of the atmosphere 
+        sig : float 
+            Width of the log normal distribution for the particle sizes 
     
         """
         self.mh = mh
         self.mmw = mmw
         self.condensibles = condensibles
         self.fsed = fsed
+        self.sig = sig
 
     def get_pt(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
         """
@@ -892,7 +934,7 @@ def get_mie(gas, directory):
     qext = df['qext'].values.reshape((nradii,nwave)).T
     cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
 
-    return qext,qscat, cos_qscat, nwave, radii
+    return qext,qscat, cos_qscat, nwave, radii,wave
 
 def get_refrind(igas,directory): 
     """
@@ -935,31 +977,125 @@ def get_r_grid(r_min=1e-5, n_radii=40):
     return radius, rup, dr
 
 
+def picaso_format(opd, w0, g0 ):
+    df = pd.DataFrame(index=[ i for i in range(opd.shape[0]*opd.shape[1])], columns=['lvl','w','opd','w0','g0'])
+    i = 0 
+    LVL = []
+    WV,OPD,WW0,GG0 =[],[],[],[]
+    for j in range(opd.shape[0]):
+           for w in range(opd.shape[1]):
+                LVL +=[j+1]
+                WV+=[w+1]
+                OPD+=[opd[j,w]]
+                WW0+=[w0[j,w]]
+                GG0+=[g0[j,w]]
+    df.iloc[:,0 ] = LVL
+    df.iloc[:,1 ] = WV
+    df.iloc[:,2 ] = OPD
+    df.iloc[:,3 ] = WW0
+    df.iloc[:,4 ] = GG0
+    return df
 
-#INPUTS REQUIRED 
+def available():
+    """
+    Print all available gas condensates 
+    """
+    pvs = [i for i in dir(pvaps) if i != 'np' and '_' not in i]
+    gas_p = [i for i in dir(gas_properties) if i != 'np' and '_' not in i]
+    return list(np.intersect1d(gas_p, pvs))
 
-condensibles = ['H2O','Fe', 'Al2O3' ,'Na2S','NH3', 'KCl',
-                 'MnS','ZnS','Cr' 'MgSiO3' ,'Mg2SiO4'  ]
+def recommend_gas(pressure, temperature, mh, mmw, plot=False,**plot_kwargs):
+    """
+    Recommends condensate species for a users calculation. 
 
-#minimum eddy diffusion coefficient in cm^2/s
-kzz_min = 1e5 
+    Parameters
+    ----------
+    pressure : ndarray, list
+        Pressure grid for user's pressure-temperature profile. Unit=bars
+    temperature : ndarray, list 
+        Temperature grid (should be on same grid as pressure input). Unit=Kelvin
+    mh : float 
+        Metallicity in NOT log units. Solar =1 
+    mmw : float 
+        Mean molecular weight of the atmosphere. Solar = 2.2 
+    plot : bool, optional
+        Default is False. Plots condensation curves against PT profile to 
+        demonstrate why it has chose the gases it did. 
+    plot_kwargs : kwargs 
+        Plotting kwargs for bokeh figure
 
-#geometric standard deviation of lognormal size distribution 
-sig_all = 2.0 
+    Returns
+    -------
+    ndarray, ndarray
+        pressure (bars), condensation temperature (Kelvin)
+    """    
+    if plot: 
+        from bokeh.plotting import figure, show
+        from bokeh.palettes import magma
+        fig = figure(**plot_kwargs)
 
-#Maximimum subgridding to arrive at solution 
-nsub_max = 2*64 #why two of these... 
+    all_gases = available()
+    cond_ts = []
+    recommend = []
+    line_widths = []
+    for gas_name in all_gases: #case sensitive names
+        #grab p,t from eddysed
+        cond_p,t = condensation_t(gas_name, mh, mmw)
+        cond_ts +=[t]
 
-#ramp up optical depth below cloud base in calc_optics()
-do_subcloud = False 
+        interp_cond_t = np.interp(pressure,cond_p,t)
 
-#   saturation factor (after condensation)
-supsat = 0
+        diff_curve = interp_cond_t - temperature
 
-#rain factor 
-rainf_all = 0.5
+        if ((len(diff_curve[diff_curve>0]) > 0) & (len(diff_curve[diff_curve<0]) > 0)):
+            recommend += [gas_name]
+            line_widths +=[5]
+        else: 
+            line_widths +=[1]        
 
-rmin = 1e-5
+    if plot: 
+        ngas = len(all_gases)
+        cols = magma(ngas)
+        fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
+        for i in range(ngas):
 
-nradii = 40 
+            fig.line(cond_ts[i],cond_p, legend_label=all_gases[i],color=cols[i],line_width=line_widths[i])
+        show(fig) 
 
+    return recommend 
+
+
+def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-3, 2, 20)):
+    """
+    Find condensation curve for any planet given a pressure. These are computed 
+    based on pressure vapor curves defined in pvaps.py. 
+
+    Default is to compute condensation temperature on a pressure grid 
+
+    Parameters
+    ----------
+    gas_name : str 
+        Name of gas, which is case sensitive. See print_available to see which 
+        gases are available. 
+    mh : float 
+        Metallicity in NOT log units. Solar =1 
+    mmw : float 
+        Mean molecular weight of the atmosphere. Solar = 2.2 
+    pressure : ndarray, list, float, optional 
+        Grid of pressures (bars) to compute condensation temperatures on. 
+        Default = np.logspace(-3,2,20)
+
+    Returns
+    -------
+    ndarray, ndarray
+        pressure (bars), condensation temperature (Kelvin)
+    """
+    if isinstance(pressure,(float,int)):
+        pressure = [pressure]
+    temps = []
+    for p in pressure: 
+        temp = optimize.root_scalar(find_cond_t, 
+                        bracket=[1, 10000], method='brentq', 
+                        args=(p, mh, mmw, gas_name))
+        temps += [temp.root]
+    return np.array(pressure), np.array(temps)

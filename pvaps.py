@@ -50,7 +50,7 @@ def MgSiO3(temp, mh=0):
 def Mg2SiO4(temp, p, mh=0):
 	#Another new expression from Channon Visscher, correspondance on 10/6/11
 	#includes total pressure dependence and met dep. 
-	pvap_mg2sio4 = 10.0**(-32488./temp + 14.88 - 0.2*np.log10(p*1e6) 
+	pvap_mg2sio4 = 10.0**(-32488./temp + 14.88 - 0.2*np.log10(p/1e6) 
 			- 1.4*mh) * 1e6 #convered from bars to dynes/cm2
 	return pvap_mg2sio4
 

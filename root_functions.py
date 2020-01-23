@@ -1,5 +1,6 @@
 import numpy as np
 import pvaps
+import gas_properties
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None):
     """
@@ -187,3 +188,37 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
         pvap_test = get_pvap(t_test,mh=np.log10(mh))    
     fx = qv_factor * pvap_test / p_test 
     return np.log(fx) - np.log(q_below)
+
+
+def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):    
+    """
+    Root function used used to find condenstation temperature. E.g. 
+    the temperature when  
+
+    log p_vap = log partial pressure of gas 
+
+    Parameters
+    ----------
+    t_test : float 
+        Temp (K)
+    p_test : float 
+        Pressure bars 
+    mh : float 
+        NON log mh .. aka MH=1 for solar 
+    mmw : float 
+        mean molecular weight (2.2 for solar)
+    gas_name : str 
+        gas name, case sensitive 
+    """
+    pvap_fun = getattr(pvaps, gas_name)
+    gas_p_fun = getattr(gas_properties, gas_name)
+    #get gas mixing ratio 
+    gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh)
+    #get vapor pressure and correct for masses of atmo and gas 
+    if gas_name == 'Mg2SiO4':
+        pv = gas_mw/mmw*pvap_fun(t_test,p_test, mh=np.log10(mh))/1e6 #dynes to bars 
+    else:
+        pv = gas_mw/mmw*pvap_fun(t_test, mh=np.log10(mh))/1e6 #dynes to bars 
+    #get partial pressure
+    partial_p = gas_mmr*p_test*mh 
+    return np.log10(pv) - np.log10(partial_p)

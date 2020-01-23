@@ -1,5 +1,6 @@
 from bokeh.plotting import figure
 import pvaps 
+import gas_properties
 from bokeh.palettes import viridis
 from bokeh.models import ColumnDataSource, Label, LabelSet
 import numpy as np
@@ -52,4 +53,7 @@ def pt_pvaps(atmo):
     pt_fig.line(temp, pressure, line_width=3, color='black')
 
     return pt_fig
+
+    
+
 
