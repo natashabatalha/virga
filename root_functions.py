@@ -183,9 +183,9 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     #  Compute saturation mixing ratio
     get_pvap = getattr(pvaps, qv_gas_name)
     if qv_gas_name == 'Mg2SiO4':
-        pvap_test = get_pvap(t_test, p_test, mh=np.log10(mh))
+        pvap_test = get_pvap(t_test, p_test, mh=mh)
     else:
-        pvap_test = get_pvap(t_test,mh=np.log10(mh))    
+        pvap_test = get_pvap(t_test,mh=mh)    
     fx = qv_factor * pvap_test / p_test 
     return np.log(fx) - np.log(q_below)
 
@@ -216,9 +216,9 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):
     gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh)
     #get vapor pressure and correct for masses of atmo and gas 
     if gas_name == 'Mg2SiO4':
-        pv = gas_mw/mmw*pvap_fun(t_test,p_test, mh=np.log10(mh))/1e6 #dynes to bars 
+        pv = gas_mw/mmw*pvap_fun(t_test,p_test, mh=mh)/1e6 #dynes to bars 
     else:
-        pv = gas_mw/mmw*pvap_fun(t_test, mh=np.log10(mh))/1e6 #dynes to bars 
+        pv = gas_mw/mmw*pvap_fun(t_test, mh=mh)/1e6 #dynes to bars 
     #get partial pressure
     partial_p = gas_mmr*p_test*mh 
     return np.log10(pv) - np.log10(partial_p)
