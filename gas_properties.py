@@ -1,6 +1,6 @@
 def CH4(mw_atmos, mh = 1):
 	"""Defines properties for CH4 as condensible"""
-	if mh != 1: print("Warning: no M/H Dependence in CH4")
+	if mh != 1: raise Exception("Alert: No M/H Dependence in CH4 Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 16.0
 	# Lodders(2003)
 	gas_mmr = 4.9e-4 * (gas_mw/mw_atmos) 
@@ -10,7 +10,7 @@ def CH4(mw_atmos, mh = 1):
 
 def NH3(mw_atmos, mh = 1):
 	"""Defines properties for  NH3 as condensible"""
-	if mh != 1: print("Warning: no M/H Dependence in NH3")
+	if mh != 1: raise Exception("Alert: No M/H Dependence in NH3 Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 17.
 	#Lodders(2003)
 	gas_mmr = 1.34e-4 * (gas_mw/mw_atmos) *1.0
@@ -20,7 +20,7 @@ def NH3(mw_atmos, mh = 1):
 
 def H2O(mw_atmos, mh = 1):
 	"""Defines properties for H2O as condensible"""
-	if mh != 1: print("Warning: no M/H Dependence in H2O")
+	if mh != 1: raise Exception("Alert: No M/H Dependence in H2O Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 18.
 	#Lodders(2003)
 	gas_mmr = 7.54e-4 * (gas_mw/mw_atmos)  *1.0
@@ -30,7 +30,7 @@ def H2O(mw_atmos, mh = 1):
 
 def Fe(mw_atmos, mh = 1):
 	"""Defines properties for Fe as condensible"""
-	if mh != 1: print("Warning: no M/H Dependence in Fe")
+	if mh != 1: raise Exception("Alert: No M/H Dependence in Fe Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 55.845
 	gas_mmr = 1.30e-3
 	#Lodders and Fegley (1998)
@@ -51,14 +51,14 @@ def KCl(mw_atmos, mh = 1):
 		#50x SOLAR METALLICITY (abunds tables, 900K, 1 bar)
 		gas_mmr = 8.1164E-06 * (gas_mw/mw_atmos)
 	else: 
-		raise Exception("KCl gas mmr can only be computed for 1, 10 and 50x Solar Meallicity")
+		raise Exception("KCl gas properties can only be computed for 1, 10 and 50x Solar Meallicity")
 	#source unknown
 	rho_p =  1.99
 	return gas_mw, gas_mmr, rho_p
 
 def MgSiO3(mw_atmos, mh = 1):
 	"""Defines properties for MgSiO3 as condensible"""	
-	if mh != 1: print("Warning: no M/H Dependence in MgSiO3")
+	if mh != 1: raise Exception("Alert: No M/H Dependence in MgSiO3 Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 100.4
 	gas_mmr = 2.75e-3
 	#Lodders and Fegley (1998)
@@ -67,7 +67,7 @@ def MgSiO3(mw_atmos, mh = 1):
 
 def Mg2SiO4(mw_atmos, mh = 1):
 	"""Defines properties for Mg2SiO4 as condensible"""	
-	if mh != 1: print("Warning: no M/H Dependence in MgSiO4")
+	if mh != 1: raise Exception("Alert: No M/H Dependence in Mg2SiO4 Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 140.7
 	#NEW FORSTERITE (from Lodders et al. table, 1000mbar, 1900K)
 	gas_mmr = 7.1625e-05/2 * (gas_mw/mw_atmos)  
@@ -107,7 +107,7 @@ def Cr(mw_atmos, mh=1):
 	elif mh==50:
 		gas_mmr = 4.1308E-05 * (gas_mw/mw_atmos) 
 	else: 
-		raise Exception("Chromium (Cr) Gas mmr not available for metallicity="+str(mh))
+		raise Exception("Chromium (Cr) gas properties are only available for 1, 10, and 50xSolar")
 	
 	#Lodders and Fegley (2003) (cvm)
 	rho_p =  7.15

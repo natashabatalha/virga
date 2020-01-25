@@ -108,18 +108,18 @@ def justdoit(atmo, directory = None, as_dict = False, do_optics=False, fort_calc
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,atmo.sig)
 
     if as_dict:
-        return as_dict(qc, qt, rg, reff, ndz, qc_path,opd, w0, g0, opd_gas,wave_in, atmo.p_top) 
+        return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave_in, atmo.p_top) 
     else:
         return opd, w0, g0
 
-def as_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure):
+def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
         "wave":wave,
         "wave_unit":'micron',
         "condensate_mmr":qc,
-        "condensate_and_gas_mmr":qt,
+        "cond_plus_gas_mmr":qt,
         "mean_particle_r":rg*1e4,
         "droplet_eff_r":reff*1e4, 
         "r_units":'micron',
@@ -157,7 +157,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     qscat : ndarray
         Scattering efficiency
     qext : ndarray
-        scattering efficiency
+        Extinction efficiency
     cos_qscat : ndarray
         qscat-weighted <cos (scattering angle)>
     sig : float 
@@ -330,9 +330,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
             if igas == 'Mg2SiO4':
-                pvap = get_pvap(t_bot, p_bot, mh=np.log10(mh))
+                pvap = get_pvap(t_bot, p_bot, mh=mh)
             else:
-                pvap = get_pvap(t_bot, mh=np.log10(mh))
+                pvap = get_pvap(t_bot, mh=mh)
 
             qvs = qvs_factor*pvap/p_bot   
 
@@ -374,14 +374,14 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     #q_below from this output for the next routine
                     qc, qt, rg, reff,ndz,q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                         t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                         kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig
+                         kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
                      )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig
+                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
              )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -390,7 +390,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -427,6 +427,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Sedimentation efficiency (unitless) 
     sig : float 
         Width of the log normal particle distribution 
+    mh : float 
+        Metallicity NON log soar (1=1xSolar)
 
     Returns
     -------
@@ -538,7 +540,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed,sig)
+                        rho_p,w_convect,fsed,sig,mh)
 
 
             #   vertical sums
@@ -589,7 +591,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed,sig):
+    ,mfp,visc,rho_p,w_convect, fsed,sig,mh):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -628,6 +630,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         Sedimentation efficiency (unitless)
     sig : float 
         Width of the log normal particle distrubtion 
+    mh : float 
+        Metallicity NON log solar (1 = 1x solar)
 
     Returns
     -------
@@ -647,9 +651,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
     get_pvap = getattr(pvaps, gas_name)
     if gas_name == 'Mg2SiO4':
-        pvap = get_pvap(t_layer, p_layer)
+        pvap = get_pvap(t_layer, p_layer,mh=mh)
     else:
-        pvap = get_pvap(t_layer)
+        pvap = get_pvap(t_layer,mh=mh)
 
     fs = supsat + 1 
 
