@@ -1,6 +1,5 @@
 import numpy as np
 pi=np.pi
-from numba import jit 
 import PyMieScatt as ps
 import os 
 
@@ -377,13 +376,12 @@ def fort_mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
     return QEXT,QSCAT,CTBRQS,istatus
 
 
-
 def calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False):
     ## Calculates optics by reading refrind files
     thetd=0.0   # incident wave angle
     n_thetd=1
     #number of radii sub bins in order to smooth out fringe effects 
-    sub_radii = 6 
+    sub_radii = 6
     
     nradii = len(radius)
     nwave=len(wave_in)  #number of wavalength bin centres for calculation
