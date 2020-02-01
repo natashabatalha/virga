@@ -1,16 +1,17 @@
-import gas_properties
 import astropy.constants as c
 import astropy.units as u
 import pandas as pd
 import numpy as np
-import pvaps
 import os
 from scipy import optimize 
 from root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t
 import PyMieScatt as ps
-from calc_mie import fort_mie_calc, calc_new_mieff
 
-def justdoit(atmo, directory = None, as_dict = False):
+from .calc_mie import fort_mie_calc, calc_new_mieff
+import gas_properties
+import pvaps
+
+def compute(atmo, directory = None, as_dict = False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -905,6 +906,26 @@ class Atmosphere():
         # we are discontinuing this formalism
         # self.kz = (scalef_kz * scale_h * (mixl/scale_h)**(4./3.) * #when dont know kz
         #  ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) #when dont know kz
+
+    def compute(self,directory = None, as_dict = False): 
+        """
+        Parameters
+        ----------
+        atmo : class 
+            `Atmosphere` class 
+        directory : str, optional 
+            Directory string that describes where refrind files are 
+        as_dict : bool 
+            Option to view full output as dictionary
+
+        Returns 
+        -------
+        opd, w0, g0
+            Extinction per layer, single scattering abledo, asymmetry parameter, 
+            All are ndarrays that are nlayer by nwave
+        dict 
+            When as_dict=True. Dictionary output that contains full output. See tutorials for explanation of all output.        
+        """
 
 def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-5, nradii = 40):
     """

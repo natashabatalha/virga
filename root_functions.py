@@ -127,11 +127,11 @@ def vfall(r, grav,mw_atmos,mfp,visc,
 
     #if reynolds number is between 1-1000 we are in turbulent flow 
     #limit
-    if (reynolds > 1.) and (reynolds<=1e3): # ((reynolds >1e-2) and (reynolds <= 300)):#
+    if (reynolds > 1.) and (reynolds<=1e3): #((reynolds >1e-2) and (reynolds <= 300)):#
         #OLD METHODLOGY
-        #correct drag coefficient for turbulence (Re = Cd Re^2 / 24)
+        #correct drag coefficient for turbulence (x = Cd Re^2 / 24)
         #x = np.log( reynolds )
-        #y1 = b1*x + b2*x**2
+        #y = b1*x + b2*x**2
 
         #compute cd * N_re^2 by equating drag and gravitational force  
         cd_nre2 = 32.0 * r**3.0 * drho * rho_atmos * grav / (3.0 * visc ** 2 ) 
@@ -141,11 +141,10 @@ def vfall(r, grav,mw_atmos,mfp,visc,
         b0,b1,b2,b3,b4,b5,b6 = -0.318657e1, 0.992696, -.153193e-2, -.987059e-3, -.578878e-3, 0.855176e-4, -0.327815e-5
         y = b0 + b1*xx**1 + b2*xx**2 + b3*xx**3 + b4*xx**4 + b5*xx**5 + b6*xx**6
 
-
         reynolds = np.exp(y)
         vfall_r = visc*reynolds / (2.*r*rho_atmos)
 
-    elif reynolds > 1e3: #  300: #
+    elif reynolds >1e3 : #  : #300
         #when Reynolds is greater than 1000, we can just use 
         #an asymptotic value that is independent of Reynolds number
         #Eqn. B3 from A&M 01

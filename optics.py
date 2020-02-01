@@ -105,7 +105,8 @@ def get_refrind(condensible, directory='~/Documents/eddysed/input/optics'):
 	-------
 	micron_wave, nn, kk as ndarrays
 	"""
-	df = pd.read_csv(os.path.join(directory,condensible+'.refrind'),skiprows=2, header=None,delim_whitespace=True,
+	df = pd.read_csv(os.path.join(directory,condensible+'.refrind'),
+		skiprows=2, header=None,delim_whitespace=True,
                 names=['i', 'wavelength', 'nn', 'kk'])
 	micron_wave=df['wavelength'].values
 	nn = df['nn'].values
