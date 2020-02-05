@@ -1,6 +1,6 @@
 import numpy as np
-import pvaps
-import gas_properties
+from . import  pvaps
+from . import  gas_properties
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None):
     """

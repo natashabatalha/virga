@@ -58,7 +58,7 @@ setup(
                   'Topic :: Scientific/Engineering :: Astronomy',
                   'Topic :: Software Development :: Libraries :: Python Modules'
   ],
-  packages=['virga'],
+  packages=['virga'],include_package_data=True,
   install_requires=[
           'numpy',
           'bokeh',
@@ -68,6 +68,7 @@ setup(
           'astropy',
           'sphinx',
           'scipy',
+          'PyMieScatt'
           ], 
     zip_safe = False,
 )
