@@ -10,7 +10,7 @@ from bokeh.palettes import gray as colfun3
 import astropy.units as u
 import numpy as np
 
-import justdoit as pyeddy
+from . import justdoit as pyeddy
 
 def pt(out, with_condensation=True,**kwargs):
     """

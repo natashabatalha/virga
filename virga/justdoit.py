@@ -4,12 +4,12 @@ import pandas as pd
 import numpy as np
 import os
 from scipy import optimize 
-from root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t
 import PyMieScatt as ps
 
+from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t
 from .calc_mie import fort_mie_calc, calc_new_mieff
-import gas_properties
-import pvaps
+from . import gas_properties
+from . import pvaps
 
 def compute(atmo, directory = None, as_dict = False):
     """
@@ -926,6 +926,8 @@ class Atmosphere():
         dict 
             When as_dict=True. Dictionary output that contains full output. See tutorials for explanation of all output.        
         """
+        run = compute(self, directory = directory, as_dict = as_dict)
+        return run
 
 def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-5, nradii = 40):
     """
