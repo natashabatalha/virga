@@ -1,6 +1,7 @@
 *.pyc
 *.html~
 *.p
+*.mieff
 *.json~
 
 # Jupyter Notebooks
