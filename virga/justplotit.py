@@ -178,6 +178,44 @@ def opd_by_gas(out,color = magma, **kwargs):
     plot_format(fig)
     return fig
 
+def condensate_mmr(out,color = magma, **kwargs):
+    """
+    Condensate mean mass mixing ratio
+    
+    Parameters
+    ----------
+    out : dict 
+        Dictionary output from pyeddy run
+    color : method
+        Method from bokeh.palletes. e.g. bokeh.palletes.virids, bokeh.palletes.magma
+    **kwargs : kwargs 
+        Kwargs for bokeh.figure() 
+    """
+
+    kwargs['plot_height'] = kwargs.get('plot_height',300)
+    kwargs['plot_width'] = kwargs.get('plot_width',400)
+    kwargs['x_axis_label'] = kwargs.get('x_axis_label','Condensate MMR')
+    kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+    kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')    
+
+    ngas = len(out['condensibles'])
+    temperature = out['temperature']
+    pressure = out['pressure']
+    condensibles = out['condensibles']
+    cond_mmr = out['condensate_mmr']
+
+    kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
+    kwargs['x_range'] = kwargs.get('x_range',[np.max([1e-9, np.min(cond_mmr*0.9)]), 
+                                            np.max(cond_mmr*1.1)])
+    fig = figure(**kwargs)
+    col = color(ngas)
+    for i in range(ngas):
+        fig.line(cond_mmr[:,i], pressure,line_width=4,legend_label = condensibles[i],color=col[i])
+
+    plot_format(fig)
+    return fig
+
 def all_optics(out):
     """
     Maps of the wavelength dependent single scattering albedo 
