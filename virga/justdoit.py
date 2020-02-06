@@ -1182,7 +1182,9 @@ def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
         temps += [temp.root]
     return np.array(pressure), np.array(temps)
 
-def hot_jupiter():
-    return pd.read_csv('hj.pt',delim_whitespace=True, usecols=[1,2,3],
+def hot_jupiter(directory=os.getcwd()):
+    df = pd.read_csv(os.path.join(directory,'hj.pt'),delim_whitespace=True, usecols=[1,2,3],
                   names = ['pressure','temperature','kz'],skiprows=1)
+    df.loc[df['pressure']>12.8,'temperature'] = np.linspace(1822,2100,df.loc[df['pressure']>12.8].shape[0])
+    return df
 
