@@ -94,7 +94,13 @@ def radii(out,at_pressure = 1e-3):
     nrad = out['scalar_inputs']['nrad']
     sig = out['scalar_inputs']['sig']
     ndz = out['column_density']
-    which_condensed = out['column_density'][0,:] != 0
+    #determine which condensed
+    which_condensed = [False]*ndz.shape[1]
+    for i in range(ndz.shape[1]):
+        ndz_gas = np.unique(ndz[:,i])
+        ndz_gas = ndz_gas[ndz_gas>0]
+        if len(ndz_gas)>0 : which_condensed[i] = True
+
     color = magma(len(which_condensed))
 
     #take only those that condensed 

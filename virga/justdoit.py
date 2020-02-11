@@ -528,7 +528,6 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             #print('dz',scale_h , p_bot_sub,p_top_sub )
             p_sub = 0.5*( p_bot_sub + p_top_sub )
             t_sub = t_bot + np.log( p_bot/p_sub )*dtdlnp
-
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
@@ -676,7 +675,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #   range of mixing ratios to search (g/g)
         qhi = q_below
-        qlo = qhi / 1e3
+        qlo = qhi / 1e5
 
         #   precision of advective-diffusive solution (g/g)
         #delta_q = q_below / 1000.
@@ -775,7 +774,7 @@ class Atmosphere():
         self.fsed = fsed
         self.sig = sig
 
-    def get_pt(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
+    def ptk(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
         """
         Read in file or define dataframe. 
     
@@ -836,7 +835,7 @@ class Atmosphere():
 
         self.z = self.z_top[1:]+self.dz_pmid
 
-    def get_gravity(self, gravity=None, gravity_unit=None, radius=None, radius_unit=None, mass = None, mass_unit=None):
+    def gravity(self, gravity=None, gravity_unit=None, radius=None, radius_unit=None, mass = None, mass_unit=None):
         """
         Get gravity based on mass and radius, or gravity inputs 
 
@@ -870,7 +869,7 @@ class Atmosphere():
             raise Exception('Need to specify gravity or radius and mass + additional units')
 
 
-    def get_kz(self,df = None, constant=None,kz_min = 1e5): 
+    def kz(self,df = None, constant=None,kz_min = 1e5): 
         """
         Define Kz in CGS. Should be on same grid as pressure. This overwrites whatever was 
         defined in get_pt ! Users can define kz by: 

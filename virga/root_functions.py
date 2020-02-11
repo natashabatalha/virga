@@ -36,8 +36,10 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
 
     # Eqn. 7 in A & M 
     #   Difference from advective-diffusive balance 
-    advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) ) - qt
-
+    advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
+    #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
+    advdif = advdif - qt
+    #print(advdif, qt )
     return advdif
 
 
