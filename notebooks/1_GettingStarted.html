@@ -40,7 +40,9 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Running the Code" href="2_RunningTheCode.html" />
+    <link rel="prev" title="Tutorials" href="../tutorials.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -84,10 +86,25 @@
               
             
             
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">The Tutorials</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">The Tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../tutorials.html#basics">Basics</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Before you run the code</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#How-to-Pick-Gas-Condensates">How to Pick Gas Condensates</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#How-to-pick-f_{sed}">How to pick <span class="math notranslate nohighlight">\(f_{sed}\)</span></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Chemical-Limitations-of-the-Code-(e.g. M/H)">Chemical Limitations of the Code (e.g. M/H)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Creating-the-Mie-scattering-Database">Creating the Mie scattering Database</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="2_RunningTheCode.html">Running the code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="3_AnalyzingRuns.html">Analyzing your output</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../virga.html">The Code</a></li>
 </ul>
 
             
@@ -132,6 +149,8 @@
   <ul class="wy-breadcrumbs">
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../tutorials.html">Tutorials</a> &raquo;</li>
         
       <li>Getting Set up to Run the Code</li>
     
@@ -778,7 +797,7 @@ var element = document.currentScript.previousSibling.previousSibling;
  &#39;ZnS&#39;]
 </pre></div></div>
 </div>
-<p>Then you can let <code class="docutils literal notranslate"><span class="pre">pyeddy</span></code> give you a recommendation with some visualization aid</p>
+<p>Then you can let <code class="docutils literal notranslate"><span class="pre">virga</span></code> give you a recommendation with some visualization aid</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -789,7 +808,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <span class="n">metallicity</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1">#atmospheric metallicity relative to Solar</span>
 <span class="n">mean_molecular_weight</span> <span class="o">=</span> <span class="mf">2.2</span> <span class="c1"># atmospheric mean molecular weight</span>
 
-<span class="c1">#get pyeddy recommendation for which gases to run</span>
+<span class="c1">#get virga recommendation for which gases to run</span>
 <span class="n">recommended</span> <span class="o">=</span> <span class="n">jdi</span><span class="o">.</span><span class="n">recommend_gas</span><span class="p">(</span><span class="n">pressure</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">metallicity</span><span class="p">,</span><span class="n">mean_molecular_weight</span><span class="p">,</span>
                 <span class="c1">#Turn on plotting and add kwargs for bokeh.figure</span>
                  <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">y_axis_type</span><span class="o">=</span><span class="s1">&#39;log&#39;</span><span class="p">,</span><span class="n">y_range</span><span class="o">=</span><span class="p">[</span><span class="mf">1e2</span><span class="p">,</span><span class="mf">1e-3</span><span class="p">],</span><span class="n">height</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span>
@@ -859,7 +878,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 </div>
 <div class="section" id="How-to-Compute-Temperature-Condensation-Curves">
 <h3>How to Compute Temperature Condensation Curves<a class="headerlink" href="#How-to-Compute-Temperature-Condensation-Curves" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">ed.recommend</span></code> is comparing your pressure-temperature curve against <strong>condensation temperature curves</strong> for each species. If you are interested in computing your own you can do so!</p>
+<p><code class="docutils literal notranslate"><span class="pre">jdi.recommend</span></code> is comparing your pressure-temperature curve against <strong>condensation temperature curves</strong> for each species. If you are interested in computing your own you can do so!</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -1006,7 +1025,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 </div>
 <div class="section" id="Chemical-Limitations-of-the-Code-(e.g. M/H)">
 <h2>Chemical Limitations of the Code (e.g. M/H)<a class="headerlink" href="#Chemical-Limitations-of-the-Code-(e.g. M/H)" title="Permalink to this headline">¶</a></h2>
-<p>Although we are trying to make <code class="docutils literal notranslate"><span class="pre">pyeddy</span></code> as general as possible. There are limitations to the metallicity and mean molecular weights that users enter.</p>
+<p>Although we are trying to make <code class="docutils literal notranslate"><span class="pre">virga</span></code> as general as possible. There are limitations to the metallicity and mean molecular weights that users enter.</p>
 <p><strong>There are two values that are hard-coded for H2 atmospheres</strong></p>
 <ol class="arabic simple">
 <li><p>The diameter of the atmospheric molecule (We assume d = 2.827e-8 for H2)</p></li>
@@ -1078,12 +1097,12 @@ var element = document.currentScript.previousSibling.previousSibling;
 <h2>Creating the Mie scattering Database<a class="headerlink" href="#Creating-the-Mie-scattering-Database" title="Permalink to this headline">¶</a></h2>
 <p>The wavelength dependence of the code relies on computing the scattering and absorbing coefficients from Mie theory.</p>
 <p>Our python code uses <a class="reference external" href="https://pymiescatt.readthedocs.io/en/latest/">PyMieScatt</a>, which has <a class="reference external" href="https://pymiescatt.readthedocs.io/en/latest/forward.html">extensive documentation</a> on the how the calculations are done assuming that all particles are spherical and homogeneous.</p>
-<p>What you need to know is that before running <code class="docutils literal notranslate"><span class="pre">pyeddy</span></code> you must first create a database of these parameters given a particles complex refractive index (<span class="math notranslate nohighlight">\(m = n+ik\)</span>), which are basically just a condensant species optical properties. These optical properties are highly sought after properties, which are measured in the lab.</p>
+<p>What you need to know is that before running <code class="docutils literal notranslate"><span class="pre">virga</span></code> you must first create a database of these parameters given a particles complex refractive index (<span class="math notranslate nohighlight">\(m = n+ik\)</span>), which are basically just a condensant species optical properties. These optical properties are highly sought after properties, which are measured in the lab.</p>
 <div class="section" id="Complex-refractive-indeces">
 <h3>Complex refractive indeces<a class="headerlink" href="#Complex-refractive-indeces" title="Permalink to this headline">¶</a></h3>
 <p><span class="math notranslate nohighlight">\(n\)</span> and <span class="math notranslate nohighlight">\(k\)</span> are a function of wavelength. Mie scattering and absorbing coefficients are a function of wavelength and particle size.</p>
 <p>You can learn a lot about a particle itself by exploring the complex refractive indecies. Let’s look at both.</p>
-<p><code class="docutils literal notranslate"><span class="pre">pyeddy</span></code> comes with a folder with files that end in <code class="docutils literal notranslate"><span class="pre">.refrind</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">virga</span></code> comes with a folder with files that end in <code class="docutils literal notranslate"><span class="pre">.refrind</span></code></p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
@@ -1306,6 +1325,15 @@ var element = document.currentScript.previousSibling.previousSibling;
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="2_RunningTheCode.html" class="btn btn-neutral float-right" title="Running the Code" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../tutorials.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

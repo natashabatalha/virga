@@ -41,7 +41,7 @@
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Running the Code" href="notebooks/2_RunningTheCode.html" /> 
+    <link rel="prev" title="How clouds affect albedo spectroscopy" href="notebooks/4_PairingOutputToPICASO.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -369,8 +369,8 @@ All are ndarrays that are nlayer by nwave</p></li>
 </dd></dl>
 
 <dl class="method">
-<dt id="virga.justdoit.Atmosphere.get_gravity">
-<code class="sig-name descname">get_gravity</code><span class="sig-paren">(</span><em class="sig-param">gravity=None</em>, <em class="sig-param">gravity_unit=None</em>, <em class="sig-param">radius=None</em>, <em class="sig-param">radius_unit=None</em>, <em class="sig-param">mass=None</em>, <em class="sig-param">mass_unit=None</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere.get_gravity" title="Permalink to this definition">¶</a></dt>
+<dt id="virga.justdoit.Atmosphere.gravity">
+<code class="sig-name descname">gravity</code><span class="sig-paren">(</span><em class="sig-param">gravity=None</em>, <em class="sig-param">gravity_unit=None</em>, <em class="sig-param">radius=None</em>, <em class="sig-param">radius_unit=None</em>, <em class="sig-param">mass=None</em>, <em class="sig-param">mass_unit=None</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere.gravity" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get gravity based on mass and radius, or gravity inputs</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -387,8 +387,8 @@ All are ndarrays that are nlayer by nwave</p></li>
 </dd></dl>
 
 <dl class="method">
-<dt id="virga.justdoit.Atmosphere.get_kz">
-<code class="sig-name descname">get_kz</code><span class="sig-paren">(</span><em class="sig-param">df=None</em>, <em class="sig-param">constant=None</em>, <em class="sig-param">kz_min=100000.0</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere.get_kz" title="Permalink to this definition">¶</a></dt>
+<dt id="virga.justdoit.Atmosphere.kz">
+<code class="sig-name descname">kz</code><span class="sig-paren">(</span><em class="sig-param">df=None</em>, <em class="sig-param">constant=None</em>, <em class="sig-param">kz_min=100000.0</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere.kz" title="Permalink to this definition">¶</a></dt>
 <dd><p>Define Kz in CGS. Should be on same grid as pressure. This overwrites whatever was
 defined in get_pt ! Users can define kz by:</p>
 <blockquote>
@@ -405,8 +405,8 @@ defined in get_pt ! Users can define kz by:</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="virga.justdoit.Atmosphere.get_pt">
-<code class="sig-name descname">get_pt</code><span class="sig-paren">(</span><em class="sig-param">df=None</em>, <em class="sig-param">filename=None</em>, <em class="sig-param">kz_min=100000.0</em>, <em class="sig-param">**pd_kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere.get_pt" title="Permalink to this definition">¶</a></dt>
+<dt id="virga.justdoit.Atmosphere.ptk">
+<code class="sig-name descname">ptk</code><span class="sig-paren">(</span><em class="sig-param">df=None</em>, <em class="sig-param">filename=None</em>, <em class="sig-param">kz_min=100000.0</em>, <em class="sig-param">**pd_kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere.ptk" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read in file or define dataframe.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -1285,7 +1285,7 @@ subtraction of the convective velocity scale (cm/s) w_convect.</p>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="notebooks/2_RunningTheCode.html" class="btn btn-neutral float-left" title="Running the Code" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="notebooks/4_PairingOutputToPICASO.html" class="btn btn-neutral float-left" title="How clouds affect albedo spectroscopy" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
