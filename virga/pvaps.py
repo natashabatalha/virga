@@ -1,5 +1,23 @@
 import numpy as np
 
+def TiO2(temp, mh = 1 ):
+	"""Computes vapor pressure curve
+	
+	Parameters 
+	----------
+	temp : float, ndarray 
+		Temperature (K)
+	mh : float 
+		NON log metallicity relative to solar (1=1Xsolar)
+
+	Returns
+	-------
+	vapor pressure in dyne/cm^2
+	"""
+	if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for TiO2")
+
+	return 1e6 * 10. ** (9.5489 - 32456.8678/temp)
+
 def Cr(temp, mh = 1 ):
 	"""Computes vapor pressure curve
 	
