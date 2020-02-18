@@ -675,7 +675,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #   range of mixing ratios to search (g/g)
         qhi = q_below
-        qlo = qhi / 1e5
+        qlo = qhi / 1e3
 
         #   precision of advective-diffusive solution (g/g)
         #delta_q = q_below / 1000.
@@ -689,10 +689,15 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_rainf = fsed
 
         #   Find total vapor mixing ratio at top of layer
-        qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq', 
+        find_root = True
+        while find_root:
+            try:
+                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq', 
                 args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf))
-
-
+                find_root = False
+            except ValueError:
+                qlo = qlo/10
+        
         qt_top = qt_top.root
 
         #   Use trapezoid rule (for now) to calculate layer averages
@@ -709,10 +714,17 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #   range of particle radii to search (cm)
         rlo = 1.e-10
         rhi = 10.
-
+        
         #   precision of vfall solution (cm/s)
-        rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
-                args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
+        find_root = True
+        while find_root:
+            try:
+                rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+                    args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
+                find_root = False
+            except ValueError:
+                rlo = rlo/10
+                rhi = rhi*10
 
         #fall velocity particle radius 
         rw_layer = rw_layer.root
