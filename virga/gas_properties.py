@@ -1,6 +1,6 @@
 def TiO2(mw_atmos, mh=1):
 	"""Defines properties for TiO2 as condensible"""
-	if mh != 1: raise Exception("Alert: No M/H Dependence in CH4 Routine. Consult your local theorist to determine next steps.")
+	if mh != 1: raise Exception("Alert: No M/H Dependence in TiO2 Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 80
 	gas_mmr = 1.69e-7 * (gas_mw/mw_atmos) 
 	rho_p =  4.25
