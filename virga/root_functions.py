@@ -129,7 +129,7 @@ def vfall(r, grav,mw_atmos,mfp,visc,
 
     #if reynolds number is between 1-1000 we are in turbulent flow 
     #limit
-    if (reynolds > 1.) and (reynolds<=1e3): #((reynolds >1e-2) and (reynolds <= 300)):#
+    if ((reynolds > 1) and (reynolds<=1e3)): #:#(reynolds >1e-2) and (reynolds <= 300)
         #OLD METHODLOGY
         #correct drag coefficient for turbulence (x = Cd Re^2 / 24)
         #x = np.log( reynolds )
@@ -146,7 +146,7 @@ def vfall(r, grav,mw_atmos,mfp,visc,
         reynolds = np.exp(y)
         vfall_r = visc*reynolds / (2.*r*rho_atmos)
 
-    elif reynolds >1e3 : #  : #300
+    if reynolds >1e3 :# 300
         #when Reynolds is greater than 1000, we can just use 
         #an asymptotic value that is independent of Reynolds number
         #Eqn. B3 from A&M 01
