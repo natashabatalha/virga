@@ -365,4 +365,7 @@ def Al2O3(temp,mh = 1 ):
 	if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for Al2O3")
 	mh = np.log10(mh)
 	#Kozasa et al. Ap J. 344 325
-	return np.exp(-73503./temp + 22.01)*1e6
+	#return np.exp(-73503./temp + 22.01)*1e6
+	#calculated from wakeford 2017
+	pvap_al2o3 = 1e6 * 10.0 ** (17.7 - 45892.6/temp - 1.66*mh)
+	return pvap_al2o3
