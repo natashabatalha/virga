@@ -7,7 +7,7 @@ from . import  pvaps, gas_properties
 from . import  gas_properties
 from .root_functions import vfall, vfall_find_root
 
-def direct_solver(pres, temp, kz, gravity, gas_name, fsed, refine_TP=False):
+def direct_solver(pres, temp, kz, gravity, gas_name, fsed, sig, refine_TP=False):
     
     ##  Define parameters ------------------------------------------------------------------------------------
     #   universal gas constant (erg/mol/K)
@@ -120,7 +120,7 @@ def direct_solver(pres, temp, kz, gravity, gas_name, fsed, refine_TP=False):
         find_root = True
         while find_root:
             try:
-                P = p_out[i]; T = T_P(p_out[i]); k = kz[i]
+                P = p_out[i]/1e6; T = T_P(p_out[i]); k = kz[i]
                 rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
                     args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
                 find_root = False
@@ -161,7 +161,7 @@ def direct_solver(pres, temp, kz, gravity, gas_name, fsed, refine_TP=False):
 
         #      EQN. 14 A&M
         #   column droplet number concentration (cm^-2)
-        ndz[i] = (3 * rho_atmos * qc[i] * dz[i] /
+        ndz[i] = (3 * rho_atmos(T, P) * qc_out[i] * dz[i] /
                     ( 4 * np.pi * rho_p * rg[i]**3 ) * np.exp(-9 * lnsig2))
 
     #qc_path = (qc_path[i] + qc[iz,i]*
