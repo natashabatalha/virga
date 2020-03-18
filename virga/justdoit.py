@@ -389,8 +389,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         ngas =  len(condensibles)
         for i, igas in zip(range(ngas), condensibles):
             gas_name = igas
-            qc, qt, rg, reff, ndz, qc_path = direct_solver(p_top, t_top, kz,
-                gravity, gas_name, fsed, refine_TP = False)
+            qc_, qt_, rg_, reff_, ndz, qc_path = direct_solver(p_top, t_top, kz,
+                gravity, gas_name, fsed, sig, refine_TP = False)
+            qc = np.hstack(qc, qc_.reshape(len(qc_), 1))
             
     return qc, qt, rg, reff, ndz, qc_path
 
@@ -733,6 +734,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         print(qc_layer)
         while find_root:
             try:
+                import IPython; IPython.embed()
+                import sys; sys.exit()
                 rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
                     args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
                 find_root = False

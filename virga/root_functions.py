@@ -122,7 +122,6 @@ def vfall(r, grav,mw_atmos,mfp,visc,
     # EQN B1 in A&M 
     #visc is eqn. B2 in A&M but is computed in `calc_qc`
     #also eqn 10-104 in Pruppacher & klett 1978
-    print(p)
     vfall_r = beta_slip*(2.0/9.0)*drho*grav*r**2 / visc
 
     #compute reynolds number for low reynolds number case
