@@ -10,17 +10,18 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
                         gravity, kz, fsed, mh, sig, refine_TP = False):
 
     ngas =  len(condensibles)
-    (z, pres, P_z, temp, T_z, T_P) = generate_altitude(pressure, temperature, gravity, mw_atmos, refine_TP) 
+    (z, pres, P_z, temp, T_z, T_P, kz) = generate_altitude(pressure, temperature, kz, gravity, 
+                                                                mw_atmos, refine_TP) 
 
     qc = np.zeros((len(z), ngas))
     qt = np.zeros((len(z), ngas))
     rg = np.zeros((len(z), ngas))
     reff = np.zeros((len(z), ngas))
     ndz = np.zeros((len(z), ngas))
-    qc_path = np.zeros((len(z), ngas))
+    qc_path = np.zeros(ngas)
     for i, igas in zip(range(ngas), condensibles):
         gas_name = igas
-        qc[:,i], qt[:,i], rg[:,i], reff[:,i], ndz[:,i], qc_path[:,i] = calc_qc(z, P_z, T_z, T_P, kz,
+        qc[:,i], qt[:,i], rg[:,i], reff[:,i], ndz[:,i], qc_path[i] = calc_qc(z, P_z, T_z, T_P, kz,
             gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig)
 
 
@@ -66,15 +67,18 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     #   convective mixing length scale (cm) 
     def mixl(T, P):
         return np.max( [0.10, lapse_ratio(T, P)]) * scale_h(T)
-    get_pvap = getattr(pvaps, gas_name) # fix to work for Mg2SiO4 
-    def pvap(T):
-        return get_pvap(float(T), mh=mh)
+    get_pvap = getattr(pvaps, gas_name)
+    def pvap(T, P):
+        if gas_name == 'Mg2SiO4':
+            return get_pvap(float(T), float(P), mh=mh)
+        else:
+            return get_pvap(float(T), mh=mh)
     #   super saturation factor
     supsat = 0.
     fs = supsat + 1
     #   mass mixing ratio of saturated layer
     def qvs(T, P):
-        qvs_val =  fs * pvap(T) / (r_cloud * T) / rho_atmos(T, P) 
+        qvs_val =  fs * pvap(T, P) / (r_cloud * T) / rho_atmos(T, P) 
         return qvs_val
     # atmospheric viscosity (dyne s/cm^2)
     # EQN B2 in A & M 2001, originally from Rosner+2000
@@ -120,6 +124,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     rg = np.zeros(len(qc_out))
     reff = np.zeros(len(qc_out))
     ndz = np.zeros(len(qc_out))
+    qc_path = 0.
     for i in range(len(qc_out)):
         #   range of particle radii to search (cm)
         rlo = 1.e-10
@@ -171,14 +176,13 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         ndz[i] = (3 * rho_atmos(T, P) * qc_out[i] * dz[i] /
                     ( 4 * np.pi * rho_p * rg[i]**3 ) * np.exp(-9 * lnsig2))
 
-    #qc_path = (qc_path[i] + qc[iz,i]*
-    #                            ( p_top[iz+1] - p_top[iz] ) / gravity)
-    print('not calculating qc_path here')
-    qc_path = np.zeros(len(qc_out))
+        if i > 0:   
+            qc_path = (qc_path + qc_out[i-1] *
+                            ( p_out[i] - p_out[i-1] ) / gravity)
 
     return (qc_out, qt_out, rg, reff, ndz, qc_path)
 
-def generate_altitude(pres, temp, gravity, mw_atmos, refine_TP):  
+def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP):  
     #   universal gas constant (erg/mol/K)
     R_GAS = 8.3143e7
     #   specific gas constant for atmosphere (erg/K/g)
@@ -188,12 +192,14 @@ def generate_altitude(pres, temp, gravity, mw_atmos, refine_TP):
         return r_atmos * T / gravity
 
     T_P = UnivariateSpline(pres, temp)
+    kz_P = UnivariateSpline(pres, kz[:-1]) # need to be more careful when kz isn't constant
 
     pres_ = pres[::-1]
     if refine_TP:
         #   we use barometric formula which assumes constant temperature 
         #   define maximum difference between temperature values which if exceeded, reduce pressure stepsize
         eps = 10 
+        n = len(pres_)
         while max(abs(T_P(pres_[1:]) - T_P(pres_[:-1]))) > eps:
             print("warning in altitude calculation: temperature gradient exceeds set threshold: use smaller steps")
             n = n * 2
@@ -204,13 +210,16 @@ def generate_altitude(pres, temp, gravity, mw_atmos, refine_TP):
     
     z = np.zeros(len(pres_))
     T = np.zeros(len(pres_)); T[0] = temp[len(temp)-1]
+    K = np.zeros(len(pres_)); K[0] = kz[len(kz)-1]
     for i in range(len(pres_) - 1):
         T[i+1] = T_P(pres_[i+1])
+        K[i+1] = kz_P(pres_[i+1])
         dz = - H(T[i+1]) * np.log(pres_[i+1] / pres_[i]) 
         z[i+1] = z[i] + dz
             
     P_z = UnivariateSpline(z, pres_)
     T_z = UnivariateSpline(z, T)
-    temp_ = T_P(pres_)
+    temp_ = T
+    kz_ = K
     
-    return (z, pres_, P_z, temp_, T_z, T_P)
+    return (z, pres_, P_z, temp_, T_z, T_P, kz_)
