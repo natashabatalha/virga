@@ -82,13 +82,15 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
+        print("qc_path = ", qc_path)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
     else:
-        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t_top, atmo.p_top, 
+        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP)
+        print("qc_path = ", qc_path)
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
@@ -730,11 +732,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         
         #   precision of vfall solution (cm/s)
         find_root = True
-        print(qc_layer)
         while find_root:
             try:
-                import IPython; IPython.embed()
-                import sys; sys.exit()
                 rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
                     args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
                 find_root = False
