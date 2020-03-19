@@ -29,7 +29,7 @@ a.ptk(df = pd.DataFrame({'pressure':pressure, 'temperature':temperature,
                                'kz':kz}))
 
 #   run virga with original mmr solver
-all_out = jdi.compute(a, as_dict=True, directory=mieff_directory, layers=False)
+all_out = jdi.compute(a, as_dict=True, directory=mieff_directory, layers=False, refine_TP=False)
 pres = all_out['pressure']
 qt = all_out['cond_plus_gas_mmr'][:,0]
 qc = all_out['condensate_mmr'][:,0]
@@ -41,7 +41,6 @@ ndz = all_out["column_density"]
 opd = all_out["opd_per_layer"]
 w0 = all_out["single_scattering"]
 g0 = all_out["asymmetry"]
-import IPython; IPython.embed()
     
 #all_out = jdi.compute(a, as_dict=True, directory=mieff_directory)#, layers=True)
 #pres_layer = all_out['pressure']
