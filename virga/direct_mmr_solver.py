@@ -7,7 +7,7 @@ from . import  pvaps, gas_properties
 from . import  gas_properties
 from .root_functions import vfall, vfall_find_root
 
-def direct_solver(pres, temp, kz, gravity, gas_name, fsed, sig, refine_TP=False):
+def direct_solver(z, P_z, T_z, T_P, kz, gravity, gas_name, fsed, sig):
     
     ##  Define parameters ------------------------------------------------------------------------------------
     #   universal gas constant (erg/mol/K)
@@ -76,10 +76,6 @@ def direct_solver(pres, temp, kz, gravity, gas_name, fsed, sig, refine_TP=False)
     def w_convect(T, P, kz):
         return kz / mixl(T, P) 
 
-
-    pres = pres*1e6
-    (z, P_z, T_z, T_P) = generate_altitude(pres, temp, scale_h, refine_TP)  
-    
     ##  Define and solve ODE (4) in AM2001 using scipy solve_ivp ---------------------------------------------
     q_below = gas_mmr
     #   define ode
@@ -120,7 +116,7 @@ def direct_solver(pres, temp, kz, gravity, gas_name, fsed, sig, refine_TP=False)
         find_root = True
         while find_root:
             try:
-                P = p_out[i]/1e6; T = T_P(p_out[i]); k = kz[i]
+                P = p_out[i]; T = T_P(p_out[i]); k = kz[i]
                 rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
                     args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
                 find_root = False
@@ -167,10 +163,19 @@ def direct_solver(pres, temp, kz, gravity, gas_name, fsed, sig, refine_TP=False)
     #qc_path = (qc_path[i] + qc[iz,i]*
     #                            ( p_top[iz+1] - p_top[iz] ) / gravity)
     print('not calculating qc_path here')
-    qc_path = 0.
-    return (qc_out, qt_out, rg, reff, ndz, qc_path)
+    qc_path = np.zeros(len(qc_out))
+    return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path[::-1])
 
-def generate_altitude(pres, temp, H, refine_TP):  
+def generate_altitude(pres, temp, gravity, refine_TP):  
+    #   universal gas constant (erg/mol/K)
+    R_GAS = 8.3143e7
+    #   molecular weight of atmosphere (default 2.2)
+    mw_atmos = 2.2 
+    #   specific gas constant for atmosphere (erg/K/g)
+    r_atmos = R_GAS / mw_atmos
+    #   atmospheric scale height (cm) 
+    def H(T): 
+        return r_atmos * T / gravity
 
     T_P = UnivariateSpline(pres, temp)
 
@@ -188,21 +193,14 @@ def generate_altitude(pres, temp, H, refine_TP):
     
     
     z = np.zeros(len(pres_))
-    T_ = []
-    P_ = []
-    T_.append(temp[len(temp)-1])
-    P_.append(pres_[0])
+    T = np.zeros(len(pres_)); T[0] = temp[len(temp)-1]
     for i in range(len(pres_) - 1):
-        P = pres_[i+1]; T = T_P(P)
-        dz = - H(T) * np.log(P / pres_[i]) 
+        T[i+1] = T_P(pres_[i+1])
+        dz = - H(T[i+1]) * np.log(pres_[i+1] / pres_[i]) 
         z[i+1] = z[i] + dz
-        T_.append(T)
-        P_.append(P)
-    T_ = np.array(T_)
-    P_ = np.array(P_)
             
-    P = UnivariateSpline(z, P_)
-    T_z = UnivariateSpline(z, T_)
-    T_P = UnivariateSpline(pres, temp)
+    P_z = UnivariateSpline(z, pres_)
+    T_z = UnivariateSpline(z, T)
+    temp_ = T_P(pres_)
     
-    return (z, P, T_z, T_P)
+    return (z, pres_, P_z, temp_, T_z, T_P)

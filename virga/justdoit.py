@@ -11,7 +11,7 @@ from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
 
-from .direct_mmr_solver import direct_solver
+from .direct_mmr_solver import direct_solver, generate_altitude
 
 def compute(atmo, directory = None, as_dict = False, layers = True):
     """
@@ -78,9 +78,31 @@ def compute(atmo, directory = None, as_dict = False, layers = True):
     #reff = droplet eff radius, ndz = column dens of condensate, 
     #qc_path = vertical path of condensate
 
-    qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
+    if layers:
+        qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, layers)
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
+        pres_out = atmo.p
+        temp_out = atmo.t
+        z_out = atmo.z
+    else:
+        ngas =  len(condensibles)
+        (z, pres, P_z, temp, T_z, T_P) = generate_altitude(atmo.p_top, atmo.t_top, atmo.g, refine_TP = False) 
+        qc = np.zeros((len(z), ngas))
+        qt = np.zeros((len(z), ngas))
+        rg = np.zeros((len(z), ngas))
+        reff = np.zeros((len(z), ngas))
+        ndz = np.zeros((len(z), ngas))
+        qc_path = np.zeros((len(z), ngas))
+        for i, igas in zip(range(ngas), condensibles):
+            gas_name = igas
+            qc[:,i], qt[:,i], rg[:,i], reff[:,i], ndz[:,i], qc_path[:,i] = direct_solver(z, P_z, T_z, T_P, atmo.kz,
+                atmo.g, gas_name, atmo.fsed, atmo.sig)
+            
+        pres_out = pres[::-1]
+        temp_out = temp[::-1]
+        z_out = z[::-1]
+
 
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
@@ -89,8 +111,8 @@ def compute(atmo, directory = None, as_dict = False, layers = True):
 
     if as_dict:
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
-                           opd_gas,wave_in, atmo.p,atmo.t, condensibles,
-                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin,atmo.z
+                           opd_gas,wave_in, pres_out, temp_out, condensibles,
+                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin, z_out
                            ) 
     else:
         return opd, w0, g0
@@ -244,7 +266,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, layers, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -304,95 +326,86 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     """
     #default for everything is false, will fill in as True as we go
     did_gas_condense = [False for i in condensibles]
-    if layers:
-        t_bot = t_top[-1]
-        p_bot = p_top[-1]
-        ngas =  len(condensibles)
-        nz = len(t_mid)
-        qc = np.zeros((nz,ngas))
-        qt  = np.zeros((nz, ngas))
-        rg = np.zeros((nz, ngas))
-        reff = np.zeros((nz, ngas))
-        ndz = np.zeros((nz, ngas))
-        qc_path = np.zeros(ngas)
+    t_bot = t_top[-1]
+    p_bot = p_top[-1]
+    ngas =  len(condensibles)
+    nz = len(t_mid)
+    qc = np.zeros((nz,ngas))
+    qt  = np.zeros((nz, ngas))
+    rg = np.zeros((nz, ngas))
+    reff = np.zeros((nz, ngas))
+    ndz = np.zeros((nz, ngas))
+    qc_path = np.zeros(ngas)
 
-        for i, igas in zip(range(ngas), condensibles):
+    for i, igas in zip(range(ngas), condensibles):
 
-            q_below = gas_mmr[i]
+        q_below = gas_mmr[i]
 
 
-            #include decrease in condensate mixing ratio below model domain
-            if do_virtual: 
-                qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
-                get_pvap = getattr(pvaps, igas)
-                if igas == 'Mg2SiO4':
-                    pvap = get_pvap(t_bot, p_bot, mh=mh)
-                else:
-                    pvap = get_pvap(t_bot, mh=mh)
+        #include decrease in condensate mixing ratio below model domain
+        if do_virtual: 
+            qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
+            get_pvap = getattr(pvaps, igas)
+            if igas == 'Mg2SiO4':
+                pvap = get_pvap(t_bot, p_bot, mh=mh)
+            else:
+                pvap = get_pvap(t_bot, mh=mh)
 
-                qvs = qvs_factor*pvap/p_bot   
+            qvs = qvs_factor*pvap/p_bot   
 
-                if qvs <= q_below :   
-                    #find the pressure at cloud base 
-                    #   parameters for finding root 
-                    p_lo = p_bot
-                    p_hi = p_bot * 1e2
+            if qvs <= q_below :   
+                #find the pressure at cloud base 
+                #   parameters for finding root 
+                p_lo = p_bot
+                p_hi = p_bot * 1e2
 
-                    #temperature gradient 
-                    dtdlnp = ( t_top[-2] - t_bot ) / np.log( p_bot/p_top[-2] )
+                #temperature gradient 
+                dtdlnp = ( t_top[-2] - t_bot ) / np.log( p_bot/p_top[-2] )
 
-                    #   load parameters into qvs_below common block
-                    qv_dtdlnp = dtdlnp
-                    qv_p = p_bot
-                    qv_t = t_bot
-                    qv_gas_name = igas
-                    qv_factor = qvs_factor
-                    try:
-                        p_base = optimize.root_scalar(qvs_below_model, 
-                        bracket=[p_lo, p_hi], method='brentq', 
-                        args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below))
-                        print('Virtual Cloud Found: '+ qv_gas_name)
-                        root_was_found = True
-                    except ValueError: 
-                        root_was_found = False
+                #   load parameters into qvs_below common block
+                qv_dtdlnp = dtdlnp
+                qv_p = p_bot
+                qv_t = t_bot
+                qv_gas_name = igas
+                qv_factor = qvs_factor
+                try:
+                    p_base = optimize.root_scalar(qvs_below_model, 
+                    bracket=[p_lo, p_hi], method='brentq', 
+                    args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below))
+                    print('Virtual Cloud Found: '+ qv_gas_name)
+                    root_was_found = True
+                except ValueError: 
+                    root_was_found = False
 
-                    if root_was_found:
+                if root_was_found:
 
-                        #Yes, the gas did condense (below the grid)
-                        did_gas_condense[i] = True
+                    #Yes, the gas did condense (below the grid)
+                    did_gas_condense[i] = True
 
-                        p_base = p_base.root 
-                        t_base = t_bot + np.log( p_bot/p_base )*dtdlnp
-                        
-                        #   Calculate temperature and pressure below bottom layer
-                        #   by adding a virtual layer 
+                    p_base = p_base.root 
+                    t_base = t_bot + np.log( p_bot/p_base )*dtdlnp
+                    
+                    #   Calculate temperature and pressure below bottom layer
+                    #   by adding a virtual layer 
 
-                        p_layer = 0.5*( p_bot + p_base )
-                        t_layer = t_bot + np.log10( p_bot/p_layer )*dtdlnp
-                        #we just need to overwrite 
-                        #q_below from this output for the next routine
-                        qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
-                            t_bot,t_base, p_bot, p_base,
-                             kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
-                         )
+                    p_layer = 0.5*( p_bot + p_base )
+                    t_layer = t_bot + np.log10( p_bot/p_layer )*dtdlnp
+                    #we just need to overwrite 
+                    #q_below from this output for the next routine
+                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
+                        t_bot,t_base, p_bot, p_base,
+                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
+                     )
 
-            for iz in range(nz-1,-1,-1): #goes from BOA to TOA
+        for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
-                qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
-                    t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                     kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
-                 )
+            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
+                t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
+                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
+             )
 
-                qc_path[i] = (qc_path[i] + qc[iz,i]*
-                                ( p_top[iz+1] - p_top[iz] ) / gravity)
-    else:
-        ngas =  len(condensibles)
-        for i, igas in zip(range(ngas), condensibles):
-            gas_name = igas
-            qc_, qt_, rg_, reff_, ndz, qc_path = direct_solver(p_top, t_top, kz,
-                gravity, gas_name, fsed, sig, refine_TP = False)
-            qc = np.hstack(qc, qc_.reshape(len(qc_), 1))
-            
+            qc_path[i] = (qc_path[i] + qc[iz,i]*
+                            ( p_top[iz+1] - p_top[iz] ) / gravity)
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,

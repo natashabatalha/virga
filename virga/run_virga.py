@@ -41,6 +41,7 @@ ndz = all_out["column_density"]
 opd = all_out["opd_per_layer"]
 w0 = all_out["single_scattering"]
 g0 = all_out["asymmetry"]
+import IPython; IPython.embed()
     
 #all_out = jdi.compute(a, as_dict=True, directory=mieff_directory)#, layers=True)
 #pres_layer = all_out['pressure']
@@ -49,7 +50,6 @@ g0 = all_out["asymmetry"]
 #z_layer = all_out['altitude']
 #temp_layer = all_out["temperature"]
 
-import sys; sys.exit()
 import matplotlib.pyplot as plt
 plt.figure()
 plt.ylim(pres[len(pres)-1], pres[0])
@@ -62,6 +62,7 @@ plt.loglog(qt-qc, pres, '-', label="qv virga")
 plt.legend(loc="best")
 plt.ylabel("pressure")
 plt.show()
+import sys; sys.exit()
 
 plt.figure()
 plt.loglog(reff, z, '-', label="effective radius")
