@@ -13,7 +13,7 @@ from . import pvaps
 
 from .direct_mmr_solver import direct_solver, generate_altitude
 
-def compute(atmo, directory = None, as_dict = False, layers = True):
+def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -86,24 +86,10 @@ def compute(atmo, directory = None, as_dict = False, layers = True):
         temp_out = atmo.t
         z_out = atmo.z
     else:
-        ngas =  len(condensibles)
-        (z, pres, P_z, temp, T_z, T_P) = generate_altitude(atmo.p_top, atmo.t_top, atmo.g, refine_TP = False) 
-        qc = np.zeros((len(z), ngas))
-        qt = np.zeros((len(z), ngas))
-        rg = np.zeros((len(z), ngas))
-        reff = np.zeros((len(z), ngas))
-        ndz = np.zeros((len(z), ngas))
-        qc_path = np.zeros((len(z), ngas))
-        for i, igas in zip(range(ngas), condensibles):
-            gas_name = igas
-            qc[:,i], qt[:,i], rg[:,i], reff[:,i], ndz[:,i], qc_path[:,i] = direct_solver(z, P_z, T_z, T_P, atmo.kz,
-                atmo.g, gas_name, atmo.fsed, atmo.sig)
+        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t_top, atmo.p_top, 
+                                             condensibles, gas_mw, gas_mmr, rho_p , mmw, 
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP)
             
-        pres_out = pres[::-1]
-        temp_out = temp[::-1]
-        z_out = z[::-1]
-
-
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,

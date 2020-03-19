@@ -1,15 +1,33 @@
-from scipy.integrate import solve_ivp, ode
-from scipy.interpolate import interp1d, UnivariateSpline 
+from scipy.integrate import solve_ivp
+from scipy.interpolate import UnivariateSpline 
 from scipy import optimize 
 import numpy as np
 import pandas as pd
-from . import  pvaps, gas_properties
-from . import  gas_properties
+from . import  pvaps
 from .root_functions import vfall, vfall_find_root
 
-def direct_solver(z, P_z, T_z, T_P, kz, gravity, gas_name, fsed, sig):
-    
-    ##  Define parameters ------------------------------------------------------------------------------------
+def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
+                        gravity, kz, fsed, mh, sig, refine_TP = False):
+
+    ngas =  len(condensibles)
+    (z, pres, P_z, temp, T_z, T_P) = generate_altitude(pressure, temperature, gravity, mw_atmos, refine_TP) 
+
+    qc = np.zeros((len(z), ngas))
+    qt = np.zeros((len(z), ngas))
+    rg = np.zeros((len(z), ngas))
+    reff = np.zeros((len(z), ngas))
+    ndz = np.zeros((len(z), ngas))
+    qc_path = np.zeros((len(z), ngas))
+    for i, igas in zip(range(ngas), condensibles):
+        gas_name = igas
+        qc[:,i], qt[:,i], rg[:,i], reff[:,i], ndz[:,i], qc_path[:,i] = calc_qc(z, P_z, T_z, T_P, kz,
+            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig)
+
+
+    return (qc[::-1], qt[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path[::-1], 
+                    pres[::-1], temp[::-1], z[::-1])
+
+def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, mh, fsed, sig):
     #   universal gas constant (erg/mol/K)
     R_GAS = 8.3143e7
     AVOGADRO = 6.02e23
@@ -22,15 +40,8 @@ def direct_solver(z, P_z, T_z, T_P, kz, gravity, gas_name, fsed, sig):
     # Used in the viscocity calculation (units are K) (Rosner, 2000)
     #   (78.6 for air, 71.4 for N2, 59.7 for H2)
     eps_k = 59.7
-    #   molecular weight of atmosphere (default 2.2)
-    mw_atmos = 2.2 
     #   specific gas constant for atmosphere (erg/K/g)
     r_atmos = R_GAS / mw_atmos
-    #   metallicity in NOT log units. Solar =1 
-    mh = 1.
-    #   get gas properties including gas mean molecular weight, gas mixing ratio, and the density
-    run_gas = getattr(gas_properties, gas_name)
-    gas_mw, gas_mmr, rho_p = run_gas(mw_atmos, mh)
     #   specific gas constant for cloud (erg/K/g)
     r_cloud = R_GAS/ gas_mw
     #   atmospheric mean free path (cm)
@@ -99,7 +110,7 @@ def direct_solver(z, P_z, T_z, T_P, kz, gravity, gas_name, fsed, sig):
         T = T_z(z[i]); P = P_z(z[i])
         qc_out[i] = max([0., qt_out[i] - qvs(T, P)])
         qvs_out[i] = qvs(T, P)
-    
+
     #   --------------------------------------------------------------------
     #   Find <rw> corresponding to <w_convect> using function vfall()
 
@@ -164,13 +175,12 @@ def direct_solver(z, P_z, T_z, T_P, kz, gravity, gas_name, fsed, sig):
     #                            ( p_top[iz+1] - p_top[iz] ) / gravity)
     print('not calculating qc_path here')
     qc_path = np.zeros(len(qc_out))
-    return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path[::-1])
 
-def generate_altitude(pres, temp, gravity, refine_TP):  
+    return (qc_out, qt_out, rg, reff, ndz, qc_path)
+
+def generate_altitude(pres, temp, gravity, mw_atmos, refine_TP):  
     #   universal gas constant (erg/mol/K)
     R_GAS = 8.3143e7
-    #   molecular weight of atmosphere (default 2.2)
-    mw_atmos = 2.2 
     #   specific gas constant for atmosphere (erg/K/g)
     r_atmos = R_GAS / mw_atmos
     #   atmospheric scale height (cm) 
