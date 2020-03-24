@@ -178,7 +178,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
 
         if i > 0:   
             qc_path = (qc_path + qc_out[i-1] *
-                            ( p_out[i] - p_out[i-1] ) / gravity)
+                            ( p_out[i-1] - p_out[i] ) / gravity)
 
     return (qc_out, qt_out, rg, reff, ndz, qc_path)
 
@@ -194,19 +194,25 @@ def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP):
     T_P = UnivariateSpline(pres, temp)
     kz_P = UnivariateSpline(pres, kz[:-1]) # need to be more careful when kz isn't constant
 
-    pres_ = pres[::-1]
+    pres_ = pres#[::-1]
     if refine_TP:
         #   we use barometric formula which assumes constant temperature 
         #   define maximum difference between temperature values which if exceeded, reduce pressure stepsize
-        eps = 10 
+        eps = 10
         n = len(pres_)
         while max(abs(T_P(pres_[1:]) - T_P(pres_[:-1]))) > eps:
-            print("warning in altitude calculation: temperature gradient exceeds set threshold: use smaller steps")
-            n = n * 2
-            print("setting n = ", n)
-            pres_ = np.logspace(np.log10(pres[0]), np.log10(pres[len(pres)-1]), n)
-            pres_ = pres_[::-1]
+            indx = np.where(abs(T_P(pres_[1:]) - T_P(pres_[:-1])) > eps)[0]
+            mids = pres_[indx] + (pres_[indx+1] - pres_[indx]) / 2
+            pres_ = np.insert(pres_, indx+1, mids)
+            #print("warning in altitude calculation: temperature gradient exceeds set threshold: refinining")
+            #print("n = ", len(pres_))
+
+            #print("warning in altitude calculation: temperature gradient exceeds set threshold: use smaller steps")
+            #n = n * 2
+            #print("setting n = ", n)
+            #pres_ = np.logspace(np.log10(pres[0]), np.log10(pres[len(pres)-1]), n)
     
+    pres_ = pres_[::-1]
     
     z = np.zeros(len(pres_))
     T = np.zeros(len(pres_)); T[0] = temp[len(temp)-1]

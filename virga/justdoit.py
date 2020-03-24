@@ -13,7 +13,7 @@ from . import pvaps
 
 from .direct_mmr_solver import direct_solver, generate_altitude
 
-def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = False):
+def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = False, quick_stop = False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -82,15 +82,56 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
-        print("qc_path = ", qc_path)
+        print("eddysed qc_path = ", qc_path)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
+    
+        if quick_stop:
+            return {
+                "pressure":pres_out/1e6, 
+                "pressure_unit":'bar',
+                "temperature":temp_out,
+                "temperature_unit":'kelvin',
+                "condensate_mmr":qc,
+                "cond_plus_gas_mmr":qt,
+                "mean_particle_r":rg*1e4,
+                "droplet_eff_r":reff*1e4, 
+                "r_units":'micron',
+                "column_density":ndz,
+                "column_density_unit":'#/cm^2',
+                "condensibles":condensibles,
+                "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':atmo.fsed, 'sig':atmo.sig},
+                "altitude":z_out
+            }
+                                
+            import sys; sys.exit()
+
     else:
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP)
-        print("qc_path = ", qc_path)
+        print("new solver qc_path = ", qc_path)
+
+        if quick_stop:
+            return {
+                "pressure":pres_out/1e6, 
+                "pressure_unit":'bar',
+                "temperature":temp_out,
+                "temperature_unit":'kelvin',
+                "condensate_mmr":qc,
+                "cond_plus_gas_mmr":qt,
+                "mean_particle_r":rg*1e4,
+                "droplet_eff_r":reff*1e4, 
+                "r_units":'micron',
+                "column_density":ndz,
+                "column_density_unit":'#/cm^2',
+                "condensibles":condensibles,
+                "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':atmo.fsed, 'sig':atmo.sig},
+                "altitude":z_out
+            }
+
+            import sys; sys.exit()
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
