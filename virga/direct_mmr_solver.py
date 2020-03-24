@@ -5,13 +5,17 @@ import numpy as np
 import pandas as pd
 from . import  pvaps
 from .root_functions import vfall, vfall_find_root
+import time
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
                         gravity, kz, fsed, mh, sig, refine_TP = False):
 
     ngas =  len(condensibles)
+    t1 = time.time()
     (z, pres, P_z, temp, T_z, T_P, kz) = generate_altitude(pressure, temperature, kz, gravity, 
                                                                 mw_atmos, refine_TP) 
+    t2 = time.time() - t1
+    print("time to generate altitude = ", t2)
 
     qc = np.zeros((len(z), ngas))
     qt = np.zeros((len(z), ngas))
@@ -25,7 +29,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
             gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig)
 
 
-    return (qc[::-1], qt[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path[::-1], 
+    return (qc, qt, rg, reff, ndz, qc_path, 
                     pres[::-1], temp[::-1], z[::-1])
 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, mh, fsed, sig):
@@ -99,8 +103,11 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         qc_val = max([0., q - qvs(T, P)])
         return - fsed *  qc_val / mixl(T, P)
 
+    t1 = time.time()
     sol = solve_ivp(lambda t, y: mix_sed(t, y), [z[0], z[len(z)-1]], [q_below], method = "RK23", 
-            rtol = 1e-9, atol = 1e-9, dense_output=True, t_eval=z)
+            rtol = 1e-12, atol = 1e-20, dense_output=True, t_eval=z)
+    t2 = time.time() - t1
+    print("time to solve ode  = ", t2)
     z_vals = sol.t
     qt = sol.sol
 
@@ -108,12 +115,15 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     qt_out = np.zeros(len(z))
     p_out = np.zeros(len(z))
     qvs_out = np.zeros(len(z))
+    t1 = time.time()
     for i in range(len(z)):
         p_out[i] = P_z(z[i])
         qt_out[i] = qt(z[i])
         T = T_z(z[i]); P = P_z(z[i])
         qc_out[i] = max([0., qt_out[i] - qvs(T, P)])
         qvs_out[i] = qvs(T, P)
+    t2 = time.time() - t1
+    print("time to generate lists  = ", t2)
 
     #   --------------------------------------------------------------------
     #   Find <rw> corresponding to <w_convect> using function vfall()
@@ -125,6 +135,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     reff = np.zeros(len(qc_out))
     ndz = np.zeros(len(qc_out))
     qc_path = 0.
+    t1 = time.time()
     for i in range(len(qc_out)):
         #   range of particle radii to search (cm)
         rlo = 1.e-10
@@ -179,8 +190,10 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         if i > 0:   
             qc_path = (qc_path + qc_out[i-1] *
                             ( p_out[i-1] - p_out[i] ) / gravity)
+    t2 = time.time() - t1
+    print("time to find other stuff  = ", t2)
 
-    return (qc_out, qt_out, rg, reff, ndz, qc_path)
+    return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path)
 
 def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP):  
     #   universal gas constant (erg/mol/K)

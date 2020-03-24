@@ -10,6 +10,7 @@ from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find
 from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
+import time
 
 from .direct_mmr_solver import direct_solver, generate_altitude
 
@@ -79,9 +80,12 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
     #qc_path = vertical path of condensate
 
     if layers:
+        t1 = time.time()
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
+        t2 = time.time() - t1
+        print("eddysed time = ", t2)
         print("eddysed qc_path = ", qc_path)
         pres_out = atmo.p
         temp_out = atmo.t
@@ -108,9 +112,12 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
             import sys; sys.exit()
 
     else:
+        t1 = time.time()
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP)
+        t2 = time.time() - t1
+        print("new solver time = ", t2)
         print("new solver qc_path = ", qc_path)
 
         if quick_stop:
@@ -399,8 +406,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                 qv_factor = qvs_factor
                 try:
                     p_base = optimize.root_scalar(qvs_below_model, 
-                    bracket=[p_lo, p_hi], method='brentq', 
-                    args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below))
+                                bracket=[p_lo, p_hi], method='brentq', 
+                                args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below)
+                                , xtol = 1e-20)
                     print('Virtual Cloud Found: '+ qv_gas_name)
                     root_was_found = True
                 except ValueError: 
@@ -748,8 +756,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         find_root = True
         while find_root:
             try:
-                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq', 
-                args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf))
+                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
+                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
+                                , xtol = 1e-20)
                 find_root = False
             except ValueError:
                 qlo = qlo/10
@@ -776,7 +785,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         while find_root:
             try:
                 rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
-                    args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
+                            args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
                 find_root = False
             except ValueError:
                 rlo = rlo/10

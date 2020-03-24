@@ -10,7 +10,7 @@ from bokeh.plotting import show, figure
 #   locate data
 mieff_directory = "~/Documents/codes/all-data/mieff_files"
 fsed = 1.
-Mark_data = True
+Mark_data = False
 refine_TP = True
 quick_stop = True
 
@@ -44,7 +44,8 @@ else:
     mean_molecular_weight = 2.2 # atmospheric mean molecular weight
     
     #set the run 
-    a = jdi.Atmosphere(['MnS','Cr','MgSiO3','Fe'],
+    #a = jdi.Atmosphere(['MnS','Cr','MgSiO3','Fe'],
+    a = jdi.Atmosphere(['MnS'],#, 'Cr'],
                       fsed=fsed,mh=metallicity,
                      mmw = mean_molecular_weight)
     
@@ -79,6 +80,19 @@ ax1.set_ylim(pres[len(pres)-1], pres[0])
 ax1.set_ylabel("pressure")
 ax1.legend(loc="best")
 plt.show()
+
+plt.ylim(pres[len(pres)-1], pres[0])
+for i in range(2):
+    pres_ = output[i]["pressure"]
+    reff = output[i]["mean_particle_r"][:,0]
+    plt.loglog(reff, pres_, lines[i], label="reff " + labels[i] )
+plt.ylabel("pressure")
+plt.xlabel("effective radius")
+plt.legend(loc="best")
+plt.show()
+
+
+
 import sys; sys.exit()
 
 show(jpi.opd_by_gas(output[0]))
