@@ -176,7 +176,6 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
 
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
-        print("i = ", i)
         rg[i] = (fsed**(1./alpha) *
                     rw[i] * np.exp(-(alpha + 6) * lnsig2))
 
