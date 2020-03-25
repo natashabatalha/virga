@@ -39,6 +39,27 @@ def plot_pt(out, labels, lines, **kwargs):
     plot_format(fig)
     return fig
 
+def plot_cumsum(out,labels,lines,**kwargs):
+
+    kwargs['plot_height'] = kwargs.get('plot_height',300)
+    kwargs['plot_width'] = kwargs.get('plot_width',600)
+    kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
+    kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+
+    cols = viridis(len(out))
+    pressure = out[0]['pressure']
+    kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
+    fig = figure(**kwargs)
+    for i in range(len(out)):
+        x = np.cumsum(out[i]["opd_per_layer"][:,40])
+        pressure = out[i]['pressure']
+
+        fig.line(x, pressure, legend_label=labels[i], color=cols[i],line_width=5, line_dash=lines[i])
+
+    fig.legend.location = "bottom_left"
+    plot_format(fig)
+    return fig
 
 def plot_output(out,attribute,attribute_label,labels,lines,**kwargs):
 
