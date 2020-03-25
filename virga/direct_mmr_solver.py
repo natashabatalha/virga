@@ -163,8 +163,8 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
 
             #   Bulk of precip at r > rw: exponent between rw and rw*sig
             alpha = (np.log(
-                            vfall( rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p ))
-                            / w_convect(T, P, k)
+                            vfall( rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p )
+                            / w_convect(T, P, k) )
                                 / np.log( sig_alpha ))
 
         else:
@@ -176,6 +176,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
 
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
+        print("i = ", i)
         rg[i] = (fsed**(1./alpha) *
                     rw[i] * np.exp(-(alpha + 6) * lnsig2))
 
