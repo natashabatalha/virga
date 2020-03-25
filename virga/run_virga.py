@@ -9,9 +9,9 @@ from bokeh.plotting import show, figure
 
 #   locate data
 mieff_directory = "~/Documents/codes/all-data/mieff_files"
-fsed = 1.
+fsed = 1.1
 Mark_data = False
-refine_TP = True
+refine_TP = False
 quick_stop = True
 
 if Mark_data:
@@ -84,14 +84,24 @@ plt.show()
 plt.ylim(pres[len(pres)-1], pres[0])
 for i in range(2):
     pres_ = output[i]["pressure"]
-    reff = output[i]["mean_particle_r"][:,0]
+    reff = output[i]["droplet_eff_r"][:,0]
+    rg = output[i]["mean_particle_r"][:,0]
     plt.loglog(reff, pres_, lines[i], label="reff " + labels[i] )
+    plt.loglog(rg, pres_, lines[i], label="rg " + labels[i] )
 plt.ylabel("pressure")
-plt.xlabel("effective radius")
+plt.xlabel("radius")
 plt.legend(loc="best")
 plt.show()
 
-
+plt.ylim(pres[len(pres)-1], pres[0])
+for i in range(2):
+    pres_ = output[i]["pressure"]
+    ndz = output[i]["column_density"][:,0]
+    plt.loglog(reff, pres_, lines[i], label="ndz " + labels[i] )
+plt.ylabel("pressure")
+plt.xlabel("column density")
+plt.legend(loc="best")
+plt.show()
 
 import sys; sys.exit()
 
