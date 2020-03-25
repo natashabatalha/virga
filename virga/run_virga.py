@@ -6,13 +6,15 @@ import virga.justplotit as jpi
 import matplotlib.pyplot as plt
 import time
 from bokeh.plotting import show, figure
+from virga.direct_mmr_solver import generate_altitude
 
 #   locate data
 mieff_directory = "~/Documents/codes/all-data/mieff_files"
 fsed = 1.1
 Mark_data = False
-refine_TP = False
+refine_TP = True
 quick_stop = True
+generate = True
 
 if Mark_data:
     TP_directory = "~/Documents/codes/all-data/Mark_data/"
@@ -50,10 +52,37 @@ else:
                      mmw = mean_molecular_weight)
     
     #set the planet gravity
-    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
-    
-    #Get preset pt profile for testing
-    a.ptk(df = jdi.hot_jupiter())
+    grav = 7.460
+    a.gravity(gravity=grav, gravity_unit=u.Unit('m/(s**2)'))
+
+    if generate:
+        df = jdi.hot_jupiter()
+        pres = np.array(df["pressure"])
+        temp = np.array(df["temperature"])
+        kz = np.array(df["kz"])
+        gravity = grav*100
+        print("initial number of pressure values = ", len(pres))
+
+        plt.ylim(pres[len(pres)-1], pres[0])
+        plt.loglog(temp, pres, label="initial")
+        
+        z, pres, P_z, temp, T_z, T_P, kz = generate_altitude(pres, temp, kz, gravity, 
+                                                    mean_molecular_weight, refine_TP)  
+        print("refined number of pressure values = ", len(pres))
+
+        a.ptk(df = pd.DataFrame({'pressure':pres, 'temperature':temp,
+                                   'kz':kz}))
+
+        plt.loglog(temp, pres, "--", label="refined")
+        plt.ylabel("pressure")
+        plt.xlabel("temperature")
+        plt.legend(loc="best")
+        plt.savefig('temperature_profile.png')
+        plt.show()
+
+    else:
+        #Get preset pt profile for testing
+        a.ptk(df = jdi.hot_jupiter())
 
 #   verify original and new solvers give same mixing ratios
 labels = ["original", "new"]
@@ -71,7 +100,7 @@ for i in range(2):
 
     ax1.loglog(qt, pres, lines[i], label="qt " + labels[i] )
     ax1.loglog(qc, pres, lines[i], label="qc " + labels[i] )
-    ax1.loglog(qt-qc, pres, lines[i], label="qv " + labels[i] )
+    #ax1.loglog(qt-qc, pres, lines[i], label="qv " + labels[i] )
 
 pres = output[0]["pressure"]
 qc = output[0]["condensate_mmr"][:,0]
@@ -79,6 +108,7 @@ ax1.set_ylim(pres[len(pres)-1], pres[0])
 #ax1.set_xlim([np.max([1e-9, np.min(qc*0.9)]), np.max(qc*1.1)])
 ax1.set_ylabel("pressure")
 ax1.legend(loc="best")
+plt.savefig('mmr.png')
 plt.show()
 
 plt.ylim(pres[len(pres)-1], pres[0])
@@ -91,16 +121,18 @@ for i in range(2):
 plt.ylabel("pressure")
 plt.xlabel("radius")
 plt.legend(loc="best")
+plt.savefig('radii.png')
 plt.show()
 
 plt.ylim(pres[len(pres)-1], pres[0])
 for i in range(2):
     pres_ = output[i]["pressure"]
     ndz = output[i]["column_density"][:,0]
-    plt.loglog(reff, pres_, lines[i], label="ndz " + labels[i] )
+    plt.loglog(ndz, pres_, lines[i], label="ndz " + labels[i] )
 plt.ylabel("pressure")
 plt.xlabel("column density")
 plt.legend(loc="best")
+plt.savefig('number_density.png')
 plt.show()
 
 import sys; sys.exit()

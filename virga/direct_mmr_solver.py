@@ -15,7 +15,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     (z, pres, P_z, temp, T_z, T_P, kz) = generate_altitude(pressure, temperature, kz, gravity, 
                                                                 mw_atmos, refine_TP) 
     t2 = time.time() - t1
-    print("time to generate altitude = ", t2)
+#    print("time to generate altitude = ", t2)
 
     qc = np.zeros((len(z), ngas))
     qt = np.zeros((len(z), ngas))
@@ -107,7 +107,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     sol = solve_ivp(lambda t, y: mix_sed(t, y), [z[0], z[len(z)-1]], [q_below], method = "RK23", 
             rtol = 1e-12, atol = 1e-20, dense_output=True, t_eval=z)
     t2 = time.time() - t1
-    print("time to solve ode  = ", t2)
+#    print("time to solve ode  = ", t2)
     z_vals = sol.t
     qt = sol.sol
 
@@ -123,7 +123,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         qc_out[i] = max([0., qt_out[i] - qvs(T, P)])
         qvs_out[i] = qvs(T, P)
     t2 = time.time() - t1
-    print("time to generate lists  = ", t2)
+#    print("time to generate lists  = ", t2)
 
     #   --------------------------------------------------------------------
     #   Find <rw> corresponding to <w_convect> using function vfall()
@@ -191,7 +191,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             qc_path = (qc_path + qc_out[i-1] *
                             ( p_out[i-1] - p_out[i] ) / gravity)
     t2 = time.time() - t1
-    print("time to find other stuff  = ", t2)
+#    print("time to find other stuff  = ", t2)
 
     return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path)
 
@@ -205,13 +205,16 @@ def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP):
         return r_atmos * T / gravity
 
     T_P = UnivariateSpline(pres, temp)
-    kz_P = UnivariateSpline(pres, kz[:-1]) # need to be more careful when kz isn't constant
+    if len(pres) == len(kz):
+        kz_P = UnivariateSpline(pres, kz) # need to be more careful when kz isn't constant
+    else:
+        kz_P = UnivariateSpline(pres, kz[:-1]) # need to be more careful when kz isn't constant
 
     pres_ = pres#[::-1]
     if refine_TP:
         #   we use barometric formula which assumes constant temperature 
         #   define maximum difference between temperature values which if exceeded, reduce pressure stepsize
-        eps = 10
+        eps = 1
         n = len(pres_)
         while max(abs(T_P(pres_[1:]) - T_P(pres_[:-1]))) > eps:
             indx = np.where(abs(T_P(pres_[1:]) - T_P(pres_[:-1])) > eps)[0]
