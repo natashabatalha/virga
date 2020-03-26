@@ -51,7 +51,7 @@ def plot_cumsum(out,labels,lines,**kwargs):
     pressure = out[0]['pressure']
     kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
     fig = figure(**kwargs)
-    for i in range(len(out)):
+    for i in range(len(out)):  
         x = np.cumsum(out[i]["opd_per_layer"][:,40])
         pressure = out[i]['pressure']
 
@@ -77,10 +77,13 @@ def plot_output(out,attribute,attribute_label,labels,lines,**kwargs):
     fig = figure(**kwargs)
     for i in range(len(out)):
         x = out[i][attribute][:,0]
+        if attribute is "column_density":
+            x = out[i][attribute][:,0]/out[i]["layer_thickness"]
         pressure = out[i]['pressure']
 
         fig.line(x, pressure, legend_label=labels[i], color=cols[i],line_width=5, line_dash=lines[i])
 
+    fig.legend.location = "bottom_left"
     plot_format(fig)
     return fig
 

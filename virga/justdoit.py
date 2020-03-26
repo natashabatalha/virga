@@ -12,9 +12,8 @@ from . import gas_properties
 from . import pvaps
 import time
 
-from .direct_mmr_solver import direct_solver, generate_altitude
 
-def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = False, quick_stop = False):
+def compute(atmo, eps, directory = None, as_dict = False, layers = True, refine_TP = False, quick_stop = False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -106,7 +105,8 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
                 "column_density_unit":'#/cm^2',
                 "condensibles":condensibles,
                 "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':atmo.fsed, 'sig':atmo.sig},
-                "altitude":z_out
+                "altitude":z_out,
+                "layer_thickness":atmo.dz_layer
             }
                                 
             import sys; sys.exit()
@@ -115,7 +115,7 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
         t1 = time.time()
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP)
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, eps, refine_TP)
         t2 = time.time() - t1
         print("new solver time = ", t2)
         print("new solver qc_path = ", qc_path)
@@ -135,7 +135,8 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
                 "column_density_unit":'#/cm^2',
                 "condensibles":condensibles,
                 "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':atmo.fsed, 'sig':atmo.sig},
-                "altitude":z_out
+                "altitude":z_out,
+                "layer_thickness":atmo.dz_layer
             }
 
             import sys; sys.exit()
@@ -148,13 +149,13 @@ def compute(atmo, directory = None, as_dict = False, layers = True, refine_TP = 
     if as_dict:
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
-                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin, z_out
+                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin, z_out, atmo.dz_layer
                            ) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,z):
+    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -175,7 +176,8 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "opd_by_gas": opd_gas,
         "condensibles":gas_names,
         "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
-        "altitude":z
+        "altitude":z,
+        "layer_thickness":dz_layer
     }
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
