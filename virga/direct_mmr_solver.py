@@ -8,12 +8,12 @@ from .root_functions import vfall, vfall_find_root
 import time
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
-                        gravity, kz, fsed, mh, sig, refine_TP = False):
+                        gravity, kz, fsed, mh, sig, eps, refine_TP = False):
 
     ngas =  len(condensibles)
     t1 = time.time()
     (z, pres, P_z, temp, T_z, T_P, kz) = generate_altitude(pressure, temperature, kz, gravity, 
-                                                                mw_atmos, refine_TP) 
+                                                                mw_atmos, eps, refine_TP) 
     t2 = time.time() - t1
 #    print("time to generate altitude = ", t2)
 
@@ -195,7 +195,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
 
     return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path)
 
-def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP):  
+def generate_altitude(pres, temp, kz, gravity, mw_atmos, eps, refine_TP):  
     #   universal gas constant (erg/mol/K)
     R_GAS = 8.3143e7
     #   specific gas constant for atmosphere (erg/K/g)
@@ -214,7 +214,6 @@ def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP):
     if refine_TP:
         #   we use barometric formula which assumes constant temperature 
         #   define maximum difference between temperature values which if exceeded, reduce pressure stepsize
-        eps = 1
         n = len(pres_)
         while max(abs(T_P(pres_[1:]) - T_P(pres_[:-1]))) > eps:
             indx = np.where(abs(T_P(pres_[1:]) - T_P(pres_[:-1])) > eps)[0]

@@ -11,6 +11,7 @@ from virga.direct_mmr_solver import generate_altitude
 #   locate data
 mieff_directory = "~/Documents/codes/all-data/mieff_files"
 fsed = 1.1
+eps = 10
 Mark_data = False
 refine_TP = True
 quick_stop = True
