@@ -1,38 +1,165 @@
 from scipy.integrate import solve_ivp
-from scipy.interpolate import UnivariateSpline 
+from scipy.interpolate import UnivariateSpline, interp1d
 from scipy import optimize 
 import numpy as np
 import pandas as pd
 from . import  pvaps
-from .root_functions import vfall, vfall_find_root
+from .root_functions import vfall, vfall_find_root, find_rg, moment
 import time
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
-                        gravity, kz, fsed, mh, sig, eps, refine_TP = False):
+                        gravity, kzz, fsed, mh, sig, refine_TP = True, analytical_rg = True):
+    """
+    Given an atmosphere and condensates, calculate size and concentration
+    of condensates in balance between eddy diffusion and sedimentation.
+
+    Parameters
+    ----------
+    temperature : ndarray
+        Temperature at each layer (K)
+    pressure : ndarray
+        Pressure at each layer (dyn/cm^2)
+    condensibles : ndarray or list of str
+        List or array of condensible gas names
+    gas_mw : ndarray
+        Array of gas mean molecular weight from `gas_properties`
+    gas_mmr : ndarray 
+        Array of gas mixing ratio from `gas_properties`
+    rho_p : float 
+        density of condensed vapor (g/cm^3)
+    mw_atmos : float 
+        Mean molecular weight of the atmosphere
+    gravity : float 
+        Gravity of planet cgs
+    kz : float or ndarray
+        Kzz in cgs, either float or ndarray depending of whether or not 
+        it is set as input
+    fsed : float 
+        Sedimentation efficiency, unitless
+    mh : float 
+        Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
+    sig : float 
+        Width of the log normal particle distribution
+    refine_TP : bool
+        Option to refine temperature-pressure profile for direct solver 
+    analytical_rg : bool
+        Option to use analytical expression for rg, or alternatively deduce rg from calculation
+        Calculation option will be most useful for future inclusions of alternative particle size distributions
+
+    Returns
+    -------
+    qc : ndarray 
+        condenstate mixing ratio (g/g)
+    qt : ndarray 
+        gas + condensate mixing ratio (g/g)
+    rg : ndarray
+        geometric mean radius of condensate  (cm) 
+    reff : ndarray
+        droplet effective radius (second moment of size distrib, cm)
+    ndz : ndarray 
+        number column density of condensate (cm^-3)
+    qc_path : ndarray 
+        vertical path of condensate 
+    pres : ndarray
+        Pressure at each layer (dyn/cm^2)
+    temp : ndarray
+        Temperature at each layer (K)
+    z : ndarray
+        altitude of each layer (cm)
+    
+    """
 
     ngas =  len(condensibles)
-    t1 = time.time()
-    (z, pres, P_z, temp, T_z, T_P, kz) = generate_altitude(pressure, temperature, kz, gravity, 
-                                                                mw_atmos, eps, refine_TP) 
-    t2 = time.time() - t1
-#    print("time to generate altitude = ", t2)
+    # refine temperature-pressure profile
+    # this improves the accuracy of the mmr calculation
+    (z, pres, P_z, temp, T_z, T_P, kz) = generate_altitude(pressure, temperature, kzz, gravity, 
+                                                                mw_atmos, refine_TP) 
 
-    qc = np.zeros((len(z), ngas))
-    qt = np.zeros((len(z), ngas))
-    rg = np.zeros((len(z), ngas))
-    reff = np.zeros((len(z), ngas))
-    ndz = np.zeros((len(z), ngas))
+    pres_out = pressure
+    temp_out = temperature
+    z_out = interp1d(pres, z)(pres_out)
+
+    qc_out = np.zeros((len(pres_out), ngas))
+    qt_out = np.zeros((len(pres_out), ngas))
+    rg_out = np.zeros((len(pres_out), ngas))
+    reff_out = np.zeros((len(pres_out), ngas))
+    ndz_out = np.zeros((len(pres_out), ngas))
     qc_path = np.zeros(ngas)
+
+    # find mmr and particle distribution for every condensible
+    # perform calculation on refined TP profile but output values corresponding to initial profile
     for i, igas in zip(range(ngas), condensibles):
         gas_name = igas
-        qc[:,i], qt[:,i], rg[:,i], reff[:,i], ndz[:,i], qc_path[i] = calc_qc(z, P_z, T_z, T_P, kz,
-            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig)
+        qc, qt, rg, reff, ndz, dz, qc_path[i] = calc_qc(z, P_z, T_z, T_P, kz,
+            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, analytical_rg)
 
+        # generate qc values for original pressure data
+        qc_out[:,i] = interp1d(pres, qc)(pres_out)
+        qt_out[:,i] = interp1d(pres, qt)(pres_out)
+        rg_out[:,i] = interp1d(pres, rg)(pres_out)
+        reff_out[:,i] = interp1d(pres, reff)(pres_out)
 
-    return (qc, qt, rg, reff, ndz, qc_path, 
-                    pres[::-1], temp[::-1], z[::-1])
+        ndz_temp = ndz/dz
+        dz_new = np.insert(-(z_out[1:]-z_out[:-1]), len(z_out)-1, 1e-8)
+        ndz_out[:,i] = interp1d(pres, ndz_temp)(pres_out) * dz_new
 
-def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, mh, fsed, sig):
+    return (qc_out, qt_out, rg_out, reff_out, ndz_out, qc_path, pres_out, temp_out, z_out)
+
+def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
+                    mh, fsed, sig, analytical_rg, supsat=0):
+    """
+    Calculate condensate optical depth and effective radius for atmosphere,
+    assuming geometric scatterers. 
+
+    z : float 
+        Altitude  cm 
+    P_z: function
+        Pressure at altitude z (dyne/cm^2)
+    T_z: function
+        Temperature at altitude z (K)
+    T_P: function
+        Temperature at pressure P (K)
+    kz : float or ndarray
+        Kzz in cgs
+    gravity : float 
+        Gravity of planet cgs 
+    gas_name : str 
+        Name of condensate 
+    gas_mw : ndarray
+        Array of gas mean molecular weight from `gas_properties`
+    gas_mmr : ndarray 
+        Array of gas mixing ratio from `gas_properties`
+    rho_p : float 
+        density of condensed vapor (g/cm^3)
+    mw_atmos : float 
+        Mean molecular weight of the atmosphere
+    mh : float 
+        Metallicity NON log solar (1 = 1x solar)
+    fsed : float 
+        Sedimentation efficiency (unitless)
+    sig : float 
+        Width of the log normal particle distrubtion 
+    analytical_rg : bool
+        Option to use analytical expression for rg, or alternatively deduce rg from calculation
+        Calculation option will be most useful for future inclusions of alternative particle size distributions
+    supsat : float, optional
+        Default = 0 , Saturation factor (after condensation)
+
+    Returns
+    -------
+    qc_out : ndarray 
+        condenstate mixing ratio (g/g)
+    qt_out : ndarray 
+        gas + condensate mixing ratio (g/g)
+    rg : ndarray
+        geometric mean radius of condensate  (cm) 
+    reff : ndarray
+        droplet effective radius (second moment of size distrib, cm)
+    ndz : ndarray 
+        number column density of condensate (cm^-3)
+    qc_path : ndarray 
+        vertical path of condensate 
+    """
     #   universal gas constant (erg/mol/K)
     R_GAS = 8.3143e7
     AVOGADRO = 6.02e23
@@ -77,12 +204,9 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             return get_pvap(float(T), float(P), mh=mh)
         else:
             return get_pvap(float(T), mh=mh)
-    #   super saturation factor
-    supsat = 0.
-    fs = supsat + 1
     #   mass mixing ratio of saturated layer
     def qvs(T, P):
-        qvs_val =  fs * pvap(T, P) / (r_cloud * T) / rho_atmos(T, P) 
+        qvs_val =  (supsat + 1) * pvap(T, P) / (r_cloud * T) / rho_atmos(T, P) 
         return qvs_val
     # atmospheric viscosity (dyne s/cm^2)
     # EQN B2 in A & M 2001, originally from Rosner+2000
@@ -97,39 +221,32 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
 
     ##  Define and solve ODE (4) in AM2001 using scipy solve_ivp ---------------------------------------------
     q_below = gas_mmr
+    z = z[::-1]
+    kz = kz[::-1]
     #   define ode
-    def mix_sed(z, q):
-        P = P_z(z); T = T_z(z)
+    def AM4(z, q):
+        P = P_z(z); T = T_z(z); 
         qc_val = max([0., q - qvs(T, P)])
         return - fsed *  qc_val / mixl(T, P)
 
-    t1 = time.time()
-    sol = solve_ivp(lambda t, y: mix_sed(t, y), [z[0], z[len(z)-1]], [q_below], method = "RK23", 
-            rtol = 1e-12, atol = 1e-20, dense_output=True, t_eval=z)
-    t2 = time.time() - t1
-#    print("time to solve ode  = ", t2)
-    z_vals = sol.t
+    sol = solve_ivp(lambda t, y: AM4(t, y), [z[0], z[len(z)-1]], [q_below], method = "RK23", 
+            rtol = 1e-12, atol = 1e-15, dense_output=True, t_eval=z)
     qt = sol.sol
 
     qc_out = np.zeros(len(z))
     qt_out = np.zeros(len(z))
     p_out = np.zeros(len(z))
-    qvs_out = np.zeros(len(z))
-    t1 = time.time()
     for i in range(len(z)):
         p_out[i] = P_z(z[i])
         qt_out[i] = qt(z[i])
         T = T_z(z[i]); P = P_z(z[i])
         qc_out[i] = max([0., qt_out[i] - qvs(T, P)])
-        qvs_out[i] = qvs(T, P)
-    t2 = time.time() - t1
-#    print("time to generate lists  = ", t2)
 
     #   --------------------------------------------------------------------
     #   Find <rw> corresponding to <w_convect> using function vfall()
 
     #   precision of vfall solution (cm/s)
-    dz = np.insert(z[1:]-z[:-1], 0, 0)
+    dz = np.insert(z[1:]-z[:-1], 0, 1e-8)
     rw = np.zeros(len(qc_out))
     rg = np.zeros(len(qc_out))
     reff = np.zeros(len(qc_out))
@@ -137,65 +254,125 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     qc_path = 0.
     t1 = time.time()
     for i in range(len(qc_out)):
-        #   range of particle radii to search (cm)
-        rlo = 1.e-10
-        rhi = 10.
-        find_root = True
-        while find_root:
-            try:
-                P = p_out[i]; T = T_P(p_out[i]); k = kz[i]
-                rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
-                    args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
-                find_root = False
-            except ValueError:
-                rlo = rlo/10
-                rhi = rhi*10
 
-        #fall velocity particle radius 
-        rw[i] = rw_temp.root
-    
-        #   geometric std dev of lognormal size distribution
-        lnsig2 = 0.5*np.log( sig )**2
-        #   sigma floor for the purpose of alpha calculation
-        sig_alpha = np.max( [1.1, sig] )    
-
-        if fsed > 1 :
-
-            #   Bulk of precip at r > rw: exponent between rw and rw*sig
-            alpha = (np.log(
-                            vfall( rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p )
-                            / w_convect(T, P, k) )
-                                / np.log( sig_alpha ))
+        if qc_out[i] == 0.0: # layer is cloud free
+            rg[i] = 0.; reff[i] = 0; ndz[i] = 0.
 
         else:
-            #   Bulk of precip at r < rw: exponent between rw/sig and rw
-            alpha = (np.log(
-                            w_convect(T, P, k) / vfall( rw[i]/sig_alpha, gravity, mw_atmos, mfp(T, P),
-                                visc(T), T, P, rho_p) )
+            #   range of particle radii to search (cm)
+            rlo = 1.e-10
+            rhi = 10.
+            find_root = True
+            while find_root:
+                try:
+                    P = p_out[i]; T = T_P(p_out[i]); k = kz[i]
+                    rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+                        args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
+                    find_root = False
+                except ValueError:
+                    rlo = rlo/10
+                    rhi = rhi*10
+
+            #fall velocity particle radius 
+            rw[i] = rw_temp.root
+    
+            #   geometric std dev of lognormal size distribution ** sig is the geometric std dev
+            lnsig2 = 0.5*np.log( sig )**2
+            #   sigma floor for the purpose of alpha calculation
+            sig_alpha = np.max( [1.1, sig] )    
+
+            if fsed > 1 :
+
+                #   Bulk of precip at r > rw: exponent between rw and rw*sig
+                alpha = (np.log(
+                                vfall( rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p )
+                                / w_convect(T, P, k) )
                                     / np.log( sig_alpha ))
 
-        #     EQN. 13 A&M 
-        #   geometric mean radius of lognormal size distribution
-        rg[i] = (fsed**(1./alpha) *
-                    rw[i] * np.exp(-(alpha + 6) * lnsig2))
+            else:
+                #   Bulk of precip at r < rw: exponent between rw/sig and rw
+                alpha = (np.log(
+                                w_convect(T, P, k) / vfall( rw[i]/sig_alpha, gravity, mw_atmos, mfp(T, P),
+                                    visc(T), T, P, rho_p) )
+                                        / np.log( sig_alpha ))
 
-        #   droplet effective radius (cm)
-        reff[i] = rg[i] * np.exp(5 * lnsig2)
+                # did we want to take the average of these two alphas in our calculation?
 
-        #      EQN. 14 A&M
-        #   column droplet number concentration (cm^-2)
-        ndz[i] = (3 * rho_atmos(T, P) * qc_out[i] * dz[i] /
-                    ( 4 * np.pi * rho_p * rg[i]**3 ) * np.exp(-9 * lnsig2))
+            if analytical_rg:
+                #     EQN. 13 A&M 
+                #   geometric mean radius of lognormal size distribution
+                rg[i] = (fsed**(1./alpha) *
+                        rw[i] * np.exp(-(alpha + 6) * lnsig2))
+
+                #   droplet effective radius (cm)
+                reff[i] = rg[i] * np.exp(5 * lnsig2)
+
+                #      EQN. 14 A&M
+                #   column droplet number concentration (cm^-2)
+                ndz[i] = (3 * rho_atmos(T, P) * qc_out[i] * dz[i] /
+                            ( 4 * np.pi * rho_p * rg[i]**3 ) * np.exp(-9 * lnsig2))
+
+            else:
+                #   range of particle radii to search (cm)
+                rlo = 1.e-10
+                rhi = 1.e2
+                #   geometric mean radius of size distribution
+                rg_temp = optimize.root_scalar(find_rg, bracket=[rlo, rhi], method='brentq', 
+                                                    args=(fsed, rw[i], alpha, np.log(sig)))
+                rg[i] = rg_temp.root
+
+                #   droplet effective radius (cm)
+                #   ratio of third to second moment of size distribution
+                reff[i] = moment(3, np.log(sig), 0., rg[i]) / moment(2, np.log(sig), 0., rg[i])
+
+                #   column droplet number concentration (cm^-2)
+                ndz[i] = (3 * fsed * rw[i]**alpha * qc_out[i] * rho_atmos(T, P) * dz[i] / 
+                            (4 * np.pi * rho_p * moment(3+alpha, np.log(sig), 0., rg[i])))
+
 
         if i > 0:   
             qc_path = (qc_path + qc_out[i-1] *
                             ( p_out[i-1] - p_out[i] ) / gravity)
-    t2 = time.time() - t1
-#    print("time to find other stuff  = ", t2)
 
-    return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], qc_path)
+    return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], dz[::-1], qc_path)
 
-def generate_altitude(pres, temp, kz, gravity, mw_atmos, eps, refine_TP):  
+def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP, eps=10):
+    """
+    Refine temperature pressure profile according to maximum temperature-difference
+    between pressure layers.
+
+    pres : ndarray
+        Pressure at each layer (dyn/cm^2)
+    temp : ndarray
+        Temperature at each layer (K)
+    kz : float or ndarray
+        Kzz in cgs
+    gravity : float 
+        Gravity of planet cgs 
+    mw_atmos : float 
+        Mean molecular weight of the atmosphere
+    refine_TP : bool
+        Option to refine temperature-pressure profile for direct solver 
+    eps : float
+        maximum temperature difference between pressure layers
+
+    Returns
+    -------
+    z : float 
+        Altitude  cm 
+    pres_ : ndarray
+        Pressure at each layer (dyn/cm^2)
+    P_z: function
+        Pressure at altitude z (dyne/cm^2)
+    temp_ : ndarray
+        Temperature at each layer (K)
+    T_z: function
+        Temperature at altitude z (K)
+    T_P: function
+        Temperature at pressure P (K)
+    kz_ : float or ndarray
+        Kzz in cgs
+    """
     #   universal gas constant (erg/mol/K)
     R_GAS = 8.3143e7
     #   specific gas constant for atmosphere (erg/K/g)
@@ -205,12 +382,13 @@ def generate_altitude(pres, temp, kz, gravity, mw_atmos, eps, refine_TP):
         return r_atmos * T / gravity
 
     T_P = UnivariateSpline(pres, temp)
+    # this is grim fix this
     if len(pres) == len(kz):
-        kz_P = UnivariateSpline(pres, kz) # need to be more careful when kz isn't constant
+        kz_P = interp1d(pres, kz) 
     else:
-        kz_P = UnivariateSpline(pres, kz[:-1]) # need to be more careful when kz isn't constant
+        kz_P = interp1d(pres, kz[:-1]) 
 
-    pres_ = pres#[::-1]
+    pres_ = pres
     if refine_TP:
         #   we use barometric formula which assumes constant temperature 
         #   define maximum difference between temperature values which if exceeded, reduce pressure stepsize
@@ -219,14 +397,6 @@ def generate_altitude(pres, temp, kz, gravity, mw_atmos, eps, refine_TP):
             indx = np.where(abs(T_P(pres_[1:]) - T_P(pres_[:-1])) > eps)[0]
             mids = pres_[indx] + (pres_[indx+1] - pres_[indx]) / 2
             pres_ = np.insert(pres_, indx+1, mids)
-            #print("warning in altitude calculation: temperature gradient exceeds set threshold: refinining")
-            #print("n = ", len(pres_))
-
-            #print("warning in altitude calculation: temperature gradient exceeds set threshold: use smaller steps")
-            #n = n * 2
-            #print("setting n = ", n)
-            #pres_ = np.logspace(np.log10(pres[0]), np.log10(pres[len(pres)-1]), n)
-    
     pres_ = pres_[::-1]
     
     z = np.zeros(len(pres_))
@@ -243,4 +413,5 @@ def generate_altitude(pres, temp, kz, gravity, mw_atmos, eps, refine_TP):
     temp_ = T
     kz_ = K
     
-    return (z, pres_, P_z, temp_, T_z, T_P, kz_)
+    return (z[::-1], pres_[::-1], P_z, temp_[::-1], T_z, T_P, kz_[::-1])
+    #return (z, pres_, P_z, temp_, T_z, T_P, kz_)
