@@ -10,10 +10,11 @@ from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find
 from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
-import time
+
+from .direct_mmr_solver import direct_solver
 
 
-def compute(atmo, eps, directory = None, as_dict = False, layers = True, refine_TP = False, quick_stop = False):
+def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -26,8 +27,13 @@ def compute(atmo, eps, directory = None, as_dict = False, layers = True, refine_
         Directory string that describes where refrind files are 
     as_dict : bool 
         Option to view full output as dictionary
-    layers : bool
-        Option to change mmr solver (True = original, False = new direct solver)
+    og_solver : bool
+        Option to change mmr solver (True = original eddysed, False = new direct solver)
+    refine_TP : bool
+        Option to refine temperature-pressure profile for direct solver 
+    analytical_rg : bool
+        Option to use analytical expression for rg, or alternatively deduce rg from calculation
+        Calculation option will be most useful for future inclusions of alternative particle size distributions
 
     Returns 
     -------
@@ -78,68 +84,21 @@ def compute(atmo, eps, directory = None, as_dict = False, layers = True, refine_
     #reff = droplet eff radius, ndz = column dens of condensate, 
     #qc_path = vertical path of condensate
 
-    if layers:
-        t1 = time.time()
+    #   run original eddysed code
+    if og_solver:
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
-        t2 = time.time() - t1
-        print("eddysed time = ", t2)
-        print("eddysed qc_path = ", qc_path)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
     
-        if quick_stop:
-            return {
-                "pressure":pres_out/1e6, 
-                "pressure_unit":'bar',
-                "temperature":temp_out,
-                "temperature_unit":'kelvin',
-                "condensate_mmr":qc,
-                "cond_plus_gas_mmr":qt,
-                "mean_particle_r":rg*1e4,
-                "droplet_eff_r":reff*1e4, 
-                "r_units":'micron',
-                "column_density":ndz,
-                "column_density_unit":'#/cm^2',
-                "condensibles":condensibles,
-                "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':atmo.fsed, 'sig':atmo.sig},
-                "altitude":z_out,
-                "layer_thickness":atmo.dz_layer
-            }
-                                
-            import sys; sys.exit()
-
+    #   run new, direct solver
     else:
-        t1 = time.time()
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, eps, refine_TP)
-        t2 = time.time() - t1
-        print("new solver time = ", t2)
-        print("new solver qc_path = ", qc_path)
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP, analytical_rg)
 
-        if quick_stop:
-            return {
-                "pressure":pres_out/1e6, 
-                "pressure_unit":'bar',
-                "temperature":temp_out,
-                "temperature_unit":'kelvin',
-                "condensate_mmr":qc,
-                "cond_plus_gas_mmr":qt,
-                "mean_particle_r":rg*1e4,
-                "droplet_eff_r":reff*1e4, 
-                "r_units":'micron',
-                "column_density":ndz,
-                "column_density_unit":'#/cm^2',
-                "condensibles":condensibles,
-                "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':atmo.fsed, 'sig':atmo.sig},
-                "altitude":z_out,
-                "layer_thickness":atmo.dz_layer
-            }
-
-            import sys; sys.exit()
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
@@ -344,8 +303,6 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         include decrease in condensate mixing ratio below model domain
     supsat : float, optional
         Default = 0 , Saturation factor (after condensation)
-    layers : bool
-        Option to change mmr solver (True = original, False = new direct solver)
 
     Returns
     -------
@@ -410,7 +367,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     p_base = optimize.root_scalar(qvs_below_model, 
                                 bracket=[p_lo, p_hi], method='brentq', 
                                 args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below)
-                                , xtol = 1e-20)
+                                )#, xtol = 1e-20)
                     print('Virtual Cloud Found: '+ qv_gas_name)
                     root_was_found = True
                 except ValueError: 
@@ -654,7 +611,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     assuming geometric scatterers. 
 
     gas_name : str 
-        Name of condenstante 
+        Name of condensate 
     supsat : float 
         Super saturation factor 
     t_layer : float 
@@ -760,7 +717,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
             try:
                 qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
                             args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
-                                , xtol = 1e-20)
+                                )#, xtol = 1e-20)
                 find_root = False
             except ValueError:
                 qlo = qlo/10
