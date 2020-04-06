@@ -12,7 +12,7 @@ import numpy as np
 
 from . import justdoit as pyeddy
 
-def pt(out, with_condensation=True,**kwargs):
+def pt(out, with_condensation=True,return_condensation=False, **kwargs):
     """
     Plot PT profiles with condensation curves. 
     Thick lines in this pt plot signify those gases that 
@@ -25,8 +25,16 @@ def pt(out, with_condensation=True,**kwargs):
     with_condensation : bool 
         Plots condensation curves of gases. Also plots those that were turned on in the 
         calculation with line_width=5. All others are set to 1. 
+    return_condensation : bool 
+        If true, it returns list of condenation temps for each gas, pressure grid, 
+        and a list of the gas names
     **kwargs : kwargs 
         Kwargs for bokeh.figure() 
+
+    Returns
+    -------
+    if return_condensation: fig, cond temperature curves, ,cond pressure grid , name of all available gases
+    else: fig
     """
 
     kwargs['plot_height'] = kwargs.get('plot_height',300)
@@ -68,7 +76,10 @@ def pt(out, with_condensation=True,**kwargs):
     fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
 
     plot_format(fig)
-    return fig
+    if return_condensation: 
+        return fig, cond_ts,cond_p,all_gases
+    else : 
+        return fig
 
 
 def radii(out,at_pressure = 1e-3):
@@ -85,7 +96,7 @@ def radii(out,at_pressure = 1e-3):
     """
     #compute initial distributions   
 
-    r_g = out['mean_particle_r']
+    r_g = out['droplet_eff_r']
     pressure = out['pressure']
 
     nl = find_nearest_1d(pressure,at_pressure)
@@ -145,7 +156,7 @@ def radii(out,at_pressure = 1e-3):
     return row(p1, p2), dndr
 
 
-def opd_by_gas(out,color = magma, **kwargs):
+def opd_by_gas(out,color = magma,**kwargs):
     """
     Optical depth for conservative geometric scatteres separated by gas.
     E.g. [Fig 7 in Morley+2012](https://arxiv.org/pdf/1206.4313.pdf)  
