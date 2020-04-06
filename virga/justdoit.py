@@ -846,8 +846,9 @@ class Atmosphere():
                 print('Overwriting some Kz values to minimum value set by kz_min') 
             self.kz = np.array(df['kz'])
         else:
+            print('Kz not supplied. You can either add it as input here with p and t. Or, you can \
+                    add it separately to the `Atmosphere.kz` function')
             self.kz = np.nan
-
         r_atmos = 8.3143e7 / self.mmw
 
         # itop=iz = [0:-1], ibot = [1:]
