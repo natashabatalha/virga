@@ -97,8 +97,10 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="3_AnalyzingRuns.html">Analyzing your output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="5_SwitchingSolver.html">Direct solver</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#pairing-cloud-models-to-spectroscopy">Pairing Cloud Models to Spectroscopy</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
@@ -429,7 +431,7 @@ div.rendered_html tbody tr:hover {
 <li><p>How to compute initial Mie scattering grid</p></li>
 </ol>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -452,7 +454,7 @@ div.rendered_html tbody tr:hover {
 <div class="output_area rendered_html docutils container">
 <div class="bk-root">
     <a href="https://bokeh.org" target="_blank" class="bk-logo bk-logo-small bk-logo-notebook"></a>
-    <span id="1001">Loading BokehJS ...</span>
+    <span id="1002">Loading BokehJS ...</span>
 </div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -621,7 +623,7 @@ var element = document.currentScript.previousSibling.previousSibling;
      "</div>"}};
 
   function display_loaded() {
-    var el = document.getElementById("1001");
+    var el = document.getElementById("1002");
     if (el != null) {
       el.textContent = "BokehJS is loading...";
     }
@@ -694,12 +696,13 @@ var element = document.currentScript.previousSibling.previousSibling;
       element.onerror = on_error;
       element.async = false;
       element.src = url;
+
       console.debug("Bokeh: injecting script tag for BokehJS library: ", url);
       document.head.appendChild(element);
     }
-  };var element = document.getElementById("1001");
+  };var element = document.getElementById("1002");
   if (element == null) {
-    console.error("Bokeh: ERROR: autoload.js configured with elementid '1001' but no matching script tag was found. ")
+    console.error("Bokeh: ERROR: autoload.js configured with elementid '1002' but no matching script tag was found. ")
     return false;
   }
 
@@ -710,7 +713,7 @@ var element = document.currentScript.previousSibling.previousSibling;
   }
 
 
-  var js_urls = ["https://cdn.pydata.org/bokeh/release/bokeh-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-widgets-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-tables-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-gl-1.4.0.min.js"];
+  var js_urls = ["https://cdn.bokeh.org/bokeh/dev/bokeh-2.0.0rc1.min.js", "https://cdn.bokeh.org/bokeh/dev/bokeh-widgets-2.0.0rc1.min.js", "https://cdn.bokeh.org/bokeh/dev/bokeh-tables-2.0.0rc1.min.js", "https://cdn.bokeh.org/bokeh/dev/bokeh-gl-2.0.0rc1.min.js"];
   var css_urls = [];
 
 
@@ -739,7 +742,7 @@ var element = document.currentScript.previousSibling.previousSibling;
       console.log("Bokeh: BokehJS failed to load within specified timeout.");
       root._bokeh_failed_load = true;
     } else if (force !== true) {
-      var cell = $(document.getElementById("1001")).parents('.cell').data().cell;
+      var cell = $(document.getElementById("1002")).parents('.cell').data().cell;
       cell.output_area.append_execute_result(NB_LOAD_WARNING)
     }
 
@@ -761,7 +764,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <h2>Simple Isothermal/Constant <span class="math notranslate nohighlight">\(K_{z}\)</span> Example<a class="headerlink" href="#Simple-Isothermal/Constant-K_{z}-Example" title="Permalink to this headline">¶</a></h2>
 <p>Let’s take the isothermal example from the first tutorial to begin gaining intuition for using the code</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -781,27 +784,18 @@ var element = document.currentScript.previousSibling.previousSibling;
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
+<div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-[&#39;Al2O3&#39;, &#39;Cr&#39;, &#39;Fe&#39;, &#39;Mg2SiO4&#39;, &#39;MgSiO3&#39;]
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/nbatalh1/Documents/codes/virga/virga/root_functions.py:223: RuntimeWarning: divide by zero encountered in log10
-  return np.log10(pv) - np.log10(partial_p)
+[&#39;Al2O3&#39;, &#39;Cr&#39;, &#39;Fe&#39;, &#39;Mg2SiO4&#39;, &#39;MgSiO3&#39;, &#39;TiO2&#39;]
 </pre></div></div>
 </div>
 <div class="section" id="Define-the-Atmosphere-Class">
 <h3>Define the <code class="docutils literal notranslate"><span class="pre">Atmosphere</span> <span class="pre">Class</span></code><a class="headerlink" href="#Define-the-Atmosphere-Class" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -816,40 +810,40 @@ var element = document.currentScript.previousSibling.previousSibling;
 <div class="section" id="Set-gravity-and-the-P/T/Kz-profile">
 <h3>Set gravity and the P/T/Kz profile<a class="headerlink" href="#Set-gravity-and-the-P/T/Kz-profile" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#set the planet gravity</span>
-<span class="n">sum_planet</span><span class="o">.</span><span class="n">get_gravity</span><span class="p">(</span><span class="n">gravity</span><span class="o">=</span><span class="mf">357.00</span><span class="p">,</span> <span class="n">gravity_unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;cm/(s**2)&#39;</span><span class="p">))</span>
+<span class="n">sum_planet</span><span class="o">.</span><span class="n">gravity</span><span class="p">(</span><span class="n">gravity</span><span class="o">=</span><span class="mf">357.00</span><span class="p">,</span> <span class="n">gravity_unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;cm/(s**2)&#39;</span><span class="p">))</span>
 
 <span class="c1">#PT</span>
-<span class="n">sum_planet</span><span class="o">.</span><span class="n">get_pt</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;pressure&#39;</span><span class="p">:</span><span class="n">pressure</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">:</span><span class="n">temperature</span><span class="p">,</span>
+<span class="n">sum_planet</span><span class="o">.</span><span class="n">ptk</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;pressure&#39;</span><span class="p">:</span><span class="n">pressure</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">:</span><span class="n">temperature</span><span class="p">,</span>
                            <span class="s1">&#39;kz&#39;</span><span class="p">:</span><span class="n">kz</span><span class="p">}))</span>
 </pre></div>
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#you can also read in a file using pandas.read_csv()</span>
 <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;pressure&#39;</span><span class="p">:</span><span class="n">pressure</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">:</span><span class="n">temperature</span><span class="p">,</span>
                            <span class="s1">&#39;kz&#39;</span><span class="p">:</span><span class="n">kz</span><span class="p">})</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;test.csv&#39;</span><span class="p">)</span>
-<span class="n">sum_planet</span><span class="o">.</span><span class="n">get_pt</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test.csv&#39;</span><span class="p">,</span><span class="n">usecols</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">sum_planet</span><span class="o">.</span><span class="n">ptk</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test.csv&#39;</span><span class="p">,</span><span class="n">usecols</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="The-minimum-values-for-kz">
 <h4>The minimum values for <code class="docutils literal notranslate"><span class="pre">kz</span></code><a class="headerlink" href="#The-minimum-values-for-kz" title="Permalink to this headline">¶</a></h4>
-<p>There is a parameter called <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> in the get_pt function. The default value is <code class="docutils literal notranslate"><span class="pre">kz_min=1e5</span></code>. This number isn’t necessarily a hard and fast rule, but it does avoid numerical instabilities. Another thing to note is that <strong>this excludes negative kz values</strong>. The code will alert you if you are tripping the <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> reset.</p>
+<p>There is a parameter called <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> in the ptk function. The default value is <code class="docutils literal notranslate"><span class="pre">kz_min=1e5</span></code>. This number isn’t necessarily a hard and fast rule, but it does avoid numerical instabilities. Another thing to note is that <strong>this excludes negative kz values</strong>. The code will alert you if you are tripping the <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> reset.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="n">help</span><span class="p">(</span><span class="n">sum_planet</span><span class="o">.</span><span class="n">get_pt</span><span class="p">)</span>
+<span></span><span class="n">help</span><span class="p">(</span><span class="n">sum_planet</span><span class="o">.</span><span class="n">ptk</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -858,9 +852,9 @@ var element = document.currentScript.previousSibling.previousSibling;
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Help on method get_pt in module virga.justdoit:
+Help on method ptk in module virga.justdoit:
 
-get_pt(df=None, filename=None, kz_min=100000.0, **pd_kwargs) method of virga.justdoit.Atmosphere instance
+ptk(df=None, filename=None, kz_min=100000.0, **pd_kwargs) method of virga.justdoit.Atmosphere instance
     Read in file or define dataframe.
 
     Parameters
@@ -883,15 +877,15 @@ get_pt(df=None, filename=None, kz_min=100000.0, **pd_kwargs) method of virga.jus
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#set the planet gravity</span>
-<span class="n">sum_planet</span><span class="o">.</span><span class="n">get_gravity</span><span class="p">(</span><span class="n">gravity</span><span class="o">=</span><span class="mf">357.00</span><span class="p">,</span> <span class="n">gravity_unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;cm/(s**2)&#39;</span><span class="p">))</span>
+<span class="n">sum_planet</span><span class="o">.</span><span class="n">gravity</span><span class="p">(</span><span class="n">gravity</span><span class="o">=</span><span class="mf">357.00</span><span class="p">,</span> <span class="n">gravity_unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;cm/(s**2)&#39;</span><span class="p">))</span>
 
 <span class="c1">#This is what happens when you trip up the minimum KZ value</span>
-<span class="n">sum_planet</span><span class="o">.</span><span class="n">get_pt</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;pressure&#39;</span><span class="p">:</span><span class="n">pressure</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">:</span><span class="n">temperature</span><span class="p">,</span>
+<span class="n">sum_planet</span><span class="o">.</span><span class="n">ptk</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;pressure&#39;</span><span class="p">:</span><span class="n">pressure</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">:</span><span class="n">temperature</span><span class="p">,</span>
                            <span class="s1">&#39;kz&#39;</span><span class="p">:</span><span class="n">kz</span><span class="o">*-</span><span class="mi">1</span><span class="p">}))</span>
 </pre></div>
 </div>
@@ -909,23 +903,23 @@ Overwriting some Kz values to minimum value set by kz_min
 <div class="section" id="Run-the-code">
 <h3>Run the code<a class="headerlink" href="#Run-the-code" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#start with the simplest output</span>
 <span class="c1">#get total opacity, single scattering, asymmetry, and individual optical depths</span>
-<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span><span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s1">&#39;/Users/nbatalh1/Documents/codes/TheOGTC/input/optics/&#39;</span><span class="p">)</span>
+<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span><span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s1">&#39;/Users/crooney/Documents/Clouds/mieff_files&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#get full dictionary output</span>
-<span class="n">all_out</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="s1">&#39;/Users/nbatalh1/Documents/codes/TheOGTC/input/optics/&#39;</span><span class="p">)</span>
+<span class="n">all_out</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="s1">&#39;/Users/crooney/Documents/Clouds/mieff_files&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -935,7 +929,7 @@ Overwriting some Kz values to minimum value set by kz_min
 <h2>Exploring <code class="docutils literal notranslate"><span class="pre">dict</span></code> Output<a class="headerlink" href="#Exploring-dict-Output" title="Permalink to this headline">¶</a></h2>
 <p>There are many things to explore in the <code class="docutils literal notranslate"><span class="pre">dict</span></code> output. In the next tutorial, we will reproduce some of the most common plots used in papers to analyze cloud runs.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -945,7 +939,7 @@ Overwriting some Kz values to minimum value set by kz_min
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
@@ -997,7 +991,7 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2020, Natasha E. Batalha &amp; Mark Marley
+        &copy; Copyright 
 
     </p>
   </div>

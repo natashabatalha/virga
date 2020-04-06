@@ -334,6 +334,12 @@ columns: index, wavelength (micron), nn, kk</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="virga.gas_properties.TiO2">
+<code class="sig-prename descclassname">virga.gas_properties.</code><code class="sig-name descname">TiO2</code><span class="sig-paren">(</span><em class="sig-param">mw_atmos</em>, <em class="sig-param">mh=1</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.gas_properties.TiO2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines properties for TiO2 as condensible</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="virga.gas_properties.ZnS">
 <code class="sig-prename descclassname">virga.gas_properties.</code><code class="sig-name descname">ZnS</code><span class="sig-paren">(</span><em class="sig-param">mw_atmos</em>, <em class="sig-param">mh=1</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.gas_properties.ZnS" title="Permalink to this definition">¶</a></dt>
 <dd><p>Defines properties for ZnS as condensible</p>
@@ -503,7 +509,7 @@ albedo, and asymmetry parameter.</p>
 <dd><p>Calculate condensate optical depth and effective radius for a layer,
 assuming geometric scatterers.</p>
 <dl class="simple">
-<dt>gas_name<span class="classifier">str</span></dt><dd><p>Name of condenstante</p>
+<dt>gas_name<span class="classifier">str</span></dt><dd><p>Name of condensate</p>
 </dd>
 <dt>supsat<span class="classifier">float</span></dt><dd><p>Super saturation factor</p>
 </dd>
@@ -557,7 +563,7 @@ assuming geometric scatterers.</p>
 
 <dl class="function">
 <dt id="virga.justdoit.compute">
-<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">compute</code><span class="sig-paren">(</span><em class="sig-param">atmo</em>, <em class="sig-param">directory=None</em>, <em class="sig-param">as_dict=False</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.compute" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">compute</code><span class="sig-paren">(</span><em class="sig-param">atmo</em>, <em class="sig-param">directory=None</em>, <em class="sig-param">as_dict=False</em>, <em class="sig-param">og_solver=True</em>, <em class="sig-param">refine_TP=True</em>, <em class="sig-param">analytical_rg=True</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.compute" title="Permalink to this definition">¶</a></dt>
 <dd><p>Top level program to run eddysed. Requires running <cite>Atmosphere</cite> class
 before running this.</p>
 <dl class="field-list simple">
@@ -566,6 +572,10 @@ before running this.</p>
 <li><p><strong>atmo</strong> (<em>class</em>) – <cite>Atmosphere</cite> class</p></li>
 <li><p><strong>directory</strong> (<em>str</em><em>, </em><em>optional</em>) – Directory string that describes where refrind files are</p></li>
 <li><p><strong>as_dict</strong> (<em>bool</em>) – Option to view full output as dictionary</p></li>
+<li><p><strong>og_solver</strong> (<em>bool</em>) – Option to change mmr solver (True = original eddysed, False = new direct solver)</p></li>
+<li><p><strong>refine_TP</strong> (<em>bool</em>) – Option to refine temperature-pressure profile for direct solver</p></li>
+<li><p><strong>analytical_rg</strong> (<em>bool</em>) – Option to use analytical expression for rg, or alternatively deduce rg from calculation
+Calculation option will be most useful for future inclusions of alternative particle size distributions</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -607,7 +617,7 @@ Default = np.logspace(-3,2,20)</p></li>
 
 <dl class="function">
 <dt id="virga.justdoit.create_dict">
-<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">create_dict</code><span class="sig-paren">(</span><em class="sig-param">qc</em>, <em class="sig-param">qt</em>, <em class="sig-param">rg</em>, <em class="sig-param">reff</em>, <em class="sig-param">ndz</em>, <em class="sig-param">opd</em>, <em class="sig-param">w0</em>, <em class="sig-param">g0</em>, <em class="sig-param">opd_gas</em>, <em class="sig-param">wave</em>, <em class="sig-param">pressure</em>, <em class="sig-param">temperature</em>, <em class="sig-param">gas_names</em>, <em class="sig-param">mh</em>, <em class="sig-param">mmw</em>, <em class="sig-param">fsed</em>, <em class="sig-param">sig</em>, <em class="sig-param">nrad</em>, <em class="sig-param">rmin</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.create_dict" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">create_dict</code><span class="sig-paren">(</span><em class="sig-param">qc</em>, <em class="sig-param">qt</em>, <em class="sig-param">rg</em>, <em class="sig-param">reff</em>, <em class="sig-param">ndz</em>, <em class="sig-param">opd</em>, <em class="sig-param">w0</em>, <em class="sig-param">g0</em>, <em class="sig-param">opd_gas</em>, <em class="sig-param">wave</em>, <em class="sig-param">pressure</em>, <em class="sig-param">temperature</em>, <em class="sig-param">gas_names</em>, <em class="sig-param">mh</em>, <em class="sig-param">mmw</em>, <em class="sig-param">fsed</em>, <em class="sig-param">sig</em>, <em class="sig-param">nrad</em>, <em class="sig-param">rmin</em>, <em class="sig-param">z</em>, <em class="sig-param">dz_layer</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.create_dict" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
@@ -799,7 +809,7 @@ and cloud opacity and asymmetry parameter as a function of altitude.</p>
 
 <dl class="function">
 <dt id="virga.justplotit.condensate_mmr">
-<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">condensate_mmr</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">color=&lt;bound method _PalettesModule.magma of &lt;module 'bokeh.palettes'&gt;&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.condensate_mmr" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">condensate_mmr</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">gas=None</em>, <em class="sig-param">color=&lt;bound method _PalettesModule.magma of &lt;module 'bokeh.palettes'&gt;&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.condensate_mmr" title="Permalink to this definition">¶</a></dt>
 <dd><p>Condensate mean mass mixing ratio</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -819,7 +829,7 @@ and cloud opacity and asymmetry parameter as a function of altitude.</p>
 
 <dl class="function">
 <dt id="virga.justplotit.opd_by_gas">
-<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">opd_by_gas</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">color=&lt;bound method _PalettesModule.magma of &lt;module 'bokeh.palettes'&gt;&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.opd_by_gas" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">opd_by_gas</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">gas=None</em>, <em class="sig-param">color=&lt;bound method _PalettesModule.magma of &lt;module 'bokeh.palettes'&gt;&gt;</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.opd_by_gas" title="Permalink to this definition">¶</a></dt>
 <dd><p>Optical depth for conservative geometric scatteres separated by gas.
 E.g. [Fig 7 in Morley+2012](<a class="reference external" href="https://arxiv.org/pdf/1206.4313.pdf">https://arxiv.org/pdf/1206.4313.pdf</a>)</p>
 <dl class="field-list simple">
@@ -841,7 +851,7 @@ E.g. [Fig 7 in Morley+2012](<a class="reference external" href="https://arxiv.or
 
 <dl class="function">
 <dt id="virga.justplotit.pt">
-<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">pt</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">with_condensation=True</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.pt" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">pt</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">with_condensation=True</em>, <em class="sig-param">return_condensation=False</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.pt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot PT profiles with condensation curves.
 Thick lines in this pt plot signify those gases that
 were turned on in the run, NOT those that were recommended.</p>
@@ -851,15 +861,24 @@ were turned on in the run, NOT those that were recommended.</p>
 <li><p><strong>out</strong> (<em>dict</em>) – Dictionary output from pyeddy run</p></li>
 <li><p><strong>with_condensation</strong> (<em>bool</em>) – Plots condensation curves of gases. Also plots those that were turned on in the
 calculation with line_width=5. All others are set to 1.</p></li>
+<li><p><strong>return_condensation</strong> (<em>bool</em>) – If true, it returns list of condenation temps for each gas, pressure grid,
+and a list of the gas names</p></li>
 <li><p><strong>**kwargs</strong> (<em>kwargs</em>) – Kwargs for bokeh.figure()</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>if return_condensation</strong> (<em>fig, cond temperature curves, ,cond pressure grid , name of all available gases</em>)</p></li>
+<li><p><strong>else</strong> (<em>fig</em>)</p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="virga.justplotit.radii">
-<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">radii</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">at_pressure=0.001</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.radii" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justplotit.</code><code class="sig-name descname">radii</code><span class="sig-paren">(</span><em class="sig-param">out</em>, <em class="sig-param">gas=None</em>, <em class="sig-param">at_pressure=0.001</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.radii" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plots the particle radii profile along with the distribution, at a certain pressure.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -1147,6 +1166,26 @@ Wexler’s</p></li>
 </dd></dl>
 
 <dl class="function">
+<dt id="virga.pvaps.TiO2">
+<code class="sig-prename descclassname">virga.pvaps.</code><code class="sig-name descname">TiO2</code><span class="sig-paren">(</span><em class="sig-param">temp</em>, <em class="sig-param">mh=1</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.pvaps.TiO2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes vapor pressure curve</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temp</strong> (<em>float</em><em>, </em><em>ndarray</em>) – Temperature (K)</p></li>
+<li><p><strong>mh</strong> (<em>float</em>) – NON log metallicity relative to solar (1=1Xsolar)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>vapor pressure in dyne/cm^2</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="virga.pvaps.ZnS">
 <code class="sig-prename descclassname">virga.pvaps.</code><code class="sig-name descname">ZnS</code><span class="sig-paren">(</span><em class="sig-param">temp</em>, <em class="sig-param">mh=1</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.pvaps.ZnS" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes vapor pressure curve</p>
@@ -1213,6 +1252,52 @@ the temperature when</p>
 <li><p><strong>mmw</strong> (<em>float</em>) – mean molecular weight (2.2 for solar)</p></li>
 <li><p><strong>gas_name</strong> (<em>str</em>) – gas name, case sensitive</p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="virga.root_functions.find_rg">
+<code class="sig-prename descclassname">virga.root_functions.</code><code class="sig-name descname">find_rg</code><span class="sig-paren">(</span><em class="sig-param">rg</em>, <em class="sig-param">fsed</em>, <em class="sig-param">rw</em>, <em class="sig-param">alpha</em>, <em class="sig-param">s</em>, <em class="sig-param">loc=0.0</em>, <em class="sig-param">dist='lognormal'</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.find_rg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Root function used used to find the geometric mean radius of
+lognormal size distribution.</p>
+<p>Useful if we consider more complicated size distributions for which
+analytical expressions for moments are not easily obtained.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rg</strong> (<em>float</em>) – Geometric mean radius</p></li>
+<li><p><strong>fsed</strong> (<em>float</em>) – Sedimentation efficiency</p></li>
+<li><p><strong>rw</strong> (<em>float</em>) – Fall velocity particle radius</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – Exponent in power-law approximation for particle fall-speed</p></li>
+<li><p><strong>s</strong> (<em>float</em>) – s = log(sigma) where sigma is the geometric std dev of lognormal distn</p></li>
+<li><p><strong>loc</strong> (<em>float</em>) – Shift in lognormal distribution</p></li>
+<li><p><strong>dist</strong> (<em>str</em>) – Continuous random variable for particle size distribution</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="virga.root_functions.moment">
+<code class="sig-prename descclassname">virga.root_functions.</code><code class="sig-name descname">moment</code><span class="sig-paren">(</span><em class="sig-param">n</em>, <em class="sig-param">s</em>, <em class="sig-param">loc</em>, <em class="sig-param">scale</em>, <em class="sig-param">dist='lognormal'</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.moment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate moment of size distribution.
+Will be extended to include more than just lognormal</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>float</em>) – nth moment to be calculated</p></li>
+<li><p><strong>s</strong> (<em>float</em>) – std dev</p></li>
+<li><p><strong>loc</strong> (<em>float</em>) – Shift in distribution</p></li>
+<li><p><strong>scale</strong> (<em>float</em>) – Scale distribution</p></li>
+<li><p><strong>dist</strong> (<em>str</em>) – Continuous random variable for particle size distribution</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>moment_out</strong> – nth moment of distribution</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1294,7 +1379,7 @@ subtraction of the convective velocity scale (cm/s) w_convect.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2020, Natasha E. Batalha &amp; Mark Marley
+        &copy; Copyright 
 
     </p>
   </div>
