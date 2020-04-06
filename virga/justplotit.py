@@ -177,40 +177,38 @@ def radii(out,gas=None,at_pressure = 1e-3):
             else: indx = gas_name.index(i)
             p1.line(i, 'pressure', source=s1, alpha=1,color=color[indx] ,line_width=4,legend_label=i,line_dash=lines[j])
             p2.line('r', i, source=s2,color=color[indx] ,line_width=4,line_dash=lines[j])
+    # r_g = out['droplet_eff_r']
+    # pressure = out['pressure']
+
+    # nl = find_nearest_1d(pressure,at_pressure)
+
+    # rmin = out['scalar_inputs']['rmin']
+    # nrad = out['scalar_inputs']['nrad']
+    # sig = out['scalar_inputs']['sig']
+    # ndz = out['column_density']
+    # #determine which condensed
+    # which_condensed = [False]*ndz.shape[1]
+    # for i in range(ndz.shape[1]):
+    #     ndz_gas = np.unique(ndz[:,i])
+    #     ndz_gas = ndz_gas[ndz_gas>0]
+    #     if len(ndz_gas)>0 : which_condensed[i] = True
+
+    # color = magma(len(which_condensed))
+
+    # #take only those that condensed 
+    # N = ndz[:, which_condensed]
+    # r_g = r_g[:,which_condensed]
+    # gas_name = list(np.array(out['condensibles'])[which_condensed])
+    # r, rup, dr = pyeddy.get_r_grid(r_min = rmin, n_radii = nrad)
+
+    # #initial radii profiles
+    # df_r_g = {i:r_g[:, gas_name.index(i)] for i in gas_name}
+    # df_r_g['pressure'] = pressure
 
 
-    r_g = out['droplet_eff_r']
-    pressure = out['pressure']
-
-    nl = find_nearest_1d(pressure,at_pressure)
-
-    rmin = out['scalar_inputs']['rmin']
-    nrad = out['scalar_inputs']['nrad']
-    sig = out['scalar_inputs']['sig']
-    ndz = out['column_density']
-    #determine which condensed
-    which_condensed = [False]*ndz.shape[1]
-    for i in range(ndz.shape[1]):
-        ndz_gas = np.unique(ndz[:,i])
-        ndz_gas = ndz_gas[ndz_gas>0]
-        if len(ndz_gas)>0 : which_condensed[i] = True
-
-    color = magma(len(which_condensed))
-
-    #take only those that condensed 
-    N = ndz[:, which_condensed]
-    r_g = r_g[:,which_condensed]
-    gas_name = list(np.array(out['condensibles'])[which_condensed])
-    r, rup, dr = pyeddy.get_r_grid(r_min = rmin, n_radii = nrad)
-
-    #initial radii profiles
-    df_r_g = {i:r_g[:, gas_name.index(i)] for i in gas_name}
-    df_r_g['pressure'] = pressure
-
-
-    #add to r_g for that plot 
-    df_r_g['average'] = [pressure[nl]]*len(pressure)
-    df_r_g['horizontal'] = np.linspace(np.amin(r_g[r_g>0]), np.amax(r_g) , len(pressure))
+    # #add to r_g for that plot 
+    # df_r_g['average'] = [pressure[nl]]*len(pressure)
+    # df_r_g['horizontal'] = np.linspace(np.amin(r_g[r_g>0]), np.amax(r_g) , len(pressure))
 
     p1.line('horizontal', 'average', source=s1, color='black',line_width=3,line_dash='dashed')
     p1.legend.location = 'bottom_left'
