@@ -11,7 +11,10 @@ from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
 
-def compute(atmo, directory = None, as_dict = False):
+from .direct_mmr_solver import direct_solver
+
+
+def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -24,6 +27,13 @@ def compute(atmo, directory = None, as_dict = False):
         Directory string that describes where refrind files are 
     as_dict : bool 
         Option to view full output as dictionary
+    og_solver : bool
+        Option to change mmr solver (True = original eddysed, False = new direct solver)
+    refine_TP : bool
+        Option to refine temperature-pressure profile for direct solver 
+    analytical_rg : bool
+        Option to use analytical expression for rg, or alternatively deduce rg from calculation
+        Calculation option will be most useful for future inclusions of alternative particle size distributions
 
     Returns 
     -------
@@ -74,10 +84,22 @@ def compute(atmo, directory = None, as_dict = False):
     #reff = droplet eff radius, ndz = column dens of condensate, 
     #qc_path = vertical path of condensate
 
-    qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
+    #   run original eddysed code
+    if og_solver:
+        qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
+        pres_out = atmo.p
+        temp_out = atmo.t
+        z_out = atmo.z
+    
+    #   run new, direct solver
+    else:
+        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
+                                             condensibles, gas_mw, gas_mmr, rho_p , mmw, 
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP, analytical_rg)
 
+            
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
@@ -85,14 +107,14 @@ def compute(atmo, directory = None, as_dict = False):
 
     if as_dict:
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
-                           opd_gas,wave_in, atmo.p,atmo.t, condensibles,
-                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin
+                           opd_gas,wave_in, pres_out, temp_out, condensibles,
+                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin, z_out, atmo.dz_layer
                            ) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin):
+    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -112,7 +134,9 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "asymmetry": g0, 
         "opd_by_gas": opd_gas,
         "condensibles":gas_names,
-        "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin}
+        "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
+        "altitude":z,
+        "layer_thickness":dz_layer
     }
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
@@ -297,7 +321,6 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     """
     #default for everything is false, will fill in as True as we go
     did_gas_condense = [False for i in condensibles]
-
     t_bot = t_top[-1]
     p_bot = p_top[-1]
     ngas =  len(condensibles)
@@ -342,8 +365,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                 qv_factor = qvs_factor
                 try:
                     p_base = optimize.root_scalar(qvs_below_model, 
-                    bracket=[p_lo, p_hi], method='brentq', 
-                    args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below))
+                                bracket=[p_lo, p_hi], method='brentq', 
+                                args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below)
+                                )#, xtol = 1e-20)
                     print('Virtual Cloud Found: '+ qv_gas_name)
                     root_was_found = True
                 except ValueError: 
@@ -378,7 +402,6 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
-            
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
@@ -588,7 +611,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     assuming geometric scatterers. 
 
     gas_name : str 
-        Name of condenstante 
+        Name of condensate 
     supsat : float 
         Super saturation factor 
     t_layer : float 
@@ -692,8 +715,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         find_root = True
         while find_root:
             try:
-                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq', 
-                args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf))
+                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
+                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
+                                )#, xtol = 1e-20)
                 find_root = False
             except ValueError:
                 qlo = qlo/10
@@ -720,7 +744,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         while find_root:
             try:
                 rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
-                    args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
+                            args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
                 find_root = False
             except ValueError:
                 rlo = rlo/10

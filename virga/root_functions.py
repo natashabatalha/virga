@@ -1,6 +1,8 @@
 import numpy as np
 from . import  pvaps
 from . import  gas_properties
+from scipy.stats import lognorm
+from scipy.integrate import quad, simps
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None):
     """
@@ -223,3 +225,75 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):
     #get partial pressure
     partial_p = gas_mmr*p_test*mh 
     return np.log10(pv) - np.log10(partial_p)
+
+def moment(n, s, loc, scale, dist="lognormal"):
+    """
+    Calculate moment of size distribution.
+    Will be extended to include more than just lognormal
+
+    Parameters
+    ----------
+    n : float
+        nth moment to be calculated
+    s : float 
+        std dev 
+    loc : float
+        Shift in distribution
+    scale: float
+        Scale distribution
+    dist: str
+        Continuous random variable for particle size distribution
+
+    Returns
+    -------
+    moment_out : float 
+        nth moment of distribution
+    """
+
+    #   for non-integer (any) n, must approximate moment integral numerically
+    #   the following code works but it is slow 
+
+    def pdf(r, s, loc, scale, dist):
+        if dist=="lognormal":
+            #return lognorm.pdf(r, s, loc, scale)
+            return np.exp(- np.log((r-loc)/scale)**2 / (2*s**2)) / (r * s * np.sqrt(2. * np.pi))
+
+    def func(r, n, s, loc, scale, dist):
+        return r**n * pdf(r, s, loc, scale, dist)
+
+    lbd = 0.
+    ubd = np.inf
+    moment_out = quad(func, lbd, ubd, epsabs=0, args=(n, s, loc, scale, dist))[0]
+
+    #   for quicker result, take int(n) and use lognorm.moment, however, it will be slow for int(n) >= 2
+    #n = int(round(n))
+    #moment_out = lognorm.moment(n, s, loc, scale)
+    return moment_out
+
+def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
+    """
+    Root function used used to find the geometric mean radius of 
+    lognormal size distribution.
+
+    Useful if we consider more complicated size distributions for which
+    analytical expressions for moments are not easily obtained.
+
+    Parameters
+    ----------
+    rg : float 
+        Geometric mean radius
+    fsed : float 
+        Sedimentation efficiency
+    rw : float 
+        Fall velocity particle radius 
+    alpha : float 
+        Exponent in power-law approximation for particle fall-speed
+    s : float 
+        s = log(sigma) where sigma is the geometric std dev of lognormal distn 
+    loc : float
+        Shift in lognormal distribution
+    dist: str
+        Continuous random variable for particle size distribution
+    """
+
+    return fsed - moment(3+alpha, s, loc, rg, dist) / rw**alpha / moment(3, s, loc, rg, dist)
