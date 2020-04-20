@@ -21,5 +21,7 @@ Install with Git
 Download the Refractive Index Files
 -----------------------------------
 
+`Download and read about these <http://www.python.org/>`_. 
+
 No need to add an environment variable. We will just ask for the path to where they are located. 
 

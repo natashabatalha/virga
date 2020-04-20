@@ -49,6 +49,23 @@
 	</div>
 	</div>
 
+Condensate Species Currently Included
+=====================================
+
+- Al2O3 
+- CH4
+- Cr
+- Fe
+- H2O
+- KCl
+- Mg2SiO4
+- MgSiO3
+- MnS
+- Na2S
+- NH3
+- TiO2
+
+Don't see what you are looking for? Contact us. 
 
 
 Indices and tables
