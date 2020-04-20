@@ -18,3 +18,13 @@ Pairing Cloud Models to Spectroscopy
    :maxdepth: 2
 
    Understanding how cloud models effect spectroscopy  </notebooks/4_PairingOutputToPICASO.ipynb>
+
+
+
+Switch to Direct Solver
+-----------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   Direct solver </notebooks/5_SwitchingSolver.ipynb>

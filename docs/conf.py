@@ -19,8 +19,7 @@ sys.path.insert(0, os.path.abspath('/Users/nbatalh1/Documents/codes/VIRGA/virga/
 # -- Project information -----------------------------------------------------
 
 project = 'virga'
-copyright = '2020, Natasha E. Batalha & Mark Marley'
-author = 'Natasha E. Batalha & Mark Marley'
+author = 'Batalha, Rooney, Marley'
 
 # The full version, including alpha/beta/rc tags
 release = 'v0.0'
