@@ -136,7 +136,8 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "condensibles":gas_names,
         "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
         "altitude":z,
-        "layer_thickness":dz_layer
+        "layer_thickness":dz_layer,
+        "z_unit":'cm'
     }
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
@@ -996,7 +997,9 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-5, nradii = 40):
     if isinstance(gas_name,str):
         gas_name = [gas_name]
     ngas = len(gas_name)
+
     for i in range(len(gas_name)): 
+        print('Computing ' + gas_name[i])
         #Setup up a particle size grid on first run and calculate single-particle scattering
         
         #files will be saved in `directory`
@@ -1021,14 +1024,14 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-5, nradii = 40):
 
         #prepare format for old ass style
         wave = [nwave] + sum([[r]+list(wave_in) for r in radius],[])
-        qscat = [nradii]  + sum([[np.nan]+list(i) for i in qscat_gas.T],[])
-        qext = [np.nan]  + sum([[np.nan]+list(i) for i in qext_gas.T],[])
-        cos_qscat = [np.nan]  + sum([[np.nan]+list(i) for i in cos_qscat_gas.T],[])
+        qscat = [nradii]  + sum([[np.nan]+list(iscat) for iscat in qscat_gas.T],[])
+        qext = [np.nan]  + sum([[np.nan]+list(iext) for iext in qext_gas.T],[])
+        cos_qscat = [np.nan]  + sum([[np.nan]+list(icos) for icos in cos_qscat_gas.T],[])
 
         pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(os.path.join(dir_out,gas_name[i]+".mieff"),
                                                                                    sep=' ',
                                                                                   index=False,header=None)
-        return qext_all, qscat_all, cos_qscat_all, radius,wave_in
+    return qext_all, qscat_all, cos_qscat_all, radius,wave_in
 
 def get_mie(gas, directory):
     """
