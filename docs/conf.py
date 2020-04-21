@@ -22,6 +22,7 @@ project = 'virga'
 author = 'Batalha, Rooney, Marley'
 
 # The full version, including alpha/beta/rc tags
+version = '0.0'
 release = 'v0.0'
 
 
@@ -75,9 +76,9 @@ nbsphinx_prolog = """
 """
 
 
-def setup(app):
-    app.add_stylesheet('https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css')
-    app.add_javascript('https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js')
-    app.add_javascript('https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js')
+#def setup(app):
+#    app.add_stylesheet('https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css')
+#    app.add_javascript('https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js')
+#    app.add_javascript('https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js')
 
 
