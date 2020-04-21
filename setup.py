@@ -40,8 +40,8 @@ except ImportError:
 # also be placed in the setup.cfg, as will be demonstrated in a future update
 # to this sample package.
 setup(
-    name='virga', 
-    version = 'dev0.0',
+    name='virga-exo', 
+    version = '0.0',
     description = 'exoplanet code for compute cloud structure',
     long_description = 'README.rst',
     author = 'Natasha E. Batalha',

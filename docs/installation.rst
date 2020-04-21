@@ -4,9 +4,11 @@ Installation
 Install with Pip
 ----------------
 
+NOTE THE NAME! 
+
 .. code-block:: bash 
 
-	pip install virga
+	pip install virga-exo
 
 
 Install with Git
