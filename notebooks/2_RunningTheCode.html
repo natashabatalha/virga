@@ -25,8 +25,6 @@
         <script type="text/javascript" src="../_static/underscore.js"></script>
         <script type="text/javascript" src="../_static/doctools.js"></script>
         <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-        <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
         <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
         <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
@@ -38,7 +36,6 @@
   
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Analyzing your Runs" href="3_AnalyzingRuns.html" />
@@ -65,6 +62,10 @@
           
             
             
+              <div class="version">
+                0.0
+              </div>
+            
           
 
           
@@ -88,6 +89,7 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/record/3758538#.Xp4w-1NKjOQ">Refractive Indices</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">The Tutorials</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="../tutorials.html#basics">Basics</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="1_GettingStarted.html">Before you run the code</a></li>
@@ -97,10 +99,10 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="3_AnalyzingRuns.html">Analyzing your output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="5_SwitchingSolver.html">Direct solver</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#pairing-cloud-models-to-spectroscopy">Pairing Cloud Models to Spectroscopy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#switch-to-direct-solver">Switch to Direct Solver</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
@@ -431,7 +433,7 @@ div.rendered_html tbody tr:hover {
 <li><p>How to compute initial Mie scattering grid</p></li>
 </ol>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -454,7 +456,7 @@ div.rendered_html tbody tr:hover {
 <div class="output_area rendered_html docutils container">
 <div class="bk-root">
     <a href="https://bokeh.org" target="_blank" class="bk-logo bk-logo-small bk-logo-notebook"></a>
-    <span id="1002">Loading BokehJS ...</span>
+    <span id="1001">Loading BokehJS ...</span>
 </div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -623,7 +625,7 @@ var element = document.currentScript.previousSibling.previousSibling;
      "</div>"}};
 
   function display_loaded() {
-    var el = document.getElementById("1002");
+    var el = document.getElementById("1001");
     if (el != null) {
       el.textContent = "BokehJS is loading...";
     }
@@ -696,13 +698,12 @@ var element = document.currentScript.previousSibling.previousSibling;
       element.onerror = on_error;
       element.async = false;
       element.src = url;
-
       console.debug("Bokeh: injecting script tag for BokehJS library: ", url);
       document.head.appendChild(element);
     }
-  };var element = document.getElementById("1002");
+  };var element = document.getElementById("1001");
   if (element == null) {
-    console.error("Bokeh: ERROR: autoload.js configured with elementid '1002' but no matching script tag was found. ")
+    console.error("Bokeh: ERROR: autoload.js configured with elementid '1001' but no matching script tag was found. ")
     return false;
   }
 
@@ -713,7 +714,7 @@ var element = document.currentScript.previousSibling.previousSibling;
   }
 
 
-  var js_urls = ["https://cdn.bokeh.org/bokeh/dev/bokeh-2.0.0rc1.min.js", "https://cdn.bokeh.org/bokeh/dev/bokeh-widgets-2.0.0rc1.min.js", "https://cdn.bokeh.org/bokeh/dev/bokeh-tables-2.0.0rc1.min.js", "https://cdn.bokeh.org/bokeh/dev/bokeh-gl-2.0.0rc1.min.js"];
+  var js_urls = ["https://cdn.pydata.org/bokeh/release/bokeh-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-widgets-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-tables-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-gl-1.4.0.min.js"];
   var css_urls = [];
 
 
@@ -742,7 +743,7 @@ var element = document.currentScript.previousSibling.previousSibling;
       console.log("Bokeh: BokehJS failed to load within specified timeout.");
       root._bokeh_failed_load = true;
     } else if (force !== true) {
-      var cell = $(document.getElementById("1002")).parents('.cell').data().cell;
+      var cell = $(document.getElementById("1001")).parents('.cell').data().cell;
       cell.output_area.append_execute_result(NB_LOAD_WARNING)
     }
 
@@ -764,7 +765,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <h2>Simple Isothermal/Constant <span class="math notranslate nohighlight">\(K_{z}\)</span> Example<a class="headerlink" href="#Simple-Isothermal/Constant-K_{z}-Example" title="Permalink to this headline">¶</a></h2>
 <p>Let’s take the isothermal example from the first tutorial to begin gaining intuition for using the code</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -784,18 +785,27 @@ var element = document.currentScript.previousSibling.previousSibling;
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-[&#39;Al2O3&#39;, &#39;Cr&#39;, &#39;Fe&#39;, &#39;Mg2SiO4&#39;, &#39;MgSiO3&#39;, &#39;TiO2&#39;]
+[&#39;Cr&#39;, &#39;Fe&#39;, &#39;Mg2SiO4&#39;, &#39;MgSiO3&#39;, &#39;TiO2&#39;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/Users/nbatalh1/Documents/codes/VIRGA/virga/virga/root_functions.py:227: RuntimeWarning: divide by zero encountered in log10
+  return np.log10(pv) - np.log10(partial_p)
 </pre></div></div>
 </div>
 <div class="section" id="Define-the-Atmosphere-Class">
 <h3>Define the <code class="docutils literal notranslate"><span class="pre">Atmosphere</span> <span class="pre">Class</span></code><a class="headerlink" href="#Define-the-Atmosphere-Class" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -810,7 +820,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <div class="section" id="Set-gravity-and-the-P/T/Kz-profile">
 <h3>Set gravity and the P/T/Kz profile<a class="headerlink" href="#Set-gravity-and-the-P/T/Kz-profile" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -824,7 +834,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -839,7 +849,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <h4>The minimum values for <code class="docutils literal notranslate"><span class="pre">kz</span></code><a class="headerlink" href="#The-minimum-values-for-kz" title="Permalink to this headline">¶</a></h4>
 <p>There is a parameter called <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> in the ptk function. The default value is <code class="docutils literal notranslate"><span class="pre">kz_min=1e5</span></code>. This number isn’t necessarily a hard and fast rule, but it does avoid numerical instabilities. Another thing to note is that <strong>this excludes negative kz values</strong>. The code will alert you if you are tripping the <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> reset.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -877,7 +887,7 @@ ptk(df=None, filename=None, kz_min=100000.0, **pd_kwargs) method of virga.justdo
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -903,23 +913,26 @@ Overwriting some Kz values to minimum value set by kz_min
 <div class="section" id="Run-the-code">
 <h3>Run the code<a class="headerlink" href="#Run-the-code" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1">#start with the simplest output</span>
+<span></span><span class="c1">#directory where mieff files are</span>
+<span class="n">mieff_directory</span> <span class="o">=</span> <span class="s1">&#39;/Users/nbatalh1/Documents/data/virga/&#39;</span>
+
+<span class="c1">#start with the simplest output</span>
 <span class="c1">#get total opacity, single scattering, asymmetry, and individual optical depths</span>
-<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span><span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="s1">&#39;/Users/crooney/Documents/Clouds/mieff_files&#39;</span><span class="p">)</span>
+<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span><span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#get full dictionary output</span>
-<span class="n">all_out</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="s1">&#39;/Users/crooney/Documents/Clouds/mieff_files&#39;</span><span class="p">)</span>
+<span class="n">all_out</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -929,7 +942,7 @@ Overwriting some Kz values to minimum value set by kz_min
 <h2>Exploring <code class="docutils literal notranslate"><span class="pre">dict</span></code> Output<a class="headerlink" href="#Exploring-dict-Output" title="Permalink to this headline">¶</a></h2>
 <p>There are many things to explore in the <code class="docutils literal notranslate"><span class="pre">dict</span></code> output. In the next tutorial, we will reproduce some of the most common plots used in papers to analyze cloud runs.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -939,12 +952,12 @@ Overwriting some Kz values to minimum value set by kz_min
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &#39;temperature_unit&#39;, &#39;wave&#39;, &#39;wave_unit&#39;, &#39;condensate_mmr&#39;, &#39;cond_plus_gas_mmr&#39;, &#39;mean_particle_r&#39;, &#39;droplet_eff_r&#39;, &#39;r_units&#39;, &#39;column_density&#39;, &#39;column_density_unit&#39;, &#39;opd_per_layer&#39;, &#39;single_scattering&#39;, &#39;asymmetry&#39;, &#39;opd_by_gas&#39;, &#39;condensibles&#39;, &#39;scalar_inputs&#39;])
+dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &#39;temperature_unit&#39;, &#39;wave&#39;, &#39;wave_unit&#39;, &#39;condensate_mmr&#39;, &#39;cond_plus_gas_mmr&#39;, &#39;mean_particle_r&#39;, &#39;droplet_eff_r&#39;, &#39;r_units&#39;, &#39;column_density&#39;, &#39;column_density_unit&#39;, &#39;opd_per_layer&#39;, &#39;single_scattering&#39;, &#39;asymmetry&#39;, &#39;opd_by_gas&#39;, &#39;condensibles&#39;, &#39;scalar_inputs&#39;, &#39;altitude&#39;, &#39;layer_thickness&#39;, &#39;z_unit&#39;])
 </pre></div></div>
 </div>
 <p>Hopefully the names of the <code class="docutils literal notranslate"><span class="pre">dict</span></code> elements are self explanatory. If not, here is a brief description of each. <code class="docutils literal notranslate"><span class="pre">nl</span></code>=number of layers, <code class="docutils literal notranslate"><span class="pre">nw</span></code>=number of wavelengths, <code class="docutils literal notranslate"><span class="pre">ng</span></code>=number of gases.</p>
@@ -953,12 +966,31 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 <li><p><code class="docutils literal notranslate"><span class="pre">cond_plus_gas_mmr</span></code>(nl x ng): Mean mass mixing ratio of the consensate plus the vapor. See <code class="docutils literal notranslate"><span class="pre">qt</span></code> in A&amp;M 01 Eqn. 7.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mean_particle_r</span></code>(nl x ng): Geometric mean particle radius. See <code class="docutils literal notranslate"><span class="pre">r_g</span></code> in A&amp;M 01 Eqn. 13.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">droplet_eff_r</span></code>(nl x ng): Effetive (area-weighted) droplet radius. See <code class="docutils literal notranslate"><span class="pre">r_eff</span></code> in A&amp;M 01 Eqn. 17</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">column_density</span></code>(nl x ng): Total number concentration of particles. See <code class="docutils literal notranslate"><span class="pre">N</span></code> in A&amp;M 01 Eqn. 14</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">column_density</span></code>(nl x ng): Total number concentration of particles PER LAYER. See <code class="docutils literal notranslate"><span class="pre">N</span></code> in A&amp;M 01 Eqn. 14</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">opd_per_layer</span></code>(nl x nw): Total extinction PER layer. This includes all gases.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">single_scattering</span></code>(nl x nw): Total single scattering albedo</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">asymmetry</span></code>(nl x nw): Total asymmetry</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">opd_by_gas</span></code>(nl x ng): Optical depth for conservative geometric scatteres separated by gas. E.g. <a class="reference external" href="https://arxiv.org/pdf/1206.4313.pdf">Fig 7 in Morley+2012</a></p></li>
 </ul>
+<p>Additionally, scalar input contains some of the original input</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">all_out</span><span class="p">[</span><span class="s1">&#39;scalar_inputs&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{&#39;mh&#39;: 1, &#39;mmw&#39;: 2.2, &#39;fsed&#39;: 0.1, &#39;sig&#39;: 2.0, &#39;nrad&#39;: 40, &#39;rmin&#39;: 1e-05}
+</pre></div></div>
+</div>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
