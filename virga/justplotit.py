@@ -336,8 +336,8 @@ def all_optics(out):
     Three bokeh plots with the single scattering, optical depth, and assymetry maps
     """
     #get into DataFrame format
-    dat01 = pyeddy.picaso_format(out['opd_per_layer'],
-                      out['asymmetry'],out['single_scattering'])
+    dat01 = pyeddy.picaso_format(out['opd_per_layer'],out['single_scattering'],
+                      out['asymmetry'])
 
     nwno=len(out['wave'])
     nlayer=len(out['pressure'])
@@ -397,7 +397,7 @@ def all_optics(out):
 
     f01b = figure(x_range=[0, yr], y_range=[0,xr],
                            x_axis_label=wavelength_label, y_axis_label=pressure_label,
-                           title="Assymetry Parameter",
+                           title="Asymmetry Parameter",
                           plot_width=300, plot_height=300)
 
     f01b.image(image=[scat01],  color_mapper=color_mapper, x=0,y=0,dh=xr,dw =yr )
