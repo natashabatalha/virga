@@ -270,6 +270,10 @@ def solve_force_balance(solve_for, temp, grav, mw_atmos, mfp, visc, t, p, rhop, 
         atmospheric pressure (dyne/cm^2)
     rhop : float 
         density of particle (g/cm^3)
+    lo : float
+        lower bound for root-finder
+    hi : float
+        upper bound for root-finder
     Stokes : bool
         True = use Stokes drag approximation for Re<1
     gas_kinetic: bool
