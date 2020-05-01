@@ -4,7 +4,7 @@ from scipy import optimize
 import numpy as np
 import pandas as pd
 from . import  pvaps
-from .root_functions import vfall, vfall_find_root, find_rg, moment
+from .root_functions import vfall, vfall_find_root, find_rg, moment, solve_force_balance
 import time
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
@@ -253,6 +253,8 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     ndz = np.zeros(len(qc_out))
     qc_path = 0.
     t1 = time.time()
+    og_vfall = False
+    Stokes = False; gas_kinetic = True
     for i in range(len(qc_out)):
 
         if qc_out[i] == 0.0: # layer is cloud free
@@ -266,15 +268,22 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             while find_root:
                 try:
                     P = p_out[i]; T = T_P(p_out[i]); k = kz[i]
-                    rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
-                        args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
+                    if og_vfall:
+                        rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+                            args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
+                    else:
+                        rw_temp = solve_force_balance("rw", w_convect(T, P, k), gravity, mw_atmos, mfp(T, P),
+                                                    visc(T), T, P, rho_p, rlo, rhi, Stokes, gas_kinetic)
                     find_root = False
                 except ValueError:
                     rlo = rlo/10
                     rhi = rhi*10
 
             #fall velocity particle radius 
-            rw[i] = rw_temp.root
+            if og_vfall:
+                rw[i] = rw_temp.root
+            else:
+                rw[i] = rw_temp
     
             #   geometric std dev of lognormal size distribution ** sig is the geometric std dev
             lnsig2 = 0.5*np.log( sig )**2
@@ -284,19 +293,28 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             if fsed > 1 :
 
                 #   Bulk of precip at r > rw: exponent between rw and rw*sig
-                alpha = (np.log(
-                                vfall( rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p )
-                                / w_convect(T, P, k) )
-                                    / np.log( sig_alpha ))
+                if og_vfall:
+                    vf = vfall( rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p )
+                else:
+                    vlo = 1e0; vhi = 1e6
+                    vf = solve_force_balance("vfall", rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P),
+                                                    visc(T), T, P, rho_p, vlo, vhi, Stokes, gas_kinetic)
+                alpha = (np.log( vf
+                                    / w_convect(T, P, k) )
+                                        / np.log( sig_alpha ))
 
             else:
                 #   Bulk of precip at r < rw: exponent between rw/sig and rw
+                if og_vfall:
+                    vf = vfall( rw[i]/sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p )
+                else:
+                    vlo = 1e0; vhi = 1e6
+                    vf = solve_force_balance("vfall", rw[i]/sig_alpha, gravity, mw_atmos, mfp(T, P),
+                                                    visc(T), T, P, rho_p, vlo, vhi, Stokes, gas_kinetic)
                 alpha = (np.log(
-                                w_convect(T, P, k) / vfall( rw[i]/sig_alpha, gravity, mw_atmos, mfp(T, P),
-                                    visc(T), T, P, rho_p) )
+                                w_convect(T, P, k) / vf )
                                         / np.log( sig_alpha ))
 
-                # did we want to take the average of these two alphas in our calculation?
 
             if analytical_rg:
                 #     EQN. 13 A&M 
