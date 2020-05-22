@@ -126,7 +126,6 @@ def vfall(r, grav,mw_atmos,mfp,visc,
     #visc is eqn. B2 in A&M but is computed in `calc_qc`
     #also eqn 10-104 in Pruppacher & klett 1978
     vfall_r = beta_slip*(2.0/9.0)*drho*grav*r**2 / visc
-    #vfall_r = (2.0/9.0)*drho*grav*r**2 / visc
 
     #compute reynolds number for low reynolds number case
     reynolds = 2.0*r*rho_atmos*vfall_r / visc
@@ -174,7 +173,7 @@ def vfall_find_root(r, grav=None,mw_atmos=None,mfp=None,visc=None,
 
     return vfall_r - w_convect
 
-def force_balance(vf, r, grav, mw_atmos, mfp, visc, t, p, rhop, Stokes=False, gas_kinetic=False):
+def force_balance(vf, r, grav, mw_atmos, mfp, visc, t, p, rhop, gas_kinetics=True):
     """"
     Define force balance for spherical particles falling in atmosphere, namely equate
     gravitational and viscous drag forces.
@@ -204,10 +203,6 @@ def force_balance(vf, r, grav, mw_atmos, mfp, visc, t, p, rhop, Stokes=False, ga
         atmospheric pressure (dyne/cm^2)
     rhop : float 
         density of particle (g/cm^3)
-    Stokes : bool
-        True = use Stokes drag approximation for Re<1
-    gas_kinetic: bool
-        Option to include gas kinetic effects (needs more study)
 
     """
 
@@ -219,28 +214,24 @@ def force_balance(vf, r, grav, mw_atmos, mfp, visc, t, p, rhop, Stokes=False, ga
     a2 = 0.293; b2 = 0.06
     b3 = 3.45    
 
-    # include gas kinetic effects through slip factor ** check this
+    # include gas kinetic effects through slip factor 
     knudsen = mfp / r
     beta_slip = 1. + 1.26*knudsen 
-    if gas_kinetic:
+    if gas_kinetics:
         vf = vf/beta_slip
                  
     # Reynolds number
     Re = rho_atmos * vf * 2 * r /  visc
 
-    # can use Stokes drag approximation for small Reynolds numbers
-    if Stokes and Re<=1:
-        RHS = 6 * np.pi * visc * r * vf
     # Khan-Richardson approximation for drag coefficient is valid for 1e-2 < Re < 1e5
-    else:
-        RHS = (a1 * Re**b1 + a2 * Re**b2)**b3 * rho_atmos * np.pi * r**2 * vf**2 
+    RHS = (a1 * Re**b1 + a2 * Re**b2)**b3 * rho_atmos * np.pi * r**2 * vf**2 
        
     # gravitational force
     LHS = 4 * np.pi * r**3 * (rhop-rho_atmos) * grav / 3 
 
     return LHS - RHS
 
-def solve_force_balance(solve_for, temp, grav, mw_atmos, mfp, visc, t, p, rhop, lo, hi, Stokes, gas_kinetic):
+def solve_force_balance(solve_for, temp, grav, mw_atmos, mfp, visc, t, p, rhop, lo, hi):
     """
     This can be used to equate gravitational and viscous drag forces to find either
         (a) fallspeed for a spherical particle of given radius, or
@@ -274,10 +265,6 @@ def solve_force_balance(solve_for, temp, grav, mw_atmos, mfp, visc, t, p, rhop, 
         lower bound for root-finder
     hi : float
         upper bound for root-finder
-    Stokes : bool
-        True = use Stokes drag approximation for Re<1
-    gas_kinetic: bool
-        Option to include gas kinetic effects (needs more study)
 
     Returns
     ______
@@ -287,11 +274,9 @@ def solve_force_balance(solve_for, temp, grav, mw_atmos, mfp, visc, t, p, rhop, 
 
     def force_balance_new(u):
         if solve_for is "vfall":
-            return force_balance(u, temp, grav, mw_atmos, mfp, visc, t, p, rhop, 
-                                    Stokes, gas_kinetic)
+            return force_balance(u, temp, grav, mw_atmos, mfp, visc, t, p, rhop) 
         elif solve_for is "rw":
-            return force_balance(temp, u, grav, mw_atmos, mfp, visc, t, p, rhop, 
-                                    Stokes, gas_kinetic)
+            return force_balance(temp, u, grav, mw_atmos, mfp, visc, t, p, rhop) 
 
     soln = optimize.root_scalar(force_balance_new, bracket=[lo, hi], method='brentq') 
 

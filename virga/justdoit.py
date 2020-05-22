@@ -6,7 +6,7 @@ import os
 from scipy import optimize 
 import PyMieScatt as ps
 
-from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t
+from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t, solve_force_balance
 from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
@@ -14,7 +14,8 @@ from . import pvaps
 from .direct_mmr_solver import direct_solver
 
 
-def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True):
+def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True):
+
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -29,6 +30,8 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
         Option to view full output as dictionary
     og_solver : bool
         Option to change mmr solver (True = original eddysed, False = new direct solver)
+    direct_tol : float 
+        Tolerance for direct solver
     refine_TP : bool
         Option to refine temperature-pressure profile for direct solver 
     analytical_rg : bool
@@ -88,7 +91,8 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     if og_solver:
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig,
+                                             og_vfall)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
@@ -97,7 +101,8 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     else:
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP, analytical_rg)
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, 
+                                             direct_tol, refine_TP, og_vfall, analytical_rg)
 
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
@@ -264,7 +269,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, og_vfall=True, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -391,14 +396,15 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     #q_below from this output for the next routine
                     qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
                         t_bot,t_base, p_bot, p_base,
-                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
+                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh,
+                         og_vfall
                      )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
+                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, og_vfall
              )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -406,7 +412,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, og_vfall):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -555,7 +561,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed,sig,mh)
+                        rho_p,w_convect,fsed,sig,mh, og_vfall)
 
 
             #   vertical sums
@@ -606,7 +612,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed,sig,mh):
+    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, og_vfall=True):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -744,15 +750,20 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         find_root = True
         while find_root:
             try:
-                rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+                if og_vfall:
+                    rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
                             args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
+                else:
+                    rw_temp = solve_force_balance("rw", w_convect, gravity, mw_atmos, mfp,
+                                                    visc, t_layer, p_layer, rho_p, rlo, rhi)
                 find_root = False
             except ValueError:
                 rlo = rlo/10
                 rhi = rhi*10
 
         #fall velocity particle radius 
-        rw_layer = rw_layer.root
+        if og_vfall: rw_layer = rw_temp.root
+        else: rw_layer = rw_temp
         
         #   geometric std dev of lognormal size distribution
         lnsig2 = 0.5*np.log( sig )**2
@@ -760,18 +771,22 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         sig_alpha = np.max( [1.1, sig] )    
 
         if fsed > 1 :
-
             #   Bulk of precip at r > rw: exponent between rw and rw*sig
-            alpha = (np.log(
-                            vfall( rw_layer*sig_alpha,gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p ) 
-                            / w_convect )
-                                / np.log( sig_alpha ))
-
+            r_ = rw_layer*sig_alpha
         else:
             #   Bulk of precip at r < rw: exponent between rw/sig and rw
-            alpha = (np.log(
-                            w_convect / vfall( rw_layer/sig_alpha,gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p) )
-                                / np.log( sig_alpha ))
+            r_ = rw_layer/sig_alpha
+
+        if og_vfall:
+            vf = vfall(r_, gravity, mw_atmos, mfp, visc, t_layer, p_layer,  rho_p)
+        else:
+            vlo = 1e0; vhi = 1e6
+            vf = solve_force_balance("vfall", r_, gravity, mw_atmos, mfp,
+                                                visc, t_layer, p_layer, rho_p, vlo, vhi)
+
+        alpha = (np.log( vf / w_convect )
+                             / np.log( r_ / rw_layer ))
+
 
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
