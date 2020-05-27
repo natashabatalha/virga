@@ -4,11 +4,13 @@ from scipy import optimize
 import numpy as np
 import pandas as pd
 from . import  pvaps
-from .root_functions import vfall, vfall_find_root, find_rg, moment
+from .root_functions import vfall, vfall_find_root, find_rg, moment, solve_force_balance
 import time
+from . import justdoit as jdi
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
-                        gravity, kzz, fsed, mh, sig, refine_TP = True, analytical_rg = True):
+                        gravity, kzz, fsed, mh, sig, rmin, nrad, tol = 1e-15, refine_TP = True,
+                        og_vfall=True, analytical_rg = True):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -40,6 +42,8 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
+    tol : float 
+        Tolerance for direct solver
     refine_TP : bool
         Option to refine temperature-pressure profile for direct solver 
     analytical_rg : bool
@@ -91,7 +95,8 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     for i, igas in zip(range(ngas), condensibles):
         gas_name = igas
         qc, qt, rg, reff, ndz, dz, qc_path[i] = calc_qc(z, P_z, T_z, T_P, kz,
-            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, analytical_rg)
+            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, rmin, nrad, tol,
+            og_vfall, analytical_rg)
 
         # generate qc values for original pressure data
         qc_out[:,i] = interp1d(pres, qc)(pres_out)
@@ -106,7 +111,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     return (qc_out, qt_out, rg_out, reff_out, ndz_out, qc_path, pres_out, temp_out, z_out)
 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
-                    mh, fsed, sig, analytical_rg, supsat=0):
+                    mh, fsed, sig, rmin, nrad, tol, og_vfall=True, analytical_rg=True, supsat=0):
     """
     Calculate condensate optical depth and effective radius for atmosphere,
     assuming geometric scatterers. 
@@ -139,6 +144,8 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         Sedimentation efficiency (unitless)
     sig : float 
         Width of the log normal particle distrubtion 
+    tol : float 
+        Tolerance for direct solver
     analytical_rg : bool
         Option to use analytical expression for rg, or alternatively deduce rg from calculation
         Calculation option will be most useful for future inclusions of alternative particle size distributions
@@ -230,7 +237,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         return - fsed *  qc_val / mixl(T, P)
 
     sol = solve_ivp(lambda t, y: AM4(t, y), [z[0], z[len(z)-1]], [q_below], method = "RK23", 
-            rtol = 1e-12, atol = 1e-15, dense_output=True, t_eval=z)
+            rtol = 1e-12, atol = tol, dense_output=True, t_eval=z)
     qt = sol.sol
 
     qc_out = np.zeros(len(z))
@@ -252,7 +259,6 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     reff = np.zeros(len(qc_out))
     ndz = np.zeros(len(qc_out))
     qc_path = 0.
-    t1 = time.time()
     for i in range(len(qc_out)):
 
         if qc_out[i] == 0.0: # layer is cloud free
@@ -266,37 +272,67 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             while find_root:
                 try:
                     P = p_out[i]; T = T_P(p_out[i]); k = kz[i]
-                    rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
-                        args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
+                    if og_vfall:
+                        rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+                            args=(gravity, mw_atmos, mfp(T, P),  visc(T), T, P, rho_p, w_convect(T, P, k)))
+                    else:
+                        rw_temp = solve_force_balance("rw", w_convect(T, P, k), gravity, mw_atmos, mfp(T, P),
+                                                    visc(T), T, P, rho_p, rlo, rhi)
                     find_root = False
                 except ValueError:
                     rlo = rlo/10
                     rhi = rhi*10
 
             #fall velocity particle radius 
-            rw[i] = rw_temp.root
+            if og_vfall: rw[i] = rw_temp.root
+            else: rw[i] = rw_temp
     
             #   geometric std dev of lognormal size distribution ** sig is the geometric std dev
             lnsig2 = 0.5*np.log( sig )**2
             #   sigma floor for the purpose of alpha calculation
             sig_alpha = np.max( [1.1, sig] )    
 
-            if fsed > 1 :
+            #if fsed > 1 :
+            #    #   Bulk of precip at r > rw: exponent between rw and rw*sig
+            #    r_ = rw[i]*sig_alpha
+            #else:
+            #    #   Bulk of precip at r < rw: exponent between rw/sig and rw
+            #    r_ = rw[i]/sig_alpha
 
-                #   Bulk of precip at r > rw: exponent between rw and rw*sig
-                alpha = (np.log(
-                                vfall( rw[i]*sig_alpha, gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p )
-                                / w_convect(T, P, k) )
-                                    / np.log( sig_alpha ))
+            #if og_vfall:
+            #    vf = vfall(r_, gravity, mw_atmos, mfp(T,P), visc(T), T, P,  rho_p)
+            #else:
+            #    vlo = 1e0; vhi = 1e6
+            #    vf = solve_force_balance("vfall", r_, gravity, mw_atmos, mfp(T, P),
+            #                                        visc(T), T, P, rho_p, vlo, vhi)
 
-            else:
-                #   Bulk of precip at r < rw: exponent between rw/sig and rw
-                alpha = (np.log(
-                                w_convect(T, P, k) / vfall( rw[i]/sig_alpha, gravity, mw_atmos, mfp(T, P),
-                                    visc(T), T, P, rho_p) )
-                                        / np.log( sig_alpha ))
+            #alpha = (np.log( vf / w_convect(T, P, k) )
+            #                     / np.log( r_ / rw[i] ))
 
-                # did we want to take the average of these two alphas in our calculation?
+            #   find alpha for power law fit vf = w(r/rw)^alpha
+            def pow_law(r, alpha):
+                return np.log(w_convect(T, P, k)) + alpha * np.log (r / rw[i]) 
+
+            r_, rup, dr = jdi.get_r_grid(r_min = rmin, n_radii = nrad)
+            vfall_temp = []
+            for j in range(len(r_)):
+                if og_vfall:
+                    vfall_temp.append(vfall(r_[j], gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p))
+                else:
+                    vlo = 1e0; vhi = 1e6
+                    find_root = True
+                    while find_root:
+                        try:
+                            vfall_temp.append(solve_force_balance("vfall", r_[j], gravity, mw_atmos, 
+                                mfp(T, P), visc(T), T, P, rho_p, vlo, vhi))
+                            find_root = False
+                        except ValueError:
+                            vlo = vlo/10
+                            vhi = vhi*10
+
+            pars, cov = optimize.curve_fit(f=pow_law, xdata=r_, ydata=np.log(vfall_temp), p0=[0], 
+                                bounds=(-np.inf, np.inf))
+            alpha = pars[0]
 
             if analytical_rg:
                 #     EQN. 13 A&M 
@@ -336,7 +372,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
 
     return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], dz[::-1], qc_path)
 
-def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP, eps=10):
+def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP=True, eps=10):
     """
     Refine temperature pressure profile according to maximum temperature-difference
     between pressure layers.
