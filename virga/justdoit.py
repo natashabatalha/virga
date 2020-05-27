@@ -91,7 +91,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_to
     if og_solver:
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig,
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii,
                                              og_vfall)
         pres_out = atmo.p
         temp_out = atmo.t
@@ -101,14 +101,14 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_to
     else:
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, 
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii, 
                                              direct_tol, refine_TP, og_vfall, analytical_rg)
 
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
-                                       dr,qext, qscat,cos_qscat,atmo.sig)
+                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii)
 
     if as_dict:
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
@@ -145,7 +145,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "z_unit":'cm'
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -269,7 +269,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, og_vfall=True, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, rmin, nrad, og_vfall=True, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -396,7 +396,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     #q_below from this output for the next routine
                     qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
                         t_bot,t_base, p_bot, p_base,
-                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh,
+                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad,
                          og_vfall
                      )
 
@@ -404,7 +404,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, og_vfall
+                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad, og_vfall
              )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -412,7 +412,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, og_vfall):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, rmin, nrad, og_vfall):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -561,7 +561,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed,sig,mh, og_vfall)
+                        rho_p,w_convect,fsed,sig,mh, rmin, nrad, og_vfall)
 
 
             #   vertical sums
@@ -612,7 +612,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, og_vfall=True):
+    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, rmin, nrad, og_vfall=True):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -770,22 +770,47 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #   sigma floor for the purpose of alpha calculation
         sig_alpha = np.max( [1.1, sig] )    
 
-        if fsed > 1 :
-            #   Bulk of precip at r > rw: exponent between rw and rw*sig
-            r_ = rw_layer*sig_alpha
-        else:
-            #   Bulk of precip at r < rw: exponent between rw/sig and rw
-            r_ = rw_layer/sig_alpha
+        #if fsed > 1 :
+        #    #   Bulk of precip at r > rw: exponent between rw and rw*sig
+        #    r_ = rw_layer*sig_alpha
+        #else:
+        #    #   Bulk of precip at r < rw: exponent between rw/sig and rw
+        #    r_ = rw_layer/sig_alpha
 
-        if og_vfall:
-            vf = vfall(r_, gravity, mw_atmos, mfp, visc, t_layer, p_layer,  rho_p)
-        else:
-            vlo = 1e0; vhi = 1e6
-            vf = solve_force_balance("vfall", r_, gravity, mw_atmos, mfp,
-                                                visc, t_layer, p_layer, rho_p, vlo, vhi)
+        #if og_vfall:
+        #    vf = vfall(r_, gravity, mw_atmos, mfp, visc, t_layer, p_layer,  rho_p)
+        #else:
+        #    vlo = 1e0; vhi = 1e6
+        #    vf = solve_force_balance("vfall", r_, gravity, mw_atmos, mfp,
+        #                                        visc, t_layer, p_layer, rho_p, vlo, vhi)
 
-        alpha = (np.log( vf / w_convect )
-                             / np.log( r_ / rw_layer ))
+        #alpha = (np.log( vf / w_convect )
+        #                     / np.log( r_ / rw_layer ))
+
+        #   find alpha for power law fit vf = w(r/rw)^alpha
+        def pow_law(r, alpha):
+            return np.log(w_convect) + alpha * np.log (r / rw_layer) 
+
+        r_, rup, dr = get_r_grid(r_min = rmin, n_radii = nrad)
+        vfall_temp = []
+        for j in range(len(r_)):
+            if og_vfall:
+                vfall_temp.append(vfall(r_[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p))
+            else:
+                vlo = 1e0; vhi = 1e6
+                find_root = True
+                while find_root:
+                    try:
+                        vfall_temp.append(solve_force_balance("vfall", r_[j], gravity, mw_atmos, 
+                            mfp, visc, t_layer, p_layer, rho_p, vlo, vhi))
+                        find_root = False
+                    except ValueError:
+                        vlo = vlo/10
+                        vhi = vhi*10
+
+        pars, cov = optimize.curve_fit(f=pow_law, xdata=r_, ydata=np.log(vfall_temp), p0=[0], 
+                            bounds=(-np.inf, np.inf))
+        alpha = pars[0]
 
 
         #     EQN. 13 A&M 

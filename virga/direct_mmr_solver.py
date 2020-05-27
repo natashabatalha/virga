@@ -6,9 +6,10 @@ import pandas as pd
 from . import  pvaps
 from .root_functions import vfall, vfall_find_root, find_rg, moment, solve_force_balance
 import time
+from . import justdoit as jdi
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
-                        gravity, kzz, fsed, mh, sig, tol = 1e-15, refine_TP = True,
+                        gravity, kzz, fsed, mh, sig, rmin, nrad, tol = 1e-15, refine_TP = True,
                         og_vfall=True, analytical_rg = True):
     """
     Given an atmosphere and condensates, calculate size and concentration
@@ -94,7 +95,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     for i, igas in zip(range(ngas), condensibles):
         gas_name = igas
         qc, qt, rg, reff, ndz, dz, qc_path[i] = calc_qc(z, P_z, T_z, T_P, kz,
-            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, tol,
+            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, rmin, nrad, tol,
             og_vfall, analytical_rg)
 
         # generate qc values for original pressure data
@@ -110,7 +111,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     return (qc_out, qt_out, rg_out, reff_out, ndz_out, qc_path, pres_out, temp_out, z_out)
 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
-                    mh, fsed, sig, tol, og_vfall=True, analytical_rg=True, supsat=0):
+                    mh, fsed, sig, rmin, nrad, tol, og_vfall=True, analytical_rg=True, supsat=0):
     """
     Calculate condensate optical depth and effective radius for atmosphere,
     assuming geometric scatterers. 
@@ -291,22 +292,47 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             #   sigma floor for the purpose of alpha calculation
             sig_alpha = np.max( [1.1, sig] )    
 
-            if fsed > 1 :
-                #   Bulk of precip at r > rw: exponent between rw and rw*sig
-                r_ = rw[i]*sig_alpha
-            else:
-                #   Bulk of precip at r < rw: exponent between rw/sig and rw
-                r_ = rw[i]/sig_alpha
+            #if fsed > 1 :
+            #    #   Bulk of precip at r > rw: exponent between rw and rw*sig
+            #    r_ = rw[i]*sig_alpha
+            #else:
+            #    #   Bulk of precip at r < rw: exponent between rw/sig and rw
+            #    r_ = rw[i]/sig_alpha
 
-            if og_vfall:
-                vf = vfall(r_, gravity, mw_atmos, mfp(T,P), visc(T), T, P,  rho_p)
-            else:
-                vlo = 1e0; vhi = 1e6
-                vf = solve_force_balance("vfall", r_, gravity, mw_atmos, mfp(T, P),
-                                                    visc(T), T, P, rho_p, vlo, vhi)
+            #if og_vfall:
+            #    vf = vfall(r_, gravity, mw_atmos, mfp(T,P), visc(T), T, P,  rho_p)
+            #else:
+            #    vlo = 1e0; vhi = 1e6
+            #    vf = solve_force_balance("vfall", r_, gravity, mw_atmos, mfp(T, P),
+            #                                        visc(T), T, P, rho_p, vlo, vhi)
 
-            alpha = (np.log( vf / w_convect(T, P, k) )
-                                 / np.log( r_ / rw[i] ))
+            #alpha = (np.log( vf / w_convect(T, P, k) )
+            #                     / np.log( r_ / rw[i] ))
+
+            #   find alpha for power law fit vf = w(r/rw)^alpha
+            def pow_law(r, alpha):
+                return np.log(w_convect(T, P, k)) + alpha * np.log (r / rw[i]) 
+
+            r_, rup, dr = jdi.get_r_grid(r_min = rmin, n_radii = nrad)
+            vfall_temp = []
+            for j in range(len(r_)):
+                if og_vfall:
+                    vfall_temp.append(vfall(r_[j], gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p))
+                else:
+                    vlo = 1e0; vhi = 1e6
+                    find_root = True
+                    while find_root:
+                        try:
+                            vfall_temp.append(solve_force_balance("vfall", r_[j], gravity, mw_atmos, 
+                                mfp(T, P), visc(T), T, P, rho_p, vlo, vhi))
+                            find_root = False
+                        except ValueError:
+                            vlo = vlo/10
+                            vhi = vhi*10
+
+            pars, cov = optimize.curve_fit(f=pow_law, xdata=r_, ydata=np.log(vfall_temp), p0=[0], 
+                                bounds=(-np.inf, np.inf))
+            alpha = pars[0]
 
             if analytical_rg:
                 #     EQN. 13 A&M 
