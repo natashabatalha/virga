@@ -111,17 +111,17 @@ def vfall(r, grav,mw_atmos,mfp,visc,
     drho = rhop - rho_atmos
 
     #Cunningham correction (slip factor for gas kinetic effects)
-    # Cunningham, E., "On the velocity of steady fall of spherical particles through fluid medium," Proc. Roy. Soc. A 83(1910)357
-    # Cunningham derived a value of 1.26 in the stone ages. In reality, this number is 
-    # a function of the knudsen number. Various studies have derived 
-    # different value for this number (see this citation
-    # https://www.researchgate.net/publication/242470948_A_Novel_Slip_Correction_Factor_for_Spherical_Aerosol_Particles
-    # Within the range of studied values, this 1.26 number changes particle sizes by a few microns
-    # That is A OKAY for the level of accuracy we need. 
+    #Cunningham, E., "On the velocity of steady fall of spherical particles through fluid medium," Proc. Roy. Soc. A 83(1910)357
+    #Cunningham derived a value of 1.26 in the stone ages. In reality, this number is 
+    #a function of the knudsen number. Various studies have derived 
+    #different value for this number (see this citation
+    #https://www.researchgate.net/publication/242470948_A_Novel_Slip_Correction_Factor_for_Spherical_Aerosol_Particles
+    #Within the range of studied values, this 1.26 number changes particle sizes by a few microns
+    #That is A OKAY for the level of accuracy we need. 
     beta_slip = 1. + 1.26*knudsen 
 
-    #   Stokes terminal velocity (low Reynolds number)
-    # EQN B1 in A&M 
+    #Stokes terminal velocity (low Reynolds number)
+    #EQN B1 in A&M 
     #visc is eqn. B2 in A&M but is computed in `calc_qc`
     #also eqn 10-104 in Pruppacher & klett 1978
     vfall_r = beta_slip*(2.0/9.0)*drho*grav*r**2 / visc
