@@ -14,7 +14,8 @@ from . import pvaps
 from .direct_mmr_solver import direct_solver
 
 
-def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True):
+def compute(atmo, directory = None, as_dict = False, og_solver = True, 
+    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True):
 
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
@@ -26,17 +27,22 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_to
         `Atmosphere` class 
     directory : str, optional 
         Directory string that describes where refrind files are 
-    as_dict : bool 
-        Option to view full output as dictionary
-    og_solver : bool
-        Option to change mmr solver (True = original eddysed, False = new direct solver)
-    direct_tol : float 
+    as_dict : bool, optional 
+        Default = False. Option to view full output as dictionary
+    og_solver : bool, optional
+        Default=True. BETA. Contact developers before changing to False.
+         Option to change mmr solver (True = original eddysed, False = new direct solver)
+    direct_tol : float , optional
+        Only used if og_solver =False. Default = True. 
         Tolerance for direct solver
-    refine_TP : bool
+    refine_TP : bool, optional
+        Only used if og_solver =False. 
         Option to refine temperature-pressure profile for direct solver 
-    analytical_rg : bool
+    analytical_rg : bool, optional
+        Only used if og_solver =False. 
         Option to use analytical expression for rg, or alternatively deduce rg from calculation
-        Calculation option will be most useful for future inclusions of alternative particle size distributions
+        Calculation option will be most useful for future 
+        inclusions of alternative particle size distributions
 
     Returns 
     -------
@@ -62,7 +68,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_to
         #Get gas properties including gas mean molecular weight,
         #gas mixing ratio, and the density
         run_gas = getattr(gas_properties, igas)
-        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh)
+        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh)
 
         #Get mie files that are already saved in 
         #directory
@@ -89,17 +95,17 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_to
 
     #   run original eddysed code
     if og_solver:
-        qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
+        qc, qt, rg, reff, ndz, qc_path, mixl = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii,
-                                             og_vfall)
+                                             og_vfall, chf=atmo.chf)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
     
     #   run new, direct solver
     else:
-        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
+        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii, 
                                              direct_tol, refine_TP, og_vfall, analytical_rg)
@@ -113,13 +119,14 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_to
     if as_dict:
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
-                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin, z_out, atmo.dz_layer
+                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin, z_out, atmo.dz_layer, 
+                           mixl, atmo.kz
                            ) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer):
+    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, mixl, kz):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -142,7 +149,11 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
         "altitude":z,
         "layer_thickness":dz_layer,
-        "z_unit":'cm'
+        "z_unit":'cm', 
+        'mixing_length':mixl, 
+        'mixing_length_unit':'cm',
+        'kz':kz, 
+        'kz_unit':'cm^2/s'
     }
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad):
@@ -208,6 +219,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
         for igas in range(ngas):
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
+                
+                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
+                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
+
                 r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
 
@@ -269,7 +284,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, rmin, nrad, og_vfall=True, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, rmin, nrad, og_vfall=True,chf=None,
+    do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -305,10 +321,20 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
+    og_vfall : bool , optional
+        optional, default = True. True does the original fall velocity calculation. 
+        False does the updated one which runs a tad slower but is more consistent.
+        The main effect of turning on False is particle sizes in the upper atmosphere 
+        that are slightly bigger.
     do_virtual : bool,optional 
-        include decrease in condensate mixing ratio below model domain
+        optional, Default = True which adds a virtual layer if the 
+        species condenses below the model domain.
     supsat : float, optional
         Default = 0 , Saturation factor (after condensation)
+    chf : ndarray , optional
+        Default is None. Convective heat flux is only used when the users asks for 
+        Gierasch & Conrath 1985 functional form of kz. 
+
 
     Returns
     -------
@@ -336,12 +362,12 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     rg = np.zeros((nz, ngas))
     reff = np.zeros((nz, ngas))
     ndz = np.zeros((nz, ngas))
+    mixl = np.zeros((nz, ngas))
     qc_path = np.zeros(ngas)
 
     for i, igas in zip(range(ngas), condensibles):
 
         q_below = gas_mmr[i]
-
 
         #include decrease in condensate mixing ratio below model domain
         if do_virtual: 
@@ -353,7 +379,6 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                 pvap = get_pvap(t_bot, mh=mh)
 
             qvs = qvs_factor*pvap/p_bot   
-
             if qvs <= q_below :   
                 #find the pressure at cloud base 
                 #   parameters for finding root 
@@ -369,6 +394,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                 qv_t = t_bot
                 qv_gas_name = igas
                 qv_factor = qvs_factor
+
                 try:
                     p_base = optimize.root_scalar(qvs_below_model, 
                                 bracket=[p_lo, p_hi], method='brentq', 
@@ -392,27 +418,42 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
                     p_layer = 0.5*( p_bot + p_base )
                     t_layer = t_bot + np.log10( p_bot/p_layer )*dtdlnp
+                    #was kz userdefined or is it a function
+                    if callable(kz):
+                        kz_in = kz
+                        chf_in = chf[-1]
+                    else:
+                        kz_in = kz[-1]
+                        chf_in = None
                     #we just need to overwrite 
                     #q_below from this output for the next routine
-                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
+                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below,mixl_o = layer( igas, rho_p[i], t_layer, p_layer, 
                         t_bot,t_base, p_bot, p_base,
-                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad,
-                         og_vfall
-                     )
+                        kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad,
+                        og_vfall, chf = chf_in
+                    )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
+            #was kz userdefined or is it a function
+            if callable(kz):
+                kz_in = kz
+                chf_in = chf[iz+1]
+            else:
+                kz_in = kz[iz+1]
+                chf_in = None
 
-            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
+            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below, mixl[iz,i] = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad, og_vfall
-             )
+                kz_in, gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad,
+                og_vfall, chf = chf_in
+            )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
-    return qc, qt, rg, reff, ndz, qc_path
+    return qc, qt, rg, reff, ndz, qc_path,mixl
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, rmin, nrad, og_vfall):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, rmin, nrad, og_vfall, chf=None):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -451,6 +492,9 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Width of the log normal particle distribution 
     mh : float 
         Metallicity NON log soar (1=1xSolar)
+    chf : float 
+        optional, convective heat flux (only used if kz is defined as a callable
+        function via Geirasch and Conrath 1985 see function kz)
 
     Returns
     -------
@@ -507,14 +551,19 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
     #   atmospheric scale height (cm)
     scale_h = r_atmos * t_layer / gravity    
-
     #   convective mixing length scale (cm): no less than 1/10 scale height
     # Eqn. 6 in A & M 01 
     mixl = np.max( [0.10, lapse_ratio ]) * scale_h
-
+    # We will always assume that the mixing length is just the scale height
+    # unless the user supplies "latent heat" flag in the "callable version"
+    # otherwise we are adding assumptions to the users methodolgy
+    #mixl = scale_h
+    
+    if callable(kz):
+        kz , mixl = kz(scale_h,r_atmos, chf, rho_atmos, c_p, lapse_ratio)
 
     #   scale factor for eddy diffusion: 1/3 is baseline
-    scalef_kz = 1./3.
+    # scalef_kz = 1./3.
 
     #   convective velocity scale (cm/s) from mixing length theory
     w_convect = kz / mixl 
@@ -608,7 +657,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     qc_layer = qc_layer*gravity / dp_layer
     qt_layer = qt_layer*gravity / dp_layer
 
-    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below
+    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below, mixl
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
@@ -723,8 +772,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         while find_root:
             try:
                 qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
-                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
-                                )#, xtol = 1e-20)
+                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf))#,
+                                #xtol = 1e-20)
                 find_root = False
             except ValueError:
                 qlo = qlo/10
@@ -851,27 +900,45 @@ class Atmosphere():
         self.fsed = fsed
         self.sig = sig
 
-    def ptk(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
+    def ptk(self, df = None, filename=None,
+        kz_min=1e5,constant_kz=None,latent_heat=False, 
+        verbose=True, **pd_kwargs):
         """
         Read in file or define dataframe. 
     
         Parameters
         ----------
         df : dataframe or dict
-            Dataframe with "pressure"(bars),"temperature"(K). Should have at least two 
-            columns with names "pressure" and "temperature". Can also include 'kz' in CGS units. 
+            Dataframe with "pressure"(bars),"temperature"(K). MUST have at least two 
+            columns with names "pressure" and "temperature". 
+            Optional columns include the eddy diffusion "kz" in cm^2/s CGS units, and 
+            the convective heat flux 'chf' also in cgs (e.g. sigma_csg T^4)
         filename : str 
             Filename read in. Will be read in with pd.read_csv and should 
-            result in two named headers "pressure"(bars),"temperature"(K). Can also include 'kz' in 
-            CGS units. Use pd_kwargs to ensure file is read in properly.
+            result in two named headers "pressure"(bars),"temperature"(K). 
+            Optional columns include the eddy diffusion "kz" in cm^2/s CGS units, and 
+            the convective heat flux 'chf' also in cgs (e.g. sigma_csg T^4)
+            Use pd_kwargs to ensure file is read in properly.
         kz_min : float, optional
             Minimum Kz value. This will reset everything below kz_min to kz_min. 
             Default = 1e5 cm2/s
+        constant_kz : float, optional
+            Constant value for kz, if kz is supplied in df or filename, 
+            it will inheret that value and not use this constant_value
+            Default = None 
+        latent_heat : bool 
+            optional, Default = False. The latent heat factors into the mixing length. 
+            When False, the mixing length goes as the scale height 
+            When True, the mixing length is scaled by the latent heat 
+            This is ONLY used when a chf (convective heat flux) is supplied         
+        verbose : bool 
+            Default = True, prints out warnings. 
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
             skiprows=3, delim_whitespace=True, header=None, names=["ind","pressure","temperature","kz"]
         """
+        #first read in dataframe, dict or file and sort by pressure
         if not isinstance(df, type(None)):
             if isinstance(df, dict): df = pd.DataFrame(df)
             df = df.sort_values('pressure')
@@ -881,30 +948,64 @@ class Atmosphere():
 
         self.pressure = np.array(df['pressure'])
         self.temperature = np.array(df['temperature'])
+
+        #now get kz
+
+        #option 1) the user has supplied it in their file or dictionary
         if 'kz' in df.keys(): 
             if df.loc[df['kz']<kz_min].shape[0] > 0:
                 df.loc[df['kz']<kz_min] = kz_min
-                print('Overwriting some Kz values to minimum value set by kz_min') 
+                if verbose: print('Overwriting some Kz values to minimum value set by kz_min \n \
+                    You can always turn off these warnings by setting verbose=False') 
             self.kz = np.array(df['kz'])
-        else:
-            print('Kz not supplied. You can either add it as input here with p and t. Or, you can \
-                    add it separately to the `Atmosphere.kz` function')
-            self.kz = np.nan
-        r_atmos = 8.3143e7 / self.mmw
+            self.chf = None
 
-        # itop=iz = [0:-1], ibot = [1:]
+        #option 2) the user wants a constant value
+        elif not isinstance(constant_kz , type(None)):
+            self.kz = np.zeros(df.shape[0]) + constant_kz
+            self.chf = None
+
+        #option 3) the user wants to compute kz based on a convective heat flux 
+        elif 'chf' in df.keys():
+            self.chf =  np.array(df['chf'])
+            def g_c_85(scale_h,r_atmos, chf, rho_atmos, c_p, lapse_ratio):
+                if latent_heat:
+                    #   convective mixing length scale (cm): no less than 1/10 scale height
+                    mixl = np.max( [0.1, lapse_ratio] ) * scale_h
+                else:
+                    #convective mixing length is the scale height
+                    mixl = scale_h
+                #   vertical eddy diffusion coefficient (cm^2/s)
+                #   from Gierasch and Conrath (1985)
+                gc_kzz = ((1./3.) * scale_h * (mixl/scale_h)**(4./3.) * 
+                        ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) 
+                return np.max([gc_kzz, kz_min]), mixl
+
+            #now kz is a function and CHF is not nan
+            self.kz = g_c_85
+
+        #option 4) FAIIIL
+        else:
+            raise Exception("Users can define kz by: \n \
+            1) Adding 'kz' as a column or key to your dataframe dict, or file \n \
+            2) Defining constant-w-altitude kz through the constant_kz input \n  \
+            3) Adding 'chf', the conective heat flux as a column to your \
+            dataframe, dict or file. ")
+
+        r_atmos = 8.3143e7 / self.mmw #USED IN LAYER
+
         #convert bars to dyne/cm^2 
         self.p_top = self.pressure*1e6
         self.t_top = self.temperature 
 
-        dlnp = np.log( self.p_top[1:] / self.p_top[0:-1] )#ag
+        dlnp = np.log( self.p_top[1:] / self.p_top[0:-1] ) #USED IN LAYER
 
         #take pressures at midpoints of layers
-        self.p = 0.5*( self.p_top[1:] + self.p_top[0:-1]) #ag
-        dtdlnp = ( self.t_top[0:-1] - self.t_top[1:] ) / dlnp
-        self.t = self.t_top[1:] + np.log( self.p_top[1:]/self.p )*dtdlnp
+        self.p = 0.5*( self.p_top[1:] + self.p_top[0:-1]) #USED IN LAYER
+        dtdlnp = ( self.t_top[0:-1] - self.t_top[1:] ) / dlnp #USED IN LAYER
+        self.t = self.t_top[1:] + np.log( self.p_top[1:]/self.p )*dtdlnp #USED IN LAYER
 
-        self.scale_h = r_atmos * self.t / self.g
+        self.scale_h = r_atmos * self.t / self.g #USED IN LAYER
 
         self.dz_pmid = self.scale_h * np.log( self.p_top[1:]/self.p )
         self.dz_layer = self.scale_h * dlnp
@@ -913,7 +1014,13 @@ class Atmosphere():
 
         self.z = self.z_top[1:]+self.dz_pmid
 
-    def gravity(self, gravity=None, gravity_unit=None, radius=None, radius_unit=None, mass = None, mass_unit=None):
+    #def get_atmo_parameters(self):
+    #    #convert bars to dyne/cm^2 
+    #    self.p_layer = self.pressure*1e6 #p_top
+    #    self.t_layer = self.temperature  #p_top
+
+    def gravity(self, gravity=None, gravity_unit=None, radius=None, 
+        radius_unit=None, mass = None, mass_unit=None):
         """
         Get gravity based on mass and radius, or gravity inputs 
 
@@ -930,7 +1037,7 @@ class Atmosphere():
         mass : float 
             (Optional) mass of planet 
         mass_unit : astropy.unit
-            (Optional) Unit of mass    
+            (Optional) Unit of mass   
         """
         if (mass is not None) and (radius is not None):
             m = (mass*mass_unit).to(u.g)
@@ -947,21 +1054,33 @@ class Atmosphere():
             raise Exception('Need to specify gravity or radius and mass + additional units')
 
 
-    def kz(self,df = None, constant=None,kz_min = 1e5): 
+    def kz(self,df = None, constant_kz=None, chf = None, kz_min = 1e5, latent_heat=False): 
         """
         Define Kz in CGS. Should be on same grid as pressure. This overwrites whatever was 
         defined in get_pt ! Users can define kz by: 
             1) Defining a DataFrame with keys 'pressure' (in bars), and 'kz'
             2) Defining constant kz 
+            3) Supplying a convective heat flux and prescription for latent_heat
 
         Parameters
         ----------
         df : pandas.DataFrame, dict
             Dataframe or dictionary with 'kz' as one of the fields. 
-        
+        constant_kz : float 
+            Constant value for kz in units of cm^2/s
+        chf : ndarray 
+            Convective heat flux in cgs units (e.g. sigma T^4). This will be used to compute 
+            the kzz using the methodology of Gierasch and Conrath (1985)
+        latent_heat : bool 
+            optional, Default = False. The latent heat factors into the mixing length. 
+            When False, the mixing length goes as the scale height 
+            When True, the mixing length is scaled by the latent heat 
+            This is ONLY used when a chf (convective heat flux) is supplied 
         """
 
         if not isinstance(df, type(None)):
+            #will not need any convective heat flux 
+            self.chf = None
             #reset to minimun value if specified by the user
             if df.loc[df['kz']<kz_min].shape[0] > 0:
                 df.loc[df['kz']<kz_min] = kz_min
@@ -971,18 +1090,29 @@ class Atmosphere():
             if len(self.kz) != len(self.pressure) : 
                 raise Exception('Kzz and pressure are not the same length')
 
-        elif not isinstance(constant, type(None)):
-            self.kz = constant
+        elif not isinstance(constant_kz, type(None)):
+            #will not need any convective heat flux
+            self.chf = None
+            self.kz = constant_kz
             if self.kz<kz_min:
                 self.kz = kz_min
                 print('Overwriting kz constant value to minimum value set by kz_min')
 
+        elif not isinstance(chf, type(None)):
+            def g_c_85(scale_h,r_atmos, chf, rho_atmos, c_p, lapse_ratio):
+                #   convective mixing length scale (cm): no less than 1/10 scale height
+                if latent_heat:
+                    mixl = np.max( 0.1, lapse_ratio ) * scale_h
+                else:
+                    mixl = scale_h
+                #   vertical eddy diffusion coefficient (cm^2/s)
+                #   from Gierasch and Conrath (1985)
+                gc_kzz = ((1./3.) * scale_h * (mixl/scale_h)**(4./3.) * 
+                        ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) 
+                return np.max(gc_kzz, kz_min), mixl
 
-        #   vertical eddy diffusion coefficient (cm^2/s)
-        #   from Gierasch and Conrath (1985)
-        # we are discontinuing this formalism
-        # self.kz = (scalef_kz * scale_h * (mixl/scale_h)**(4./3.) * #when dont know kz
-        #  ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) #when dont know kz
+            self.kz = g_c_85
+            self.chf = chf
 
     def compute(self,directory = None, as_dict = False): 
         """
@@ -1266,4 +1396,6 @@ def hot_jupiter(directory=os.getcwd()):
                   names = ['pressure','temperature','kz'],skiprows=1)
     df.loc[df['pressure']>12.8,'temperature'] = np.linspace(1822,2100,df.loc[df['pressure']>12.8].shape[0])
     return df
+
+
 
