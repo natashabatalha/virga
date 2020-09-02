@@ -83,6 +83,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     temp_out = temperature
     z_out = interp1d(pres, z)(pres_out)
 
+    mixl_out = np.zeros((len(pres_out), ngas))
     qc_out = np.zeros((len(pres_out), ngas))
     qt_out = np.zeros((len(pres_out), ngas))
     rg_out = np.zeros((len(pres_out), ngas))
@@ -94,7 +95,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     # perform calculation on refined TP profile but output values corresponding to initial profile
     for i, igas in zip(range(ngas), condensibles):
         gas_name = igas
-        qc, qt, rg, reff, ndz, dz, qc_path[i] = calc_qc(z, P_z, T_z, T_P, kz,
+        qc, qt, rg, reff, ndz, dz, qc_path[i], mixl = calc_qc(z, P_z, T_z, T_P, kz,
             gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, rmin, nrad, tol,
             og_vfall, analytical_rg)
 
@@ -103,12 +104,13 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
         qt_out[:,i] = interp1d(pres, qt)(pres_out)
         rg_out[:,i] = interp1d(pres, rg)(pres_out)
         reff_out[:,i] = interp1d(pres, reff)(pres_out)
+        mixl_out[:,i] = interp1d(pres, mixl)(pres_out)
 
         ndz_temp = ndz/dz
         dz_new = np.insert(-(z_out[1:]-z_out[:-1]), len(z_out)-1, 1e-8)
         ndz_out[:,i] = interp1d(pres, ndz_temp)(pres_out) * dz_new
 
-    return (qc_out, qt_out, rg_out, reff_out, ndz_out, qc_path, pres_out, temp_out, z_out)
+    return (qc_out, qt_out, rg_out, reff_out, ndz_out, qc_path, pres_out, temp_out, z_out,mixl_out)
 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
                     mh, fsed, sig, rmin, nrad, tol, og_vfall=True, analytical_rg=True, supsat=0):
@@ -240,6 +242,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             rtol = 1e-12, atol = tol, dense_output=True, t_eval=z)
     qt = sol.sol
 
+    mixl_out = np.zeros(len(z))
     qc_out = np.zeros(len(z))
     qt_out = np.zeros(len(z))
     p_out = np.zeros(len(z))
@@ -248,7 +251,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         qt_out[i] = qt(z[i])
         T = T_z(z[i]); P = P_z(z[i])
         qc_out[i] = max([0., qt_out[i] - qvs(T, P)])
-
+        mixl_out[i] =  mixl(T, P)
     #   --------------------------------------------------------------------
     #   Find <rw> corresponding to <w_convect> using function vfall()
 
@@ -370,7 +373,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             qc_path = (qc_path + qc_out[i-1] *
                             ( p_out[i-1] - p_out[i] ) / gravity)
 
-    return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], dz[::-1], qc_path)
+    return (qc_out[::-1], qt_out[::-1], rg[::-1], reff[::-1], ndz[::-1], dz[::-1], qc_path, mixl_out[::-1])
 
 def generate_altitude(pres, temp, kz, gravity, mw_atmos, refine_TP=True, eps=10):
     """
