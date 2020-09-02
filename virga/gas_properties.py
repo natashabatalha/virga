@@ -234,7 +234,7 @@ def Mg2SiO4(mw_atmos, mh = 1,gas_mmr = None,):
 	"""	
 	if mh != 1: raise Exception("Alert: No M/H Dependence in Mg2SiO4 Routine. Consult your local theorist to determine next steps.")
 	if isinstance(gas_mmr, type(None)):
-		gas_mmr =  59.36e-6#3.58125e-05 * mh
+		gas_mmr =  59.36e-6 * mh#3.58125e-05
 	gas_mw = 140.7
 	#NEW FORSTERITE (from Lodders et al. table, 1000mbar, 1900K)
 	gas_mmr = gas_mmr * (gas_mw/mw_atmos)  
