@@ -9,8 +9,8 @@ import time
 from . import justdoit as jdi
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
-                        gravity, kzz, fsed, mh, sig, rmin, nrad, tol = 1e-15, refine_TP = True,
-                        og_vfall=True, analytical_rg = True):
+                        gravity, kzz, fsed, mh, sig, rmin, nrad, d_molecule,eps_k,c_p_factor,
+                        tol = 1e-15, refine_TP = True,og_vfall=True, analytical_rg = True):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -42,6 +42,17 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
+    d_molecule : float 
+        diameter of atmospheric molecule (cm) (Rosner, 2000)
+        (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
+        Set in Atmosphere constants 
+    eps_k : float 
+        Depth of the Lennard-Jones potential well for the atmosphere 
+        Used in the viscocity calculation (units are K) (Rosner, 2000)
+    c_p_factor : float 
+        specific heat of atmosphere (erg/K/g) . Usually 7/2 for ideal gas
+        diatomic molecules (e.g. H2, N2). Technically does slowly rise with 
+        increasing temperature
     tol : float 
         Tolerance for direct solver
     refine_TP : bool
@@ -96,8 +107,9 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     for i, igas in zip(range(ngas), condensibles):
         gas_name = igas
         qc, qt, rg, reff, ndz, dz, qc_path[i], mixl = calc_qc(z, P_z, T_z, T_P, kz,
-            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, rmin, nrad, tol,
-            og_vfall, analytical_rg)
+            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, rmin, nrad, 
+            d_molecule,eps_k,c_p_factor,
+            tol,og_vfall, analytical_rg)
 
         # generate qc values for original pressure data
         qc_out[:,i] = interp1d(pres, qc)(pres_out)
@@ -113,7 +125,8 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     return (qc_out, qt_out, rg_out, reff_out, ndz_out, qc_path, pres_out, temp_out, z_out,mixl_out)
 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
-                    mh, fsed, sig, rmin, nrad, tol, og_vfall=True, analytical_rg=True, supsat=0):
+                    mh, fsed, sig, rmin, nrad, d_molecule,eps_k,c_p_factor,
+                    tol, og_vfall=True, analytical_rg=True, supsat=0):
     """
     Calculate condensate optical depth and effective radius for atmosphere,
     assuming geometric scatterers. 
@@ -146,6 +159,17 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         Sedimentation efficiency (unitless)
     sig : float 
         Width of the log normal particle distrubtion 
+    d_molecule : float 
+        diameter of atmospheric molecule (cm) (Rosner, 2000)
+        (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
+        Set in Atmosphere constants 
+    eps_k : float 
+        Depth of the Lennard-Jones potential well for the atmosphere 
+        Used in the viscocity calculation (units are K) (Rosner, 2000)
+    c_p_factor : float 
+        specific heat of atmosphere (erg/K/g) . Usually 7/2 for ideal gas
+        diatomic molecules (e.g. H2, N2). Technically does slowly rise with 
+        increasing temperature
     tol : float 
         Tolerance for direct solver
     analytical_rg : bool
@@ -174,13 +198,6 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     AVOGADRO = 6.02e23
     K_BOLTZ = R_GAS / AVOGADRO
     PI = np.pi 
-    #   diameter of atmospheric molecule (cm) (Rosner, 2000)
-    #   (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
-    d_molecule = 2.827e-8
-    #   Depth of the Lennard-Jones potential well for the atmosphere 
-    # Used in the viscocity calculation (units are K) (Rosner, 2000)
-    #   (78.6 for air, 71.4 for N2, 59.7 for H2)
-    eps_k = 59.7
     #   specific gas constant for atmosphere (erg/K/g)
     r_atmos = R_GAS / mw_atmos
     #   specific gas constant for cloud (erg/K/g)
@@ -203,7 +220,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         dTdP =  T_P.derivative()
         def dTdlnP(P):
             return P * dTdP(P)
-        return dTdlnP(P) / ( 2./7.* T )
+        return dTdlnP(P) / ( T / c_p_factor )
     #   convective mixing length scale (cm) 
     def mixl(T, P):
         return np.max( [0.10, lapse_ratio(T, P)]) * scale_h(T)
