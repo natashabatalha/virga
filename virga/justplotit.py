@@ -457,7 +457,7 @@ def all_optics_1d(out, wave_range, return_output = False,legend=None,
     """
 
     kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',200)
+    kwargs['plot_width'] = kwargs.get('plot_width',300)
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
 
     if not isinstance(out, list):
@@ -478,20 +478,21 @@ def all_optics_1d(out, wave_range, return_output = False,legend=None,
     for i,results in enumerate(out): 
         inds = np.where((results['wave']>wave_range[0]) & 
             (results['wave']<wave_range[1]))
-        
-        ssa.line(np.mean(results['single_scattering'][:,inds],axis=2)[:,0], 
+
+        opd.line(np.mean(results['opd_per_layer'][:,inds],axis=2)[:,0], 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
         
         g0.line(np.mean(results['asymmetry'][:,inds],axis=2)[:,0], 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
         
         if isinstance(legend, type(None)):
-            opd.line(np.mean(results['opd_per_layer'][:,inds],axis=2)[:,0], 
+            ssa.line(np.mean(results['single_scattering'][:,inds],axis=2)[:,0], 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
         else:
-            opd.line(np.mean(results['opd_per_layer'][:,inds],axis=2)[:,0], 
-                 results['pressure'], color=colors[np.mod(i, len(colors))],
-                 line_width=3,legend_label=legend[i])
+            ssa.line(np.mean(results['single_scattering'][:,inds],axis=2)[:,0], 
+                 results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3,
+                 legend_label=legend[i])
+            ssa.legend.location='top_left'
 
     if return_output:   
         return gridplot([[opd,ssa,g0]]), [opd,ssa,g0]
@@ -507,6 +508,16 @@ def find_nearest_1d(array,value):
     else: 
         idx = iar[idx]
     return idx
+
+def pressure_fig(**plot_kwargs):
+    plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-6])
+    plot_kwargs['plot_height'] = plot_kwargs.get('plot_height',400)
+    plot_kwargs['plot_width'] = plot_kwargs.get('plot_width',600)
+    plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
+    plot_kwargs['y_axis_label'] = plot_kwargs.get('y_axis_label','Pressure (bars)')
+    plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')        
+    fig = figure(**plot_kwargs)
+    return fig
 
 def plot_format(df):
     """Function to reformat plots"""
