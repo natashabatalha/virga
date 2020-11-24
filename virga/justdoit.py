@@ -14,7 +14,7 @@ from . import pvaps
 from .direct_mmr_solver import direct_solver
 
 
-def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True):
+def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_tol=1e-15, refine_TP = True, og_vfall=True, no_root=False, analytical_rg = True):
 
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
@@ -92,7 +92,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, direct_to
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii,
-                                             og_vfall)
+                                             no_root, og_vfall)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
@@ -269,7 +269,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, rmin, nrad, og_vfall=True, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, rmin, nrad, no_root=False, og_vfall=True, do_virtual=True, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -397,14 +397,14 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
                         t_bot,t_base, p_bot, p_base,
                          kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad,
-                         og_vfall
+                         no_root, og_vfall
                      )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad, og_vfall
+                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh, rmin, nrad, no_root, og_vfall
              )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -412,7 +412,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, rmin, nrad, og_vfall):
+    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, rmin, nrad, no_root, og_vfall):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -561,7 +561,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed,sig,mh, rmin, nrad, og_vfall)
+                        rho_p,w_convect,fsed,sig,mh, rmin, nrad, no_root, og_vfall)
 
 
             #   vertical sums
@@ -612,7 +612,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, rmin, nrad, og_vfall=True):
+    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, rmin, nrad, no_root=False, og_vfall=True):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -717,19 +717,24 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_mixl = mixl
         ad_dz = dz_layer
         ad_rainf = fsed
-
-        #   Find total vapor mixing ratio at top of layer
-        find_root = True
-        while find_root:
-            try:
-                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
-                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
-                                )#, xtol = 1e-20)
-                find_root = False
-            except ValueError:
-                qlo = qlo/10
         
-        qt_top = qt_top.root
+
+        if no_root:
+            qc_top = (q_below - qvs)*np.exp(-fsed * ad_dz/ mixl)
+            qt_top = qc_top + ad_qvs
+        else:
+            #   Find total vapor mixing ratio at top of layer
+            find_root = True
+            while find_root:
+                try:
+                    qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
+                                args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
+                                    )#, xtol = 1e-20)
+                    find_root = False
+                except ValueError:
+                    qlo = qlo/10
+            
+            qt_top = qt_top.root
 
         #   Use trapezoid rule (for now) to calculate layer averages
         #   -- should integrate exponential
