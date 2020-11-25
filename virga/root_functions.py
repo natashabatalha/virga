@@ -297,3 +297,42 @@ def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
     """
 
     return fsed - moment(3+alpha, s, loc, rg, dist) / rw**alpha / moment(3, s, loc, rg, dist)
+
+def advdiff_new(qt, qbelow, qvs, mixl, z, fsed, zb, b):
+    """
+    Calculate divergence from advective-diffusive balance for 
+    condensate in a model layer
+
+    All units are cgs
+    
+    A. Ackerman Feb-2000
+
+    Parameters
+    ----------
+    qt : float 
+        total mixing ratio of condensate + vapor (g/g)
+    qbelow : float 
+        total mixing ratio of vapor in underlying layer (g/g)
+    qvs : float 
+        saturation mixing ratio (g/g)
+    mixl : float 
+        convective mixing length (cm)
+    z : float 
+        layer thickness (cm) 
+    fsed : float
+        rain efficiency factor coefficient
+    zb : float
+        altitude at bottom of layer
+    b : float
+        rain efficiency factor exponent 
+
+    Returns
+    -------
+    ad_qc : float 
+        mixing ratio of condensed condensate (g/g)
+    """
+    #   Difference from advective-diffusive balance 
+    qc = (qbelow - qvs) * np.exp( fsed * (zb**(b+1) - (z + zb)**(b+1)) / ((b+1) * mixl))
+    advdif = qc + qvs
+    advdif = advdif - qt
+    return advdif
