@@ -4,6 +4,7 @@ from bokeh.layouts import column,row
 from bokeh.plotting import figure, show
 from bokeh.models import LinearColorMapper, LogTicker,BasicTicker, ColorBar,LogColorMapper,Legend
 from bokeh.palettes import magma as colfun1
+from bokeh.palettes import Colorblind8
 from bokeh.palettes import viridis as colfun2
 from bokeh.palettes import gray as colfun3
 
@@ -82,7 +83,8 @@ def pt(out, with_condensation=True,return_condensation=False, **kwargs):
         return fig
 
 
-def radii(out,gas=None,at_pressure = 1e-3):
+def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None, 
+        p1w=300, p1h=300, p2w=300, p2h=300):
     """
     Plots the particle radii profile along with the distribution, at a certain pressure. 
 
@@ -98,6 +100,9 @@ def radii(out,gas=None,at_pressure = 1e-3):
         out=[out]
 
     lines = ['solid','dotdash','dashdot']
+    if compare:
+        lines = ['solid']*len(out)
+        legend_it = []
     for j in range(len(out)):
         #compute initial distributions   
         r_g = out[j]['mean_particle_r']
@@ -138,13 +143,14 @@ def radii(out,gas=None,at_pressure = 1e-3):
         r, rup, dr = pyeddy.get_r_grid(r_min = rmin, n_radii = nrad)
 
         # different colours for different dicts
-        if gas is not None:
+        if (gas is not None) or compare:
             length = len(out)
         # different colours for different gases
         else:
             length = len(gas_name) 
 
-        color = magma(length)
+        color = Colorblind8
+        #palette[np.mod(i, len(palette))]
 
         #initial radii profiles
         df_r_g = {i:r_g[:, gas_name.index(i)] for i in gas_name}
@@ -158,11 +164,11 @@ def radii(out,gas=None,at_pressure = 1e-3):
         dndr['r'] = r*1e4 #convert to microns
 
         if j==0:
-            p1 = figure(plot_width=300, plot_height=300, title="Select Pressure Level", 
+            p1 = figure(plot_width=p1w, plot_height=p1h, title="Select Pressure Level", 
                 x_axis_type='log',y_axis_type='log',y_axis_label='Pressure (bars)',x_axis_label='Mean Particle Radius (um)',
                 y_range=[np.max(pressure),np.min(pressure)])
 
-            p2 = figure(plot_width=275, plot_height=300, title="Particle Distribution",
+            p2 = figure(plot_width=p2w, plot_height=p2h, title="Particle Distribution at %.0e bars" %at_pressure,
                          x_axis_type='log', y_axis_type='log', y_axis_label='dn/dr (cm-3)',x_axis_label='Particle Radius (um)')
 
         #add to r_g for that plot 
@@ -173,10 +179,14 @@ def radii(out,gas=None,at_pressure = 1e-3):
         s1 = ColumnDataSource(data=dict(df_r_g))
         s2 = ColumnDataSource(data=dict(dndr))
         for i in gas_name:
-            if gas is not None: indx = j
+            if gas is not None or compare: indx = j
             else: indx = gas_name.index(i)
-            p1.line(i, 'pressure', source=s1, alpha=1,color=color[indx] ,line_width=4,legend_label=i,line_dash=lines[j])
-            p2.line('r', i, source=s2,color=color[indx] ,line_width=4,line_dash=lines[j])
+            f = p1.line(i, 'pressure', source=s1, alpha=1,color=color[np.mod(indx, len(color))] ,line_width=4,legend_label=i,line_dash=lines[j])
+            p2.line('r', i, source=s2,color=color[np.mod(indx, len(color))] ,line_width=4,line_dash=lines[j])
+
+            if compare:
+                legend_it.append((legend[j], [f]))
+
     # r_g = out['droplet_eff_r']
     # pressure = out['pressure']
 
@@ -212,9 +222,15 @@ def radii(out,gas=None,at_pressure = 1e-3):
 
     p1.line('horizontal', 'average', source=s1, color='black',line_width=3,line_dash='dashed')
     p1.legend.location = 'bottom_left'
+    plot_format(p1)
+    plot_format(p2)
+    if compare:
+        legend = Legend(items=legend_it, location=(0, 0))
+        legend.click_policy="mute"
+        p1.add_layout(legend, 'right')   
     return row(p1, p2), dndr
 
-def opd_by_gas(out, gas = None, color = magma, **kwargs):
+def opd_by_gas(out, gas = None, color = magma, compare=False, legend=None, **kwargs):
     """
     Optical depth for conservative geometric scatteres separated by gas.
     E.g. [Fig 7 in Morley+2012](https://arxiv.org/pdf/1206.4313.pdf)  
@@ -240,7 +256,7 @@ def opd_by_gas(out, gas = None, color = magma, **kwargs):
         out=[out]
 
     condensibles = out[0]['condensibles']
-    if gas is not None:
+    if gas is not None: 
         indx = condensibles.index(gas)
         length = len(out)
     else:
@@ -249,6 +265,7 @@ def opd_by_gas(out, gas = None, color = magma, **kwargs):
     col = color(length)
     lines = ['solid','dashed','dotdash','dashdot']
 
+    legend_it = []
     for j in range(len(out)):
         pressure = out[j]['pressure']
         opd_by_gas = out[j]['opd_by_gas']
@@ -259,16 +276,28 @@ def opd_by_gas(out, gas = None, color = magma, **kwargs):
                                                 np.max(opd_by_gas*1.1)])
             fig = figure(**kwargs)
 
-        if gas is not None:
-            fig.line(opd_by_gas[:,indx], pressure, line_width=4, legend_label = condensibles[indx], color=col[j], line_dash=lines[j])
+        if compare:
+            if gas is not None:
+                f = fig.line(opd_by_gas[:,indx], pressure, line_width=4, legend_label = condensibles[indx], color=Colorblind8[np.mod(j, len(Colorblind8))])
+            else:
+                for i in range(ngas):
+                    f = fig.line(opd_by_gas[:,i], pressure,line_width=4, legend_label = condensibles[i], color=Colorblind8[np.mod(j, len(Colorblind8))], line_dash=lines[i])
+            legend_it.append((legend[j], [f]))
         else:
-            for i in range(ngas):
-                fig.line(opd_by_gas[:,i], pressure,line_width=4, legend_label = condensibles[i], color=col[i], line_dash=lines[j])
+            if gas is not None:
+                fig.line(opd_by_gas[:,indx], pressure, line_width=4, legend_label = condensibles[indx], color=col[j], line_dash=lines[j])
+            else:
+                for i in range(ngas):
+                    fig.line(opd_by_gas[:,i], pressure,line_width=4, legend_label = condensibles[i], color=col[i], line_dash=lines[j])
 
+    if compare:
+        legend = Legend(items=legend_it, location=(0, 0))
+        legend.click_policy="mute"
+        fig.add_layout(legend, 'right')   
     plot_format(fig)
     return fig
 
-def condensate_mmr(out, gas=None, color = magma, **kwargs):
+def condensate_mmr(out, gas=None, compare=False, legend=None, **kwargs):
     """
     Condensate mean mass mixing ratio
     
@@ -293,15 +322,16 @@ def condensate_mmr(out, gas=None, color = magma, **kwargs):
         out=[out]
 
     condensibles = out[0]['condensibles']
-    if gas is not None:
+    if gas is not None :
         indx = condensibles.index(gas)
         length = len(out)
     else:
         length = len(condensibles)
     ngas = len(condensibles)
-    col = color(length)
+    col = magma(length)
     lines = ['solid','dashed','dotdash','dashdot']
 
+    legend_it = []
     for j in range(len(out)):
         pressure = out[j]['pressure']
         cond_mmr = out[j]['condensate_mmr']
@@ -312,11 +342,26 @@ def condensate_mmr(out, gas=None, color = magma, **kwargs):
                                                     np.max(cond_mmr*1.1)])
             fig = figure(**kwargs)
 
-        if gas is not None:
-            fig.line(cond_mmr[:,indx], pressure, line_width=4, legend_label = condensibles[indx], color=col[j], line_dash=lines[j])
+        if compare:
+            if gas is not None:
+                f = fig.line(cond_mmr[:,i], pressure, line_width=4, legend_label = condensibles[indx], color=Colorblind8[np.mod(j, len(Colorblind8))])
+            else:
+                for i in range(ngas):
+                    label = condensibles[i] + ' ' + legend[j]
+                    f = fig.line(cond_mmr[:,i], pressure, line_width=4, legend_label = condensibles[i], color=Colorblind8[np.mod(j, len(Colorblind8))], line_dash=lines[i])
+            legend_it.append((legend[j], [f]))
+
         else:
-            for i in range(ngas):
-                fig.line(cond_mmr[:,i], pressure, line_width=4, legend_label = condensibles[i], color=col[i], line_dash=lines[j])
+            if gas is not None:
+                fig.line(cond_mmr[:,indx], pressure, line_width=4, legend_label = condensibles[indx], color=col[j], line_dash=lines[j])
+            else:
+                for i in range(ngas):
+                    fig.line(cond_mmr[:,i], pressure, line_width=4, legend_label = condensibles[i], color=col[i], line_dash=lines[j])
+
+    if compare:
+        legend = Legend(items=legend_it, location=(0, 0))
+        legend.click_policy="mute"
+        fig.add_layout(legend, 'right')   
 
     plot_format(fig)
     return fig

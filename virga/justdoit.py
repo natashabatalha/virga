@@ -10,6 +10,7 @@ from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find
 from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
+from .justplotit import plot_format
 
 from .direct_mmr_solver import direct_solver
 
@@ -270,7 +271,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, z_top, b, do_virtual=True, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, z_top, b, do_virtual=False, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -330,6 +331,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     did_gas_condense = [False for i in condensibles]
     t_bot = t_top[-1]
     p_bot = p_top[-1]
+    z_bot = z_top[-1]
     ngas =  len(condensibles)
     nz = len(t_mid)
     qc = np.zeros((nz,ngas))
@@ -387,6 +389,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
                     p_base = p_base.root 
                     t_base = t_bot + np.log( p_bot/p_base )*dtdlnp
+                    z_base = z_bot + scale_h * np.log( p_bot_sub/p_base ) 
                     
                     #   Calculate temperature and pressure below bottom layer
                     #   by adding a virtual layer 
@@ -397,7 +400,8 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     #q_below from this output for the next routine
                     qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
                         t_bot,t_base, p_bot, p_base,
-                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
+                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh,
+                         z_bot, z_base, b
                      )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
@@ -834,6 +838,8 @@ class Atmosphere():
         self.mh = mh
         self.mmw = mmw
         self.condensibles = condensibles
+        if fsed is 0 or fsed is .0:
+            fsed = 1e-16
         self.fsed = fsed
         self.b = b
         self.sig = sig
@@ -1152,7 +1158,7 @@ def available():
     gas_p = [i for i in dir(gas_properties) if i != 'np' and '_' not in i]
     return list(np.intersect1d(gas_p, pvs))
 
-def recommend_gas(pressure, temperature, mh, mmw, plot=False,**plot_kwargs):
+def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**plot_kwargs):
     """
     Recommends condensate species for a users calculation. 
 
@@ -1180,6 +1186,7 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False,**plot_kwargs):
     if plot: 
         from bokeh.plotting import figure, show
         from bokeh.palettes import magma
+        from bokeh.models import Legend
         fig = figure(**plot_kwargs)
 
     all_gases = available()
@@ -1202,12 +1209,28 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False,**plot_kwargs):
             line_widths +=[1]        
 
     if plot: 
+        legend_it = []
         ngas = len(all_gases)
         cols = magma(ngas)
-        fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
-        for i in range(ngas):
+        if legend is 'inside':
+            fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
+            for i in range(ngas):
 
-            fig.line(cond_ts[i],cond_p, legend_label=all_gases[i],color=cols[i],line_width=line_widths[i])
+                fig.line(cond_ts[i],cond_p, legend_label=all_gases[i],color=cols[i],line_width=line_widths[i])
+        else:
+            f = fig.line(temperature,pressure, color='black',line_width=5,line_dash='dashed')
+            legend_it.append(('input profile', [f]))
+            for i in range(ngas):
+
+                f = fig.line(cond_ts[i],cond_p ,color=cols[i],line_width=line_widths[i])
+                legend_it.append((all_gases[i], [f]))
+
+        if legend is 'outside':
+            legend = Legend(items=legend_it, location=(0, 0))
+            legend.click_policy="mute"
+            fig.add_layout(legend, 'right')   
+        
+        plot_format(fig)
         show(fig) 
 
     return recommend 
