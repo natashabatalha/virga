@@ -7,6 +7,7 @@ from bokeh.palettes import magma as colfun1
 from bokeh.palettes import Colorblind8
 from bokeh.palettes import viridis as colfun2
 from bokeh.palettes import gray as colfun3
+from bokeh.palettes import Colorblind8
 
 import astropy.units as u
 import numpy as np
@@ -99,7 +100,8 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
     if type(out)==dict:
         out=[out]
 
-    lines = ['solid','dotdash','dashdot']
+    lines = ['solid','dashed','dashdot']
+    lines = ['solid']*3
     if compare:
         lines = ['solid']*len(out)
         legend_it = []
@@ -149,8 +151,8 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         else:
             length = len(gas_name) 
 
-        color = Colorblind8
-        #palette[np.mod(i, len(palette))]
+        color = magma(length)
+        color = Colorblind8[:length]
 
         #initial radii profiles
         df_r_g = {i:r_g[:, gas_name.index(i)] for i in gas_name}
@@ -181,7 +183,7 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         for i in gas_name:
             if gas is not None or compare: indx = j
             else: indx = gas_name.index(i)
-            f = p1.line(i, 'pressure', source=s1, alpha=1,color=color[np.mod(indx, len(color))] ,line_width=4,legend_label=i,line_dash=lines[j])
+            f = p1.line(i, 'pressure', source=s1, alpha=1,color=color[np.mod(indx, len(color))] ,line_width=4,legend_label=i,line_dash='solid')#lines[j])
             p2.line('r', i, source=s2,color=color[np.mod(indx, len(color))] ,line_width=4,line_dash=lines[j])
 
             if compare:
@@ -263,6 +265,7 @@ def opd_by_gas(out, gas = None, color = magma, compare=False, legend=None, **kwa
         length = len(condensibles)
     ngas = len(condensibles)
     col = color(length)
+    col = Colorblind8[:length]
     lines = ['solid','dashed','dotdash','dashdot']
 
     legend_it = []
