@@ -298,7 +298,7 @@ def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
 
     return fsed - moment(3+alpha, s, loc, rg, dist) / rw**alpha / moment(3, s, loc, rg, dist)
 
-def advdiff_new(qt, qbelow, qvs, mixl, z, fsed, zb, b):
+def advdiff_new(qt, qbelow, qvs, mixl, z, fsed, zb, b, scale_h, param):
     """
     Calculate divergence from advective-diffusive balance for 
     condensate in a model layer
@@ -332,7 +332,11 @@ def advdiff_new(qt, qbelow, qvs, mixl, z, fsed, zb, b):
         mixing ratio of condensed condensate (g/g)
     """
     #   Difference from advective-diffusive balance 
-    qc = (qbelow - qvs) * np.exp( fsed * (zb**(b+1) - (z + zb)**(b+1)) / ((b+1) * mixl))
+    if param is 'exp':
+        qc = (qbelow - qvs) * np.exp( - 6 * scale_h * fsed / mixl * np.exp(zb/6/scale_h) 
+                            * (np.exp(z/6/scale_h) * (z - 6*scale_h) + 6*scale_h))
+    elif param is 'pow':
+        qc = (qbelow - qvs) * np.exp( fsed * (zb**(b+1) - (z + zb)**(b+1)) / ((b+1) * mixl))
     advdif = qc + qvs
     advdif = advdif - qt
     return advdif

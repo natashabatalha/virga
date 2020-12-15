@@ -10,7 +10,7 @@ from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find
 from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
-from .justplotit import plot_format
+from .justplotit import plot_format, find_nearest_1d
 
 from .direct_mmr_solver import direct_solver
 
@@ -53,6 +53,14 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     gas_mw = np.zeros(ngas)
     gas_mmr = np.zeros(ngas)
     rho_p = np.zeros(ngas)
+
+    # calculate scale height
+    R_GAS = 8.3143e7
+    r_atmos = R_GAS / mmw
+    indx = find_nearest_1d(atmo.p_top/1e6, 1)
+    T_eff = atmo.t_top[indx]
+    #scale_h = r_atmos * atmo.t_top / atmo.g
+    scale_h = r_atmos * T_eff / atmo.g + 0*atmo.t_top
     
     #### First we need to either grab or compute Mie coefficients #### 
     for i, igas in zip(range(ngas),condensibles) : 
@@ -87,12 +95,17 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
 
     #   run original eddysed code
     if og_solver:
-        fsed_in = atmo.fsed/(max(atmo.z_top)**atmo.b)
+        if atmo.param is 'pow':
+            fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
+        elif atmo.param is 'exp':
+            fsed_in = atmo.fsed / np.exp(atmo.z_top[0] / 6 / scale_h[0])
+            #max_val = max(atmo.z_top / 6 / scale_h)
+            #fsed_in = atmo.fsed / np.exp(max_val)
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              #atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, 
                                              atmo.g, atmo.kz, fsed_in, mh,atmo.sig, 
-                                             atmo.z_top, atmo.b)
+                                             atmo.z_top, atmo.b, atmo.param)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
@@ -110,16 +123,19 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
                                        dr,qext, qscat,cos_qscat,atmo.sig)
 
     if as_dict:
-        fsed_out = fsed_in * z_out ** atmo.b
+        if atmo.param is 'pow':
+            fsed_out = fsed_in * z_out ** atmo.b
+        elif atmo.param is 'exp':
+            fsed_out = fsed_in * np.exp(atmo.z_top / 6 /scale_h)
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
-                           mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer
-                           ) 
+                           mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer,
+                           scale_h) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer):
+    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, scale_h):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -144,7 +160,8 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "fsed": fsed,
         "altitude":z,
         "layer_thickness":dz_layer,
-        "z_unit":'cm'
+        "z_unit":'cm',
+        "scale_height":scale_h
     }
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
@@ -271,7 +288,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, z_top, b, do_virtual=False, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, z_top, b, param, do_virtual=False, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -401,7 +418,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
                         t_bot,t_base, p_bot, p_base,
                          kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh,
-                         z_bot, z_base, b
+                         z_bot, z_base, b, param
                      )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
@@ -409,15 +426,16 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
                  kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh,
-                 z_top[iz], z_top[iz+1], b)
+                 z_top[iz], z_top[iz+1], b, param)
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
+
     return qc, qt, rg, reff, ndz, qc_path
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, 
-    z_top, z_bot, b):
+    z_top, z_bot, b, param):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -571,7 +589,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed,sig,mh, z_bot_sub, z_sub, b)
+                        rho_p,w_convect,fsed,sig,mh, z_bot_sub, z_sub, b, scale_h, param)
 
 
             #   vertical sums
@@ -623,7 +641,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, z_bot, z_layer, b):
+    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, z_bot, z_layer, b, scale_h, param):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -734,6 +752,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_mixl = mixl
         ad_dz = dz_layer
         ad_rainf = fsed
+        ad_sh = scale_h
 
         #   Find total vapor mixing ratio at top of layer
         find_root = True
@@ -743,7 +762,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
                 #            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
                 #                )#, xtol = 1e-20)
                 qt_top = optimize.root_scalar(advdiff_new, bracket=[qlo, qhi], method='brentq',
-                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf, z_bot, b)
+                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf, z_bot, b, 
+                                ad_sh, param)
                                 )#, xtol = 1e-20)
                 find_root = False
             except ValueError:
@@ -786,7 +806,10 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         sig_alpha = np.max( [1.1, sig] )    
 
         #   fsed at middle of layer (fsed_mid = fsed * z**b)
-        fsed_mid = fsed * z_layer ** b
+        if param is 'pow':
+            fsed_mid = fsed * z_layer ** b
+        elif param is 'exp':
+            fsed_mid = fsed * np.exp(z_layer / 6 / scale_h)
     
 
         if fsed_mid > 1 :
@@ -819,7 +842,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
 
 class Atmosphere():
-    def __init__(self,condensibles, fsed = 0.5, b = 0, mh=1,mmw=2.2,sig=2.0):
+    def __init__(self,condensibles, fsed = 0.5, b = 0, mh=1,mmw=2.2,sig=2.0, param='pow'):
         """
         Parameters
         ----------
@@ -843,6 +866,7 @@ class Atmosphere():
         self.fsed = fsed
         self.b = b
         self.sig = sig
+        self.param = param
 
     def ptk(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
         """

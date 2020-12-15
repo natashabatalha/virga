@@ -7,7 +7,8 @@ from bokeh.palettes import magma as colfun1
 from bokeh.palettes import viridis as colfun2
 from bokeh.palettes import gray as colfun3
 from bokeh.palettes import plasma as colfun4
-
+from bokeh.palettes import Colorblind8
+ 
 import astropy.units as u
 import numpy as np
 
@@ -61,29 +62,33 @@ def plot_cumsum(out,labels,lines,**kwargs):
     plot_format(fig)
     return fig
 
-def plot_output(out,attribute,attribute_label,labels,lines,**kwargs):
+def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,**kwargs):
 
     condensibles = out[0]['condensibles']
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',600)
+    kwargs['plot_height'] = kwargs.get('plot_height',400)
+    kwargs['plot_width'] = kwargs.get('plot_width',350)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label',attribute_label)
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+    kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
 
     cols = viridis(len(out))
+    cols = Colorblind8[:len(out)]
     pressure = out[0]['pressure']
     kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
     fig = figure(**kwargs)
     for i in range(len(out)):
-        x = out[i][attribute][:,0]
+        indx = out[i]['condensibles'].index(gas)
+        x = out[i][attribute][:,indx]
         if attribute is "column_density":
-            x = out[i][attribute][:,0]/out[i]["layer_thickness"]
+            x = out[i][attribute][:,indx]/out[i]["layer_thickness"]
         pressure = out[i]['pressure']
 
         fig.line(x, pressure, legend_label=labels[i], color=cols[i],line_width=5, line_dash=lines[i])
 
-    fig.legend.location = "bottom_left"
+    if legend_on:
+        fig.legend.location = "bottom_left"
     plot_format(fig)
     return fig
 
@@ -297,3 +302,32 @@ def plot_format(df):
     df.yaxis.major_label_text_font='times'
     df.xaxis.axis_label_text_font_style = 'bold'
     df.yaxis.axis_label_text_font_style = 'bold'
+
+def plot_fsed(out,labels,y_axis='pressure',**kwargs):
+
+    kwargs['plot_height'] = kwargs.get('plot_height',400)
+    kwargs['plot_width'] = kwargs.get('plot_width',350)
+    kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
+    kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
+    kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+    kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
+
+    cols = Colorblind8[:len(out)]
+    pressure = out[0]['pressure']
+    kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
+    fig = figure(**kwargs)
+
+    for i in range(len(out)):
+        x = out[i]['fsed']
+        if y_axis is 'pressure':
+            y = out[i]['pressure']
+        elif y_axis is 'z':
+            y = out[i]['altitude']
+
+        fig.line(x, y, legend_label=labels[i], color=cols[i], line_width=5)
+
+    fig.legend.location = "bottom_left"
+    plot_format(fig)
+    return fig
+
