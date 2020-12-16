@@ -311,7 +311,7 @@ def plot_fsed(out,labels,y_axis='pressure',**kwargs):
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
-    kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
+   # kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
 
     cols = Colorblind8[:len(out)]
     pressure = out[0]['pressure']

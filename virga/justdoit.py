@@ -6,7 +6,7 @@ import os
 from scipy import optimize 
 import PyMieScatt as ps
 
-from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t, advdiff_new
+from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t
 from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
@@ -98,9 +98,10 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
         if atmo.param is 'pow':
             fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
         elif atmo.param is 'exp':
-            fsed_in = atmo.fsed / np.exp(atmo.z_top[0] / 6 / scale_h[0])
-            #max_val = max(atmo.z_top / 6 / scale_h)
-            #fsed_in = atmo.fsed / np.exp(max_val)
+            atmo.b = 6 * atmo.b 
+            fsed_in = atmo.fsed / np.exp(atmo.z_top[0] / atmo.b / scale_h[0])
+        elif atmo.param is 'const':
+            fsed_in = atmo.fsed; atmo.b = 0
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              #atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, 
@@ -123,10 +124,10 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
                                        dr,qext, qscat,cos_qscat,atmo.sig)
 
     if as_dict:
-        if atmo.param is 'pow':
+        if atmo.param is 'exp':
+            fsed_out = fsed_in * np.exp(atmo.z_top / atmo.b /scale_h)
+        else: # 'const' or 'pow'
             fsed_out = fsed_in * z_out ** atmo.b
-        elif atmo.param is 'exp':
-            fsed_out = fsed_in * np.exp(atmo.z_top / 6 /scale_h)
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
                            mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer,
@@ -758,12 +759,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         find_root = True
         while find_root:
             try:
-                #qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
-                #            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
-                #                )#, xtol = 1e-20)
-                qt_top = optimize.root_scalar(advdiff_new, bracket=[qlo, qhi], method='brentq',
-                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf, z_bot, b, 
-                                ad_sh, param)
+                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
+                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf,
+                                z_bot, b, ad_sh, param)
                                 )#, xtol = 1e-20)
                 find_root = False
             except ValueError:
@@ -806,10 +804,10 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         sig_alpha = np.max( [1.1, sig] )    
 
         #   fsed at middle of layer (fsed_mid = fsed * z**b)
-        if param is 'pow':
+        if param is 'exp':
+            fsed_mid = fsed * np.exp(z_layer / b / scale_h)
+        else: # 'pow' or 'const'
             fsed_mid = fsed * z_layer ** b
-        elif param is 'exp':
-            fsed_mid = fsed * np.exp(z_layer / 6 / scale_h)
     
 
         if fsed_mid > 1 :
@@ -842,7 +840,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
 
 class Atmosphere():
-    def __init__(self,condensibles, fsed = 0.5, b = 0, mh=1,mmw=2.2,sig=2.0, param='pow'):
+    def __init__(self,condensibles, fsed = 0.5, b = 1, mh=1,mmw=2.2,sig=2.0, param='const'):
         """
         Parameters
         ----------

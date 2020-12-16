@@ -4,7 +4,8 @@ from . import  gas_properties
 from scipy.stats import lognorm
 from scipy.integrate import quad, simps
 
-def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None):
+def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
+        zb=None, b=None, scale_h=None, param='const'):
     """
     Calculate divergence from advective-diffusive balance for 
     condensate in a model layer
@@ -34,14 +35,24 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         mixing ratio of condensed condensate (g/g)
     """
     #   All vapor in excess of saturation condenses
-    ad_qc = np.max([ 0., qt - ad_qvs ])
+    if param is 'const':
+        ad_qc = np.max([ 0., qt - ad_qvs ])
 
-    # Eqn. 7 in A & M 
-    #   Difference from advective-diffusive balance 
-    advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
-    #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
+        # Eqn. 7 in A & M 
+        #   Difference from advective-diffusive balance 
+        advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
+        #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
+    elif param is 'exp':
+        fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
+        qc = (ad_qbelow - ad_qvs) * np.exp( - b * scale_h * fsed / mixl * np.exp(zb/b/scale_h) 
+                            * (np.exp(z/b/scale_h) * (z - b*scale_h) + b*scale_h))
+        advdif = qc + ad_qvs
+    elif param is 'pow':
+        fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
+        qc = (ad_qbelow - ad_qvs) * np.exp( fsed * (zb**(b+1) - (z + zb)**(b+1)) / ((b+1) * mixl))
+        advdif = qc + ad_qvs
+
     advdif = advdif - qt
-    #print(advdif, qt )
     return advdif
 
 
@@ -298,45 +309,45 @@ def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
 
     return fsed - moment(3+alpha, s, loc, rg, dist) / rw**alpha / moment(3, s, loc, rg, dist)
 
-def advdiff_new(qt, qbelow, qvs, mixl, z, fsed, zb, b, scale_h, param):
-    """
-    Calculate divergence from advective-diffusive balance for 
-    condensate in a model layer
-
-    All units are cgs
-    
-    A. Ackerman Feb-2000
-
-    Parameters
-    ----------
-    qt : float 
-        total mixing ratio of condensate + vapor (g/g)
-    qbelow : float 
-        total mixing ratio of vapor in underlying layer (g/g)
-    qvs : float 
-        saturation mixing ratio (g/g)
-    mixl : float 
-        convective mixing length (cm)
-    z : float 
-        layer thickness (cm) 
-    fsed : float
-        rain efficiency factor coefficient
-    zb : float
-        altitude at bottom of layer
-    b : float
-        rain efficiency factor exponent 
-
-    Returns
-    -------
-    ad_qc : float 
-        mixing ratio of condensed condensate (g/g)
-    """
-    #   Difference from advective-diffusive balance 
-    if param is 'exp':
-        qc = (qbelow - qvs) * np.exp( - 6 * scale_h * fsed / mixl * np.exp(zb/6/scale_h) 
-                            * (np.exp(z/6/scale_h) * (z - 6*scale_h) + 6*scale_h))
-    elif param is 'pow':
-        qc = (qbelow - qvs) * np.exp( fsed * (zb**(b+1) - (z + zb)**(b+1)) / ((b+1) * mixl))
-    advdif = qc + qvs
-    advdif = advdif - qt
-    return advdif
+#def advdiff_new(qt, qbelow, qvs, mixl, z, fsed, zb, b, scale_h, param):
+#    """
+#    Calculate divergence from advective-diffusive balance for 
+#    condensate in a model layer
+#
+#    All units are cgs
+#    
+#    A. Ackerman Feb-2000
+#
+#    Parameters
+#    ----------
+#    qt : float 
+#        total mixing ratio of condensate + vapor (g/g)
+#    qbelow : float 
+#        total mixing ratio of vapor in underlying layer (g/g)
+#    qvs : float 
+#        saturation mixing ratio (g/g)
+#    mixl : float 
+#        convective mixing length (cm)
+#    z : float 
+#        layer thickness (cm) 
+#    fsed : float
+#        rain efficiency factor coefficient
+#    zb : float
+#        altitude at bottom of layer
+#    b : float
+#        rain efficiency factor exponent 
+#
+#    Returns
+#    -------
+#    ad_qc : float 
+#        mixing ratio of condensed condensate (g/g)
+#    """
+#    #   Difference from advective-diffusive balance 
+#    if param is 'exp':
+#        qc = (qbelow - qvs) * np.exp( - b * scale_h * fsed / mixl * np.exp(zb/b/scale_h) 
+#                            * (np.exp(z/b/scale_h) * (z - b*scale_h) + b*scale_h))
+#    elif param is 'pow':
+#        qc = (qbelow - qvs) * np.exp( fsed * (zb**(b+1) - (z + zb)**(b+1)) / ((b+1) * mixl))
+#    advdif = qc + qvs
+#    advdif = advdif - qt
+#    return advdif
