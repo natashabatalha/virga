@@ -62,7 +62,8 @@ def plot_cumsum(out,labels,lines,**kwargs):
     plot_format(fig)
     return fig
 
-def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,**kwargs):
+def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,
+                    color_indx=0,**kwargs):
 
     condensibles = out[0]['condensibles']
     kwargs['plot_height'] = kwargs.get('plot_height',400)
@@ -74,7 +75,7 @@ def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,**
     kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
 
     cols = viridis(len(out))
-    cols = Colorblind8[:len(out)]
+    cols = Colorblind8[color_indx:color_indx+len(out)]
     pressure = out[0]['pressure']
     kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
     fig = figure(**kwargs)
@@ -303,7 +304,7 @@ def plot_format(df):
     df.xaxis.axis_label_text_font_style = 'bold'
     df.yaxis.axis_label_text_font_style = 'bold'
 
-def plot_fsed(out,labels,y_axis='pressure',**kwargs):
+def plot_fsed(out,labels,y_axis='pressure',color_indx=0,**kwargs):
 
     kwargs['plot_height'] = kwargs.get('plot_height',400)
     kwargs['plot_width'] = kwargs.get('plot_width',350)
@@ -311,9 +312,9 @@ def plot_fsed(out,labels,y_axis='pressure',**kwargs):
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
-   # kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
+    kwargs['x_range'] = kwargs.get('x_range', [1e-6, 1e1])
 
-    cols = Colorblind8[:len(out)]
+    cols = Colorblind8[color_indx:color_indx+len(out)]
     pressure = out[0]['pressure']
     kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
     fig = figure(**kwargs)

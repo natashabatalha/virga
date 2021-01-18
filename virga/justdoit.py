@@ -15,7 +15,7 @@ from .justplotit import plot_format, find_nearest_1d
 from .direct_mmr_solver import direct_solver
 
 
-def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True):
+def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True, cap_opd=None):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -121,7 +121,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
-                                       dr,qext, qscat,cos_qscat,atmo.sig)
+                                       dr,qext, qscat,cos_qscat,atmo.sig, cap_opd)
 
     if as_dict:
         if atmo.param is 'exp':
@@ -165,7 +165,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "scale_height":scale_h
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, cap_opd):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -245,6 +245,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                 #print(norm)
                 norm = ndz[iz,igas] / norm
                 #print( norm, ndz[iz,igas] )
+                if cap_opd is not None and norm > cap_opd: norm=cap_opd
+                print(norm)
 
                 for irad in range(nrad):
                     rr = radius[irad]
@@ -274,7 +276,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
                 if( opd_scat > 0. ):
                     opd[iz,iwave] = opd_ext
+                    #if cap_opd is not None and opd[iz,iwave] > cap_opd: opd[iz,iwave]=cap_opd
                     w0[iz,iwave] = opd_scat / opd_ext
+                    #if w0[iz,iwave]>1: 
+                    #    w0[iz,iwave]=1.
                     g0[iz,iwave] = cos_qs / opd_scat
                     
     #cumulative optical depths for conservative geometric scatterers
@@ -325,6 +330,13 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
+    z_top : float
+        Altitude at top of atmosphere
+    b : float
+        Sedimentation efficiency exponent (if param=exp or pow)
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
     do_virtual : bool,optional 
         include decrease in condensate mixing ratio below model domain
     supsat : float, optional
@@ -475,6 +487,15 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Width of the log normal particle distribution 
     mh : float 
         Metallicity NON log soar (1=1xSolar)
+    z_top : float
+        Altitude at top of layer
+    z_bot : float
+        Altitude at bottom of layer
+    b : float
+        Sedimentation efficiency exponent (if param=exp or pow)
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
 
     Returns
     -------
@@ -687,8 +708,13 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         Altitude of bottom of layer (cm)
     z_layer : float 
         Altitude of midpoint of layer (cm)
-    b : float 
-        Sedimentation efficiency exponent (unitless) 
+    b : float
+        Sedimentation efficiency exponent (if param=exp or pow)
+    scale_h : float
+        Scale height (cm)
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
 
     Returns
     -------
@@ -848,12 +874,17 @@ class Atmosphere():
             list of gases for which to consider as cloud species 
         fsed : float 
             Sedimentation efficiency. Jupiter ~3-6. Hot Jupiters ~ 0.1-1.
+        b : float
+            Sedimentation efficiency exponent (if param=exp or pow)
         mh : float 
             metalicity 
         mmw : float 
             MMW of the atmosphere 
         sig : float 
             Width of the log normal distribution for the particle sizes 
+        param : str
+            fsed parameterisation
+            'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
     
         """
         self.mh = mh

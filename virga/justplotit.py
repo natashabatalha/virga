@@ -85,7 +85,7 @@ def pt(out, with_condensation=True,return_condensation=False, **kwargs):
 
 
 def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None, 
-        p1w=300, p1h=300, p2w=300, p2h=300):
+        p1w=300, p1h=300, p2w=300, p2h=300, color_indx=0):
     """
     Plots the particle radii profile along with the distribution, at a certain pressure. 
 
@@ -152,7 +152,7 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
             length = len(gas_name) 
 
         color = magma(length)
-        color = Colorblind8[:length]
+        color = Colorblind8[color_indx:color_indx+length]
 
         #initial radii profiles
         df_r_g = {i:r_g[:, gas_name.index(i)] for i in gas_name}
