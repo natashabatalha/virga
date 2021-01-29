@@ -97,7 +97,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     if og_solver:
         if atmo.param is 'pow':
             fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
-        elif atmo.param is 'exp':
+        elif atmo.param is 'exp' or atmo.param is 'exp_new':
             atmo.b = 6 * atmo.b 
             fsed_in = atmo.fsed / np.exp(atmo.z_top[0] / atmo.b / scale_h[0])
         elif atmo.param is 'const':
@@ -124,7 +124,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
                                        dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii, cap_opd)
 
     if as_dict:
-        if atmo.param is 'exp':
+        if atmo.param is 'exp' or atmo.param is 'exp_new':
             fsed_out = fsed_in * np.exp(atmo.z_top / atmo.b /scale_h)
         else: # 'const' or 'pow'
             fsed_out = fsed_in * z_out ** atmo.b
@@ -229,9 +229,9 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
 
-                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
-                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
-
+#                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
+#                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
+#
                 r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
 
@@ -249,8 +249,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                 #print(norm)
                 norm = ndz[iz,igas] / norm
                 #print( norm, ndz[iz,igas] )
-                if cap_opd is not None and norm > cap_opd: norm=cap_opd
-                print(norm)
+                #if cap_opd is not None and norm > cap_opd: norm=cap_opd
+                #print(norm)
 
                 for irad in range(nrad):
                     rr = radius[irad]
@@ -834,7 +834,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         sig_alpha = np.max( [1.1, sig] )    
 
         #   fsed at middle of layer (fsed_mid = fsed * z**b)
-        if param is 'exp':
+        if param is 'exp' or param is 'exp_new':
             fsed_mid = fsed * np.exp(z_layer / b / scale_h)
         else: # 'pow' or 'const'
             fsed_mid = fsed * z_layer ** b
