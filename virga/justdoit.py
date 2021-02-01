@@ -15,7 +15,7 @@ from .justplotit import plot_format, find_nearest_1d
 from .direct_mmr_solver import direct_solver
 
 
-def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True, cap_opd=None):
+def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -97,7 +97,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     if og_solver:
         if atmo.param is 'pow':
             fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
-        elif atmo.param is 'exp' or atmo.param is 'exp_new':
+        elif atmo.param is 'exp':
             atmo.b = 6 * atmo.b 
             fsed_in = atmo.fsed / np.exp(atmo.z_top[0] / atmo.b / scale_h[0])
         elif atmo.param is 'const':
@@ -106,7 +106,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              #atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, 
                                              atmo.g, atmo.kz, fsed_in, mh,atmo.sig, 
-                                             atmo.z_top, atmo.b, atmo.param)
+                                             atmo.z_top, atmo.b, atmo.eps, atmo.param)
         pres_out = atmo.p
         temp_out = atmo.t
         z_out = atmo.z
@@ -121,11 +121,11 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
-                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii, cap_opd)
+                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii)
 
     if as_dict:
-        if atmo.param is 'exp' or atmo.param is 'exp_new':
-            fsed_out = fsed_in * np.exp(atmo.z_top / atmo.b /scale_h)
+        if atmo.param is 'exp':
+            fsed_out = fsed_in * np.exp(atmo.z_top / atmo.b /scale_h) + atmo.eps
         else: # 'const' or 'pow'
             fsed_out = fsed_in * z_out ** atmo.b
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
@@ -165,7 +165,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "scale_height":scale_h
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad, cap_opd):
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -249,8 +249,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                 #print(norm)
                 norm = ndz[iz,igas] / norm
                 #print( norm, ndz[iz,igas] )
-                #if cap_opd is not None and norm > cap_opd: norm=cap_opd
-                #print(norm)
 
                 for irad in range(nrad):
                     rr = radius[irad]
@@ -280,7 +278,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
                 if( opd_scat > 0. ):
                     opd[iz,iwave] = opd_ext
-                    #if cap_opd is not None and opd[iz,iwave] > cap_opd: opd[iz,iwave]=cap_opd
                     w0[iz,iwave] = opd_scat / opd_ext
                     #if w0[iz,iwave]>1: 
                     #    w0[iz,iwave]=1.
@@ -298,7 +295,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, z_top, b, param, do_virtual=False, supsat=0):
+    mw_atmos,gravity, kz,fsed, mh,sig, z_top, b, eps, param, do_virtual=False, supsat=0):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -435,7 +432,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                     qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
                         t_bot,t_base, p_bot, p_base,
                          kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh,
-                         z_bot, z_base, b, param
+                         z_bot, z_base, b, eps, param
                      )
 
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
@@ -443,7 +440,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
             qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
                 t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
                  kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh,
-                 z_top[iz], z_top[iz+1], b, param)
+                 z_top[iz], z_top[iz+1], b, eps, param)
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
@@ -452,7 +449,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh, 
-    z_top, z_bot, b, param):
+    z_top, z_bot, b, eps, param):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -615,7 +612,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed,sig,mh, z_bot_sub, z_sub, b, scale_h, param)
+                        rho_p,w_convect,fsed,sig,mh, z_bot_sub, z_sub, b, eps, scale_h, param)
 
 
             #   vertical sums
@@ -667,7 +664,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, z_bot, z_layer, b, scale_h, param):
+    ,mfp,visc,rho_p,w_convect, fsed,sig,mh, z_bot, z_layer, b, eps, scale_h, param):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -834,8 +831,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         sig_alpha = np.max( [1.1, sig] )    
 
         #   fsed at middle of layer (fsed_mid = fsed * z**b)
-        if param is 'exp' or param is 'exp_new':
-            fsed_mid = fsed * np.exp(z_layer / b / scale_h)
+        if param is 'exp':
+            fsed_mid = fsed * np.exp(z_layer / b / scale_h) + eps
         else: # 'pow' or 'const'
             fsed_mid = fsed * z_layer ** b
     
@@ -870,7 +867,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
 
 class Atmosphere():
-    def __init__(self,condensibles, fsed = 0.5, b = 1, mh=1,mmw=2.2,sig=2.0, param='const'):
+    def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0, param='const'):
         """
         Parameters
         ----------
@@ -900,6 +897,7 @@ class Atmosphere():
         self.b = b
         self.sig = sig
         self.param = param
+        self.eps = eps
 
     def ptk(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
         """

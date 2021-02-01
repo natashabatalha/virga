@@ -42,17 +42,10 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         #   Difference from advective-diffusive balance 
         advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
         #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
-    elif param is 'exp_new':
-        fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
-        #qc = (ad_qbelow - ad_qvs) * np.exp( - b * scale_h * fsed / mixl * np.exp(zb/b/scale_h) 
-        #                    * (np.exp(z/b/scale_h) * (z - b*scale_h) + b*scale_h))
-        qc = (ad_qbelow - ad_qvs) * np.exp( - b * scale_h * fsed / mixl * np.exp(zb/b/scale_h) 
-                            * (np.exp(z/b/scale_h) -1))
-        advdif = qc + ad_qvs
     elif param is 'exp':
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
         qc = (ad_qbelow - ad_qvs) * np.exp( - b * scale_h * fsed / mixl * np.exp(zb/b/scale_h) 
-                            * (np.exp(z/b/scale_h) * (z - b*scale_h) + b*scale_h))
+                            * (np.exp(z/b/scale_h) -1))
         advdif = qc + ad_qvs
     elif param is 'pow':
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
