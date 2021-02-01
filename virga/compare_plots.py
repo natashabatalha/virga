@@ -304,15 +304,15 @@ def plot_format(df):
     df.xaxis.axis_label_text_font_style = 'bold'
     df.yaxis.axis_label_text_font_style = 'bold'
 
-def plot_fsed(out,labels,y_axis='pressure',color_indx=0,**kwargs):
+def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cloud_only=False,**kwargs):
 
     kwargs['plot_height'] = kwargs.get('plot_height',400)
-    kwargs['plot_width'] = kwargs.get('plot_width',350)
+    kwargs['plot_width'] = kwargs.get('plot_width',700)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
-    kwargs['x_range'] = kwargs.get('x_range', [1e-6, 1e1])
+    kwargs['x_range'] = kwargs.get('x_range', [1e-2, 2e1])
 
     cols = Colorblind8[color_indx:color_indx+len(out)]
     pressure = out[0]['pressure']
@@ -325,6 +325,14 @@ def plot_fsed(out,labels,y_axis='pressure',color_indx=0,**kwargs):
             y = out[i]['pressure']
         elif y_axis is 'z':
             y = out[i]['altitude']
+        if cloud_only:
+            low_clds = []; high_clds = []
+            for j in range(len(out[i]['condensibles'])):
+                ndz = out[i]['column_density'][:,j]
+                low_clds[j].append(np.where(ndz>0)[0])
+                high_clds[j].append(np.where(ndz>0)[-1])
+            min_id = min(low_clds)
+            max_id = min(high_clds)
 
         fig.line(x, y, legend_label=labels[i], color=cols[i], line_width=5)
 

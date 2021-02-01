@@ -99,7 +99,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
             fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
         elif atmo.param is 'exp':
             atmo.b = 6 * atmo.b 
-            fsed_in = atmo.fsed / np.exp(atmo.z_top[0] / atmo.b / scale_h[0])
+            fsed_in = (atmo.fsed-atmo.eps) / np.exp(atmo.z_top[0] / atmo.b / scale_h[0])
         elif atmo.param is 'const':
             fsed_in = atmo.fsed; atmo.b = 0
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
