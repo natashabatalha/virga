@@ -55,12 +55,12 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     rho_p = np.zeros(ngas)
 
     # calculate scale height
-    R_GAS = 8.3143e7
-    r_atmos = R_GAS / mmw
-    indx = find_nearest_1d(atmo.p_top/1e6, 1)
-    T_eff = atmo.t_top[indx]
-    #scale_h = r_atmos * atmo.t_top / atmo.g
-    scale_h = r_atmos * T_eff / atmo.g + 0*atmo.t_top
+    #R_GAS = 8.3143e7
+    #r_atmos = R_GAS / mmw
+    #indx = find_nearest_1d(atmo.p_top/1e6, 1)
+    #T_eff = atmo.t_top[indx]
+    #scale_h = r_atmos * T_eff / atmo.g + 0*atmo.t_top
+
     
     #### First we need to either grab or compute Mie coefficients #### 
     for i, igas in zip(range(ngas),condensibles) : 
@@ -98,8 +98,8 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
         if atmo.param is 'pow':
             fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
         elif atmo.param is 'exp':
-            atmo.b = 6 * atmo.b 
-            fsed_in = (atmo.fsed-atmo.eps) / np.exp(atmo.z_top[0] / atmo.b / scale_h[0])
+            atmo.b = 6 * atmo.b * atmo.scale_h[0]
+            fsed_in = (atmo.fsed-atmo.eps) / np.exp(atmo.z[0] / atmo.b)# / atmo.scale_h[0])
         elif atmo.param is 'const':
             fsed_in = atmo.fsed; atmo.b = 0
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
@@ -125,13 +125,14 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
 
     if as_dict:
         if atmo.param is 'exp':
-            fsed_out = fsed_in * np.exp(atmo.z_top / atmo.b /scale_h) + atmo.eps
+            #fsed_out = fsed_in * np.exp(atmo.z / atmo.b /atmo.scale_h) + atmo.eps
+            fsed_out = fsed_in * np.exp(atmo.z / atmo.b ) + atmo.eps
         else: # 'const' or 'pow'
             fsed_out = fsed_in * z_out ** atmo.b
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
                            mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer,
-                           scale_h) 
+                           atmo.scale_h) 
     else:
         return opd, w0, g0
 
@@ -832,7 +833,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #   fsed at middle of layer (fsed_mid = fsed * z**b)
         if param is 'exp':
-            fsed_mid = fsed * np.exp(z_layer / b / scale_h) + eps
+            #fsed_mid = fsed * np.exp(z_layer / b / scale_h) + eps
+            fsed_mid = fsed * np.exp(z_layer / b) + eps
         else: # 'pow' or 'const'
             fsed_mid = fsed * z_layer ** b
     
