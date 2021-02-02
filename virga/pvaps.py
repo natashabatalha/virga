@@ -393,7 +393,7 @@ def CaTiO3(temp,p,mh = 1 ):
 	return pvap_catio3
 
 def CaAl12O19(temp,p,mh = 1 ):
-"""Computes vapor pressure curve
+	"""Computes vapor pressure curve
 	
 	Parameters 
 	----------
@@ -411,5 +411,5 @@ def CaAl12O19(temp,p,mh = 1 ):
 	if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CaAl12O19")
 	mh = np.log10(mh)
 	#calculated from wakeford 2017
-	pvap_caal12o19 1e6 * 10.0 ** (-44021./temp + 16.46 - 0.083*np.log10(p*1e6) - 1.67*mh)
+	pvap_caal12o19 = 1e6 * 10.0 ** (-44021./temp + 16.46 - 0.083*np.log10(p*1e6) - 1.67*mh)
 	return pvap_caal12o19

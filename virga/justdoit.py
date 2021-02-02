@@ -342,7 +342,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         if do_virtual: 
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
-            if igas == 'Mg2SiO4':
+            if igas in ['Mg2SiO4','CaTiO3','CaAl12O19']:
                 pvap = get_pvap(t_bot, p_bot, mh=mh)
             else:
                 pvap = get_pvap(t_bot, mh=mh)
@@ -665,7 +665,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     """
 
     get_pvap = getattr(pvaps, gas_name)
-    if gas_name == 'Mg2SiO4':
+    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pvap = get_pvap(t_layer, p_layer,mh=mh)
     else:
         pvap = get_pvap(t_layer,mh=mh)

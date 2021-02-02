@@ -144,8 +144,7 @@ def CaTiO3(mw_atmos, mh = 1):
 	"""Defines properties for CaTiO3 as condensible"""	
 	if mh != 1: raise Exception("Alert: No M/H Dependence in CaTiO3 Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 135.745
-    gas_mmr = 2.51e-6 * (gas_mw/mw_atmos)  
-	#Lodders and Fegley (1998)
+	gas_mmr = 2.51e-6 * (gas_mw/mw_atmos)
 	rho_p =  3.987
 	return gas_mw, gas_mmr, rho_p
 
@@ -153,8 +152,7 @@ def CaAl12O19(mw_atmos, mh = 1):
 	"""Defines properties for CaAl12O19 as condensible"""	
 	if mh != 1: raise Exception("Alert: No M/H Dependence in CaAl12O19 Routine. Consult your local theorist to determine next steps.")
 	gas_mw = 667.843
-    gas_mmr = 8.80e-7 * (gas_mw/mw_atmos)  
-	#Lodders and Fegley (1998)
+	gas_mmr = 8.80e-7 * (gas_mw/mw_atmos)
 	rho_p =  7.15
 	return gas_mw, gas_mmr, rho_p
 
