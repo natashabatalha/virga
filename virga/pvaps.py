@@ -369,3 +369,47 @@ def Al2O3(temp,mh = 1 ):
 	#calculated from wakeford 2017
 	pvap_al2o3 = 1e6 * 10.0 ** (17.7 - 45892.6/temp - 1.66*mh)
 	return pvap_al2o3
+
+def CaTiO3(temp,p,mh = 1 ):
+	"""Computes vapor pressure curve
+	
+	Parameters 
+	----------
+	temp : float, ndarray 
+		Temperature (K)
+	p : float
+		Pressure (Pa)
+	mh : float 
+		NON log metallicity relative to solar (1=1Xsolar)
+
+	Returns
+	-------
+	vapor pressure in dyne/cm^2
+	"""
+	if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CaTiO3")
+	mh = np.log10(mh)
+	#calculated from wakeford 2017
+	pvap_catio3 = 1e6 * 10.0 ** (-72160./temp + 30.24 - 1*np.log10(p*1e6) - 2*mh) 
+	return pvap_catio3
+
+def CaAl12O19(temp,p,mh = 1 ):
+"""Computes vapor pressure curve
+	
+	Parameters 
+	----------
+	temp : float, ndarray 
+		Temperature (K)
+	p : float
+		Pressure (Pa)
+	mh : float 
+		NON log metallicity relative to solar (1=1Xsolar)
+
+	Returns
+	-------
+	vapor pressure in dyne/cm^2
+	"""
+	if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CaAl12O19")
+	mh = np.log10(mh)
+	#calculated from wakeford 2017
+	pvap_caal12o19 1e6 * 10.0 ** (-44021./temp + 16.46 - 0.083*np.log10(p*1e6) - 1.67*mh)
+	return pvap_caal12o19

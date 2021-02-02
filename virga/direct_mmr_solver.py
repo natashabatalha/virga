@@ -202,6 +202,10 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     def pvap(T, P):
         if gas_name == 'Mg2SiO4':
             return get_pvap(float(T), float(P), mh=mh)
+        if gas_name == 'CaTiO3':
+            return get_pvap(float(T), float(P), mh=mh)
+        if gas_name == 'CaAl12O19':
+            return get_pvap(float(T), float(P), mh=mh)
         else:
             return get_pvap(float(T), mh=mh)
     #   mass mixing ratio of saturated layer
