@@ -5,7 +5,7 @@ from scipy.stats import lognorm
 from scipy.integrate import quad, simps
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
-        zb=None, b=None, scale_h=None, param='const'):
+        zb=None, b=None, param='const'):
     """
     Calculate divergence from advective-diffusive balance for 
     condensate in a model layer
@@ -44,9 +44,8 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
     elif param is 'exp':
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
-        scale_h = 1
-        qc = (ad_qbelow - ad_qvs) * np.exp( - b * scale_h * fsed / mixl * np.exp(zb/b/scale_h) 
-                            * (np.exp(z/b/scale_h) -1))
+        qc = (ad_qbelow - ad_qvs) * np.exp( - b * fsed / mixl * np.exp(zb/b) 
+                            * (np.exp(z/b) -1))
         advdif = qc + ad_qvs
     elif param is 'pow':
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz

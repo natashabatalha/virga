@@ -54,14 +54,10 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     gas_mmr = np.zeros(ngas)
     rho_p = np.zeros(ngas)
 
-    # calculate scale height
-    #R_GAS = 8.3143e7
-    #r_atmos = R_GAS / mmw
-    #indx = find_nearest_1d(atmo.p_top/1e6, 1)
-    #T_eff = atmo.t_top[indx]
-    #scale_h = r_atmos * T_eff / atmo.g + 0*atmo.t_top
+    # scale-height for fsed taken at Teff (default: temp at 1bar) 
+    H = atmo.r_atmos * atmo.Teff / atmo.g
 
-    
+
     #### First we need to either grab or compute Mie coefficients #### 
     for i, igas in zip(range(ngas),condensibles) : 
 
@@ -98,8 +94,8 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
         if atmo.param is 'pow':
             fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
         elif atmo.param is 'exp':
-            atmo.b = 6 * atmo.b * atmo.scale_h[0]
-            fsed_in = (atmo.fsed-atmo.eps) / np.exp(atmo.z[0] / atmo.b)# / atmo.scale_h[0])
+            atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
+            fsed_in = (atmo.fsed-atmo.eps) / np.exp(atmo.z[0] / atmo.b)
         elif atmo.param is 'const':
             fsed_in = atmo.fsed; atmo.b = 0
         qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
@@ -125,7 +121,6 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
 
     if as_dict:
         if atmo.param is 'exp':
-            #fsed_out = fsed_in * np.exp(atmo.z / atmo.b /atmo.scale_h) + atmo.eps
             fsed_out = fsed_in * np.exp(atmo.z / atmo.b ) + atmo.eps
         else: # 'const' or 'pow'
             fsed_out = fsed_in * z_out ** atmo.b
@@ -781,7 +776,6 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_mixl = mixl
         ad_dz = dz_layer
         ad_rainf = fsed
-        ad_sh = scale_h
 
         #   Find total vapor mixing ratio at top of layer
         find_root = True
@@ -789,7 +783,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
             try:
                 qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
                             args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf,
-                                z_bot, b, ad_sh, param)
+                                z_bot, b, param)
                                 )#, xtol = 1e-20)
                 find_root = False
             except ValueError:
@@ -833,7 +827,6 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #   fsed at middle of layer (fsed_mid = fsed * z**b)
         if param is 'exp':
-            #fsed_mid = fsed * np.exp(z_layer / b / scale_h) + eps
             fsed_mid = fsed * np.exp(z_layer / b) + eps
         else: # 'pow' or 'const'
             fsed_mid = fsed * z_layer ** b
@@ -893,15 +886,13 @@ class Atmosphere():
         self.mh = mh
         self.mmw = mmw
         self.condensibles = condensibles
-        if fsed is 0 or fsed is .0:
-            fsed = 1e-16
         self.fsed = fsed
         self.b = b
         self.sig = sig
         self.param = param
         self.eps = eps
 
-    def ptk(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
+    def ptk(self, df = None, filename=None,kz_min=1e5, Teff=None, **pd_kwargs):
         """
         Read in file or define dataframe. 
     
@@ -940,7 +931,8 @@ class Atmosphere():
             print('Kz not supplied. You can either add it as input here with p and t. Or, you can \
                     add it separately to the `Atmosphere.kz` function')
             self.kz = np.nan
-        r_atmos = 8.3143e7 / self.mmw
+        #r_atmos = 8.3143e7 / self.mmw
+        self.r_atmos = 8.3143e7 / self.mmw
 
         # itop=iz = [0:-1], ibot = [1:]
         #convert bars to dyne/cm^2 
@@ -954,7 +946,7 @@ class Atmosphere():
         dtdlnp = ( self.t_top[0:-1] - self.t_top[1:] ) / dlnp
         self.t = self.t_top[1:] + np.log( self.p_top[1:]/self.p )*dtdlnp
 
-        self.scale_h = r_atmos * self.t / self.g
+        self.scale_h = self.r_atmos * self.t / self.g
 
         self.dz_pmid = self.scale_h * np.log( self.p_top[1:]/self.p )
         self.dz_layer = self.scale_h * dlnp
@@ -962,6 +954,13 @@ class Atmosphere():
         self.z_top = np.concatenate(([0],np.cumsum(self.dz_layer[::-1])))[::-1]
 
         self.z = self.z_top[1:]+self.dz_pmid
+
+        # Teff
+        if isinstance(Teff, type(None)):
+            onebar = (np.abs(self.p_top/1e6 - 1.)).argmin()
+            self.Teff = self.t_top[onebar]
+        else:
+            self.Teff = Teff
 
     def gravity(self, gravity=None, gravity_unit=None, radius=None, radius_unit=None, mass = None, mass_unit=None):
         """
