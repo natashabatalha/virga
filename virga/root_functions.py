@@ -29,6 +29,13 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         layer thickness (cm) 
     ad_rainf : float
         rain efficiency factor 
+    zb : float
+        altitude at bottom of layer
+    b : float
+        denominator of fsed exponential (if param is 'exp')
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation)
 
     Returns
     -------
@@ -47,10 +54,6 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
         qc = (ad_qbelow - ad_qvs) * np.exp( - b * fsed / mixl * np.exp(zb/b) 
                             * (np.exp(z/b) -1))
-        advdif = qc + ad_qvs
-    elif param is 'pow':
-        fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
-        qc = (ad_qbelow - ad_qvs) * np.exp( fsed * (zb**(b+1) - (z + zb)**(b+1)) / ((b+1) * mixl))
         advdif = qc + ad_qvs
 
     advdif = advdif - qt
