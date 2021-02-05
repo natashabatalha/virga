@@ -1,6 +1,6 @@
 from bokeh.palettes import viridis,magma
 from bokeh.models import ColumnDataSource, Label, LabelSet,CustomJS
-from bokeh.layouts import column,row
+from bokeh.layouts import column,row,gridplot
 from bokeh.plotting import figure, show
 from bokeh.models import LinearColorMapper, LogTicker,BasicTicker, ColorBar,LogColorMapper,Legend
 from bokeh.palettes import magma as colfun1
@@ -8,7 +8,7 @@ from bokeh.palettes import Colorblind8
 from bokeh.palettes import viridis as colfun2
 from bokeh.palettes import gray as colfun3
 from bokeh.palettes import Colorblind8
-
+import bokeh.palettes as colpals
 import astropy.units as u
 import numpy as np
 
@@ -480,7 +480,72 @@ def all_optics(out):
             i.xaxis.ticker = iwave
             i.xaxis.major_label_overrides = wtick       
 
-    return row(f01a, f01,f01b)
+    return gridplot([[f01a, f01,f01b]])
+
+def all_optics_1d(out, wave_range, return_output = False,legend=None,
+    colors = colpals.Colorblind8, **kwargs):
+    """
+    Plots 1d profiles of optical depth per layer, single scattering, and 
+    asymmetry averaged over the user input wave_range. 
+
+    Parameters
+    ----------
+    out : list or dict 
+        Either a list of output dictionaries or a single dictionary output
+        from .compute(as_dict=True)
+    wave_range : list 
+        min and max wavelength in microns 
+    return_output : bool 
+        Default is just to return a figure but you can also 
+        return all the 1d profiles 
+    legend : bool 
+        Default is none. Legend for each component of out 
+    **kwargs : keyword arguments
+        Key word arguments will be supplied to each bokeh figure function
+    """
+
+    kwargs['plot_height'] = kwargs.get('plot_height',300)
+    kwargs['plot_width'] = kwargs.get('plot_width',300)
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+
+    if not isinstance(out, list):
+        out = [out]
+
+    pressure = out[0]['pressure']
+
+    kwargs['y_range'] = kwargs.get('y_range',[max(pressure),min(pressure)])     
+
+    ssa = figure(x_axis_label='Single Scattering Albedo',**kwargs)
+
+    g0 = figure(x_axis_label='Asymmetry',**kwargs)
+
+    opd = figure(x_axis_label='Optical Depth',y_axis_label='Pressure (bars)',
+        x_axis_type='log',**kwargs)
+
+    
+    for i,results in enumerate(out): 
+        inds = np.where((results['wave']>wave_range[0]) & 
+            (results['wave']<wave_range[1]))
+
+        opd.line(np.mean(results['opd_per_layer'][:,inds],axis=2)[:,0], 
+                 results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
+        
+        g0.line(np.mean(results['asymmetry'][:,inds],axis=2)[:,0], 
+                 results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
+        
+        if isinstance(legend, type(None)):
+            ssa.line(np.mean(results['single_scattering'][:,inds],axis=2)[:,0], 
+                 results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
+        else:
+            ssa.line(np.mean(results['single_scattering'][:,inds],axis=2)[:,0], 
+                 results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3,
+                 legend_label=legend[i])
+            ssa.legend.location='top_left'
+
+    if return_output:   
+        return gridplot([[opd,ssa,g0]]), [opd,ssa,g0]
+    else:   
+        return gridplot([[opd,ssa,g0]])
 
 def find_nearest_1d(array,value):
     #small program to find the nearest neighbor in a matrix
@@ -491,6 +556,16 @@ def find_nearest_1d(array,value):
     else: 
         idx = iar[idx]
     return idx
+
+def pressure_fig(**plot_kwargs):
+    plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-6])
+    plot_kwargs['plot_height'] = plot_kwargs.get('plot_height',400)
+    plot_kwargs['plot_width'] = plot_kwargs.get('plot_width',600)
+    plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
+    plot_kwargs['y_axis_label'] = plot_kwargs.get('y_axis_label','Pressure (bars)')
+    plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')        
+    fig = figure(**plot_kwargs)
+    return fig
 
 def plot_format(df):
     """Function to reformat plots"""
