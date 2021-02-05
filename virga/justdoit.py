@@ -39,6 +39,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     refine_TP : bool, optional
         Only used if og_solver =False. 
         Option to refine temperature-pressure profile for direct solver 
+    og_vfall : bool, optional
+        Option to use original A&M or new Khan-Richardson method for finding vfall
     analytical_rg : bool, optional
         Only used if og_solver =False. 
         Option to use analytical expression for rg, or alternatively deduce rg from calculation
@@ -100,13 +102,11 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     #   run original eddysed code
     if og_solver:
-        if atmo.param is 'pow':
-            fsed_in = atmo.fsed /(max(atmo.z_top)**atmo.b)
-        elif atmo.param is 'exp':
+        if atmo.param is 'exp': # fsed = fsed_in * exp(z/b) + eps 
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) / np.exp(atmo.z[0] / atmo.b)
         elif atmo.param is 'const':
-            fsed_in = atmo.fsed; atmo.b = 0
+            fsed_in = atmo.fsed
         qc, qt, rg, reff, ndz, qc_path, mixl = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.mixl, 
@@ -141,13 +141,13 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
                            mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer, 
-                           mixl, atmo.kz
+                           mixl, atmo.kz, atmo.scale_h
                            ) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, mixl, kz):
+    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, mixl, kz, scale_h):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -176,7 +176,8 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         'mixing_length':mixl, 
         'mixing_length_unit':'cm',
         'kz':kz, 
-        'kz_unit':'cm^2/s'
+        'kz_unit':'cm^2/s',
+        'scale_height':scale_h
     }
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad):
@@ -343,18 +344,20 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
         Kzz in cgs, either float or ndarray depending of whether or not 
         it is set as input
     fsed : float 
-        Sedimentation efficiency, unitless
+        Sedimentation efficiency coefficient, unitless
+    b : float
+        Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+    eps: float
+        Minimum value of fsed function (if param=exp)
+    z_top : float
+        Altitude at top of atmosphere
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation)
     mh : float 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
-    z_top : float
-        Altitude at top of atmosphere
-    b : float
-        Sedimentation efficiency exponent (if param=exp or pow)
-    param : str
-        fsed parameterisation
-        'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
     d_molecule : float 
         diameter of atmospheric molecule (cm) (Rosner, 2000)
         (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
@@ -529,20 +532,22 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     supsat : float 
         Super saturation factor
     fsed : float
-        Sedimentation efficiency (unitless) 
-    sig : float 
-        Width of the log normal particle distribution 
-    mh : float 
-        Metallicity NON log soar (1=1xSolar)
+        Sedimentation efficiency coefficient (unitless) 
+    b : float
+        Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+    eps: float
+        Minimum value of fsed function (if param=exp)
     z_top : float
         Altitude at top of layer
     z_bot : float
         Altitude at bottom of layer
-    b : float
-        Sedimentation efficiency exponent (if param=exp or pow)
     param : str
         fsed parameterisation
-        'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
+        'const' (constant), 'exp' (exponential density derivation)
+    sig : float 
+        Width of the log normal particle distribution 
+    mh : float 
+        Metallicity NON log soar (1=1xSolar)
     rmin : float 
         Minium radius on grid (cm)
     nrad : int 
@@ -711,7 +716,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, param,
+    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, 
     sig, mh, rmin, nrad, og_vfall=True):
     """
     Calculate condensate optical depth and effective radius for a layer,
@@ -747,23 +752,27 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         density of condensed vapor (g/cm^3)
     w_convect : float    
         convective velocity scale (cm/s)
-    fsed : float 
-        Sedimentation efficiency coefficient (unitless)
+    fsed : float
+        Sedimentation efficiency coefficient (unitless) 
+    b : float
+        Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+    eps: float
+        Minimum value of fsed function (if param=exp)
+    z_bot : float
+        Altitude at bottom of layer
+    z_layer : float 
+        Altitude of midpoint of layer (cm)
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation)
     sig : float 
         Width of the log normal particle distrubtion 
     mh : float 
         Metallicity NON log solar (1 = 1x solar)
-    z_bot : float 
-        Altitude of bottom of layer (cm)
-    z_layer : float 
-        Altitude of midpoint of layer (cm)
-    b : float
-        Sedimentation efficiency exponent (if param=exp or pow)
-    scale_h : float
-        Scale height (cm)
-    param : str
-        fsed parameterisation
-        'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
+    rmin : float 
+        Minium radius on grid (cm)
+    nrad : int 
+        Number of radii on Mie grid
 
     Returns
     -------
@@ -904,6 +913,12 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         alpha = pars[0]
 
 
+        #   fsed at middle of layer 
+        if param is 'exp':
+            fsed_mid = fsed * np.exp(z_layer / b) + eps
+        else: # 'const'
+            fsed_mid = fsed 
+
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
         rg_layer = (fsed_mid**(1./alpha) *
@@ -928,9 +943,11 @@ class Atmosphere():
         condensibles : list of str
             list of gases for which to consider as cloud species 
         fsed : float 
-            Sedimentation efficiency. Jupiter ~3-6. Hot Jupiters ~ 0.1-1.
+            Sedimentation efficiency coefficient. Jupiter ~3-6. Hot Jupiters ~ 0.1-1.
         b : float
-            Sedimentation efficiency exponent (if param=exp or pow)
+            Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+        eps: float
+            Minimum value of fsed function (if param=exp)
         mh : float 
             metalicity 
         mmw : float 
@@ -939,7 +956,7 @@ class Atmosphere():
             Width of the log normal distribution for the particle sizes 
         param : str
             fsed parameterisation
-            'const' (constant), 'exp' (exponential density derivation), 'pow' (power-law)
+            'const' (constant), 'exp' (exponential density derivation)
         verbose : bool 
             Prints out warning statements throughout
     
@@ -1010,6 +1027,8 @@ class Atmosphere():
             Ackerman & Marley 2001 is 1./3. If you are unsure of what to pick, start 
             there. This is only used when the        
             This is ONLY used when a chf (convective heat flux) is supplied 
+        Teff : float, optional
+            Effective temperature. If None (default), Teff set to temperature at 1 bar
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
@@ -1028,6 +1047,13 @@ class Atmosphere():
         self.t_level = np.array(df['temperature'])      
         self.get_atmo_parameters()
         self.get_kz_mixl(df, constant_kz, latent_heat, convective_overshoot, kz_min)
+
+        # Teff
+        if isinstance(Teff, type(None)):
+            onebar = (np.abs(self.p_level/1e6 - 1.)).argmin()
+            self.Teff = self.t_level[onebar]
+        else:
+            self.Teff = Teff
 
 
     def get_atmo_parameters(self):
@@ -1074,13 +1100,6 @@ class Atmosphere():
         self.z_top = np.concatenate(([0],np.cumsum(self.dz_layer[::-1])))[::-1]
 
         self.z = self.z_top[1:]+self.dz_pmid
-
-        # Teff
-        if isinstance(Teff, type(None)):
-            onebar = (np.abs(self.p_top/1e6 - 1.)).argmin()
-            self.Teff = self.t_top[onebar]
-        else:
-            self.Teff = Teff
 
 
     def get_kz_mixl(self, df, constant_kz, latent_heat, convective_overshoot,
@@ -1415,7 +1434,7 @@ def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
 
     r_min : float 
             Minimum radius to compute (cm)
-    r_min : float 
+    r_max : float 
             Maximum radius to compute (cm)
     n_radii : int
             Number of radii to compute 
