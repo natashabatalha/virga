@@ -1165,8 +1165,34 @@ def get_refrind(igas,directory):
 
     return wave_in,nn,kk
 
-def get_r_grid(r_min=1e-5, n_radii=40):
+def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
     """
+    Get spacing of radii to run Mie code
+
+    r_min : float 
+            Minimum radius to compute (cm)
+    r_min : float 
+            Maximum radius to compute (cm)
+    n_radii : int
+            Number of radii to compute 
+    """
+
+    radius = np.logspace(np.log10(r_min),np.log10(r_max),n_radii)
+    rat = radius[1]/radius[0]
+    rup = 2*rat / (rat+1) * radius
+    dr = np.zeros(rup.shape)
+    dr[1:] = rup[1:]-rup[:-1]
+    dr[0] = dr[1]**2/dr[2]
+
+    return radius, rup, dr
+
+def og_get_r_grid(r_min=1e-8, n_radii=60):
+    """
+    Warning
+    -------
+    Original code from A&M code. 
+    Discontinued function. See 'get_r_grid'.
+
     Get spacing of radii to run Mie code
 
     r_min : float 
