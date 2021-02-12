@@ -104,13 +104,13 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     if og_solver:
         if atmo.param is 'exp': # fsed = fsed_in * exp(z/b) + eps 
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
-            fsed_in = (atmo.fsed-atmo.eps) / np.exp(atmo.z[0] / atmo.b)
+            fsed_in = (atmo.fsed-atmo.eps) #/ np.exp(atmo.z[0] / atmo.b)
         elif atmo.param is 'const':
             fsed_in = atmo.fsed
-        qc, qt, rg, reff, ndz, qc_path, mixl = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
+        qc, qt, rg, reff, ndz, qc_path, mixl, fsed_out = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.mixl, 
-                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.param,
+                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z[0], atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              og_vfall, verbose=atmo.verbose)
@@ -134,10 +134,11 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                        dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii)
 
     if as_dict:
-        if atmo.param is 'exp':
-            fsed_out = fsed_in * np.exp(atmo.z / atmo.b ) + atmo.eps
-        else: # 'const' or 'pow'
-            fsed_out = fsed_in * z_out ** atmo.b
+        #if atmo.param is 'exp':
+        #    fsed_out = fsed_in * np.exp(atmo.z / atmo.b ) + atmo.eps
+        #    fsed_out = fsed_in / np.exp(atmo.z[0] / atmo.b)
+        #else: # 'const' or 'pow'
+        #    fsed_out = fsed_in * z_out ** atmo.b
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
                            mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer, 
@@ -311,7 +312,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
-    fsed, b, eps, z_top, param,
+    fsed, b, eps, z_top, z_TOA, param,
     mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
     og_vfall=True,do_virtual=True, supsat=0, verbose=True):
     """
@@ -409,6 +410,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     rg = np.zeros((nz, ngas))
     reff = np.zeros((nz, ngas))
     ndz = np.zeros((nz, ngas))
+    fsed_layer = np.zeros((nz,ngas))
     qc_path = np.zeros(ngas)
 
     for i, igas in zip(range(ngas), condensibles):
@@ -468,36 +470,36 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
                     #we just need to overwrite 
                     #q_below from this output for the next routine
-                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below, p_cld = layer( igas, rho_p[i], 
+                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below, z_cld, fsed_layer_v = layer( igas, rho_p[i], 
                         #t,p layers, then t.p levels below and above
                         t_layer_virtual, p_layer_virtual, t_bot,t_base, p_bot, p_base,
                         kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
-                        supsat, fsed, b, eps, z_bot, z_base, param,
+                        supsat, fsed, b, eps, z_bot, z_base, z_TOA, param,
                         sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalaers
-                        og_vfall, p_cld
+                        og_vfall, z_cld
                     )
 
-        p_cld=None
+        z_cld=None
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
-            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below, p_cld = layer( igas, rho_p[i], 
+            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below, z_cld, fsed_layer[iz,i]  = layer( igas, rho_p[i], 
                 #t,p layers, then t.p levels below and above
                 t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz], p_top[iz+1],
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
-                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], param,
+                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_TOA,  param,
                 sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
-                og_vfall, p_cld
+                og_vfall, z_cld
             )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
-    return qc, qt, rg, reff, ndz, qc_path,mixl
+    return qc, qt, rg, reff, ndz, qc_path,mixl, fsed_layer
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
-    supsat, fsed, b, eps, z_top, z_bot, param,
+    supsat, fsed, b, eps, z_top, z_bot, z_TOA, param,
     sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
-    og_vfall, p_cld):
+    og_vfall, z_cld):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -661,11 +663,11 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             z_sub = z_bot_sub + scale_h * np.log( p_bot_sub/p_sub ) # midpoint of layer 
             ################################################
             t_sub = t_bot + np.log( p_bot/p_sub )*dtdlnp
-            qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub, p_cld = calc_qc(
+            qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub, z_cld, fsed_layer = calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, 
-                        sig,mh, rmin, nrad, og_vfall,p_cld)
+                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_TOA,
+                        sig,mh, rmin, nrad, og_vfall,z_cld)
 
 
             #   vertical sums
@@ -713,12 +715,12 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     qc_layer = qc_layer*gravity / dp_layer
     qt_layer = qt_layer*gravity / dp_layer
 
-    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below, p_cld
+    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below, z_cld, fsed_layer
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, 
-    sig, mh, rmin, nrad, og_vfall=True, p_cld=None):
+    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_TOA, 
+    sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -816,17 +818,18 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         rg_layer = 0.
         reff_layer = 0.
         ndz_layer = 0.
-        p_cld = None
+        z_cld = z_cld
+        fsed_mid = 0
 
     else:
 
         #   --------------------------------------------------------------------
         #   Cloudy layer: first calculate qt and qc at top of layer,
         #   then calculate layer averages
-        if p_cld is None:
-            p_cld = q_below
+        if z_cld is None:
+            z_cld = z_bot
         else:
-            p_cld = p_cld
+            z_cld = z_cld
 
         #   range of mixing ratios to search (g/g)
         qhi = q_below
@@ -856,7 +859,12 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         if param is "const":
             qt_top = qvs + (q_below - qvs) * np.exp(-fsed * dz_layer / mixl)
         elif param is "exp":
-            qt_top = qvs + (q_below - qvs) * np.exp( - b * fsed / mixl * np.exp(z_bot/b) 
+            #qt_top = qvs + (q_below - qvs) * np.exp( - b * fsed / mixl * np.exp(z_bot/b) 
+            #                * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
+            # cloud-deck normalised
+            b = b * (z_TOA - z_cld) / z_TOA
+            fs = fsed / np.exp(z_TOA / b)
+            qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
 
         #   Use trapezoid rule (for now) to calculate layer averages
@@ -926,7 +934,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #   fsed at middle of layer 
         if param is 'exp':
-            fsed_mid = fsed * np.exp(z_layer / b) + eps
+            #fsed_mid = fsed * np.exp(z_layer / b) + eps
+            fsed_mid = fs * np.exp(z_layer / b) + eps
         else: # 'const'
             fsed_mid = fsed 
 
@@ -943,7 +952,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ndz_layer = (3*rho_atmos*qc_layer*dz_layer /
                     ( 4*np.pi*rho_p*rg_layer**3 ) * np.exp( -9*lnsig2 ))
 
-    return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer, p_cld 
+    return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer, z_cld, fsed_mid 
 
 class Atmosphere():
     def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,

@@ -305,7 +305,7 @@ def plot_format(df):
     df.yaxis.axis_label_text_font_style = 'bold'
 
 
-def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,**kwargs):
+def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_indx=0,**kwargs):
 
     kwargs['plot_height'] = kwargs.get('plot_height',400)
     kwargs['plot_width'] = kwargs.get('plot_width',700)
@@ -322,19 +322,17 @@ def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,**kwarg
 
     min_id=[]; max_id=[]
     for i in range(len(out)):
-        x = out[i]['fsed']
+        x = out[i]['fsed'][:,gas_indx]
 
         if y_axis is 'pressure':
             y = out[i]['pressure']
         elif y_axis is 'z':
             y = out[i]['altitude']
         if cld_bounds:
-            low_clds = []; high_clds = []
-            for j in range(len(out[i]['condensibles'])):
-                ndz = out[i]['column_density'][:,j]
-                nonzero = np.where(ndz>1e-3)[0]
-                low_clds.append(nonzero[0])
-                high_clds.append(nonzero[-1])
+            ndz = out[i]['column_density'][:,gas_indx]
+            nonzero = np.where(ndz>1e-3)[0]
+            low_clds = nonzero[0]
+            high_clds = nonzero[-1]
             #from IPython import embed; embed()
             min_id.append(min(low_clds))
             max_id.append(min(high_clds))
