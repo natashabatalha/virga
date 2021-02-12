@@ -15,8 +15,8 @@ b = 2
 eps = 10
 Mark_data = False
 refine_TP = False
-quick_stop = True
-generate = True
+quick_stop = False
+generate = False
 
 if Mark_data:
     TP_directory = "~/Documents/codes/all-data/Mark_data/"

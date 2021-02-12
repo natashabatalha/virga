@@ -304,7 +304,8 @@ def plot_format(df):
     df.xaxis.axis_label_text_font_style = 'bold'
     df.yaxis.axis_label_text_font_style = 'bold'
 
-def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cloud_only=False,**kwargs):
+
+def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,**kwargs):
 
     kwargs['plot_height'] = kwargs.get('plot_height',400)
     kwargs['plot_width'] = kwargs.get('plot_width',700)
@@ -319,22 +320,36 @@ def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cloud_only=False,**kwarg
     kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
     fig = figure(**kwargs)
 
+    min_id=[]; max_id=[]
     for i in range(len(out)):
         x = out[i]['fsed']
+
         if y_axis is 'pressure':
             y = out[i]['pressure']
         elif y_axis is 'z':
             y = out[i]['altitude']
-        if cloud_only:
+        if cld_bounds:
             low_clds = []; high_clds = []
             for j in range(len(out[i]['condensibles'])):
                 ndz = out[i]['column_density'][:,j]
-                low_clds[j].append(np.where(ndz>0)[0])
-                high_clds[j].append(np.where(ndz>0)[-1])
-            min_id = min(low_clds)
-            max_id = min(high_clds)
-
+                nonzero = np.where(ndz>1e-3)[0]
+                low_clds.append(nonzero[0])
+                high_clds.append(nonzero[-1])
+            #from IPython import embed; embed()
+            min_id.append(min(low_clds))
+            max_id.append(min(high_clds))
         fig.line(x, y, legend_label=labels[i], color=cols[i], line_width=5)
+        #finally add color sections 
+        
+    if cld_bounds:
+        xmin = kwargs['x_range'][0]
+        xmax = kwargs['x_range'][1]
+        x1 = np.linspace(xmin,xmax,10)
+        y1 = x1*0+y[min(min_id)]
+        y2 = x1*0+y[max(max_id)]
+        fig.line(x1, y1, color='black',line_width=5, line_dash='dashed')
+        fig.line(x1, y2, color='black',line_width=5, line_dash='dashed')
+
 
     fig.legend.location = "bottom_left"
     plot_format(fig)

@@ -6,7 +6,7 @@ from scipy.integrate import quad, simps
 from scipy import optimize
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
-        zb=None, b=None, param='const'):
+        zb=None, b=None, eps=None, param='const'):
     """
     Calculate divergence from advective-diffusive balance for 
     condensate in a model layer
@@ -53,7 +53,7 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
     elif param is 'exp':
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
         qc = (ad_qbelow - ad_qvs) * np.exp( - b * fsed / mixl * np.exp(zb/b) 
-                            * (np.exp(z/b) -1))
+                            * (np.exp(z/b) -1) + eps*z/b)
         advdif = qc + ad_qvs
 
     advdif = advdif - qt

@@ -468,24 +468,25 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
                     #we just need to overwrite 
                     #q_below from this output for the next routine
-                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], 
+                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below, p_cld = layer( igas, rho_p[i], 
                         #t,p layers, then t.p levels below and above
                         t_layer_virtual, p_layer_virtual, t_bot,t_base, p_bot, p_base,
                         kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
                         supsat, fsed, b, eps, z_bot, z_base, param,
                         sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalaers
-                        og_vfall
+                        og_vfall, p_cld
                     )
 
+        p_cld=None
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
-            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below= layer( igas, rho_p[i], 
+            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below, p_cld = layer( igas, rho_p[i], 
                 #t,p layers, then t.p levels below and above
                 t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz], p_top[iz+1],
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
                 supsat, fsed, b, eps, z_top[iz], z_top[iz+1], param,
                 sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
-                og_vfall
+                og_vfall, p_cld
             )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -496,7 +497,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
     supsat, fsed, b, eps, z_top, z_bot, param,
     sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
-    og_vfall):
+    og_vfall, p_cld):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -660,11 +661,11 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             z_sub = z_bot_sub + scale_h * np.log( p_bot_sub/p_sub ) # midpoint of layer 
             ################################################
             t_sub = t_bot + np.log( p_bot/p_sub )*dtdlnp
-            qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
+            qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub, p_cld = calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
                         rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, 
-                        sig,mh, rmin, nrad, og_vfall)
+                        sig,mh, rmin, nrad, og_vfall,p_cld)
 
 
             #   vertical sums
@@ -712,12 +713,12 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     qc_layer = qc_layer*gravity / dp_layer
     qt_layer = qt_layer*gravity / dp_layer
 
-    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below
+    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below, p_cld
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
     ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, 
-    sig, mh, rmin, nrad, og_vfall=True):
+    sig, mh, rmin, nrad, og_vfall=True, p_cld=None):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -815,12 +816,17 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         rg_layer = 0.
         reff_layer = 0.
         ndz_layer = 0.
+        p_cld = None
 
     else:
 
         #   --------------------------------------------------------------------
         #   Cloudy layer: first calculate qt and qc at top of layer,
         #   then calculate layer averages
+        if p_cld is None:
+            p_cld = q_below
+        else:
+            p_cld = p_cld
 
         #   range of mixing ratios to search (g/g)
         qhi = q_below
@@ -835,18 +841,23 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_rainf = fsed
 
         #   Find total vapor mixing ratio at top of layer
-        find_root = True
-        while find_root:
-            try:
-                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
-                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf,
-                                z_bot, b, param)
-                                )#, xtol = 1e-20)
-                find_root = False
-            except ValueError:
-                qlo = qlo/10
-        
-        qt_top = qt_top.root
+        #find_root = True
+        #while find_root:
+        #    try:
+        #        qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
+        #                    args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf,
+        #                        z_bot, b, eps, param)
+        #                        )#, xtol = 1e-20)
+        #        find_root = False
+        #    except ValueError:
+        #        qlo = qlo/10
+        #
+        #qt_top = qt_top.root
+        if param is "const":
+            qt_top = qvs + (q_below - qvs) * np.exp(-fsed * dz_layer / mixl)
+        elif param is "exp":
+            qt_top = qvs + (q_below - qvs) * np.exp( - b * fsed / mixl * np.exp(z_bot/b) 
+                            * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
 
         #   Use trapezoid rule (for now) to calculate layer averages
         #   -- should integrate exponential
@@ -932,7 +943,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ndz_layer = (3*rho_atmos*qc_layer*dz_layer /
                     ( 4*np.pi*rho_p*rg_layer**3 ) * np.exp( -9*lnsig2 ))
 
-    return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
+    return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer, p_cld 
 
 class Atmosphere():
     def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,
@@ -1100,7 +1111,6 @@ class Atmosphere():
         self.z_top = np.concatenate(([0],np.cumsum(self.dz_layer[::-1])))[::-1]
 
         self.z = self.z_top[1:]+self.dz_pmid
-
 
     def get_kz_mixl(self, df, constant_kz, latent_heat, convective_overshoot,
      kz_min):
