@@ -866,7 +866,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         if param is "const":
             qt_top = qvs + (q_below - qvs) * np.exp(-fsed * dz_layer / mixl)
         elif param is "exp":
-            qt_top = qvs + (q_below - qvs) * np.exp( - b * fsed / mixl * np.exp(z_bot/b) 
+            fs = fsed / np.exp(z_TOA / b)
+            qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
         elif param is "exp_cd":
             # cloud-deck normalised
@@ -941,9 +942,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
 
         #   fsed at middle of layer 
-        if param is 'exp':
-            fsed_mid = fsed * np.exp(z_layer / b) + eps
-        elif param is 'exp_cd':
+        if param is 'exp' or param is 'exp_cd':
             fsed_mid = fs * np.exp(z_layer / b) + eps
         else: # 'const'
             fsed_mid = fsed 
