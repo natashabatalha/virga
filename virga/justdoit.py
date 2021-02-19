@@ -102,12 +102,12 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     #   run original eddysed code
     if og_solver:
-        if atmo.param is 'exp': # fsed = fsed_in * exp(z/b) + eps 
+        if atmo.param is 'exp' or atmo.param is 'exp_cd': # fsed = fsed_in * exp(z/b) + eps 
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) #/ np.exp(atmo.z[0] / atmo.b)
         elif atmo.param is 'const':
             fsed_in = atmo.fsed
-        qc, qt, rg, reff, ndz, qc_path, mixl, fsed_out = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
+        qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.mixl, 
                                              fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z[0], atmo.param,
@@ -134,21 +134,24 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                        dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii)
 
     if as_dict:
-        #if atmo.param is 'exp':
-        #    fsed_out = fsed_in * np.exp(atmo.z / atmo.b ) + atmo.eps
-        #    fsed_out = fsed_in / np.exp(atmo.z[0] / atmo.b)
-        #else: # 'const' or 'pow'
-        #    fsed_out = fsed_in * z_out ** atmo.b
+        if atmo.param is 'exp':
+            fsed_out = fsed_in * np.exp((atmo.z - atmo.z[0]) / atmo.b ) + atmo.eps
+        elif atmo.param is 'exp_cd':
+            fsed_out = np.zeros((len(atmo.t_layer), ngas))
+            for i in range(ngas):
+                fsed_out[:,i] = fsed_in * np.exp(atmo.z[0] * (atmo.z - atmo.z[0])  / (atmo.z[0] - z_cld[i]) / atmo.b ) + atmo.eps
+        else: # 'const' or 'pow'
+            fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
                            mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer, 
-                           mixl, atmo.kz, atmo.scale_h
+                           mixl, atmo.kz, atmo.scale_h, z_cld,
                            ) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, mixl, kz, scale_h):
+    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, mixl, kz, scale_h, z_cld):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -178,7 +181,8 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         'mixing_length_unit':'cm',
         'kz':kz, 
         'kz_unit':'cm^2/s',
-        'scale_height':scale_h
+        'scale_height':scale_h,
+        'cloud_deck':z_cld
     }
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad):
@@ -412,6 +416,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     ndz = np.zeros((nz, ngas))
     fsed_layer = np.zeros((nz,ngas))
     qc_path = np.zeros(ngas)
+    z_cld_out = np.zeros(ngas)
 
     for i, igas in zip(range(ngas), condensibles):
 
@@ -493,7 +498,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
-    return qc, qt, rg, reff, ndz, qc_path,mixl, fsed_layer
+        z_cld_out[i] = z_cld
+
+    return qc, qt, rg, reff, ndz, qc_path,mixl, z_cld_out
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
@@ -859,8 +866,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         if param is "const":
             qt_top = qvs + (q_below - qvs) * np.exp(-fsed * dz_layer / mixl)
         elif param is "exp":
-            #qt_top = qvs + (q_below - qvs) * np.exp( - b * fsed / mixl * np.exp(z_bot/b) 
-            #                * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
+            qt_top = qvs + (q_below - qvs) * np.exp( - b * fsed / mixl * np.exp(z_bot/b) 
+                            * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
+        elif param is "exp_cd":
             # cloud-deck normalised
             b = b * (z_TOA - z_cld) / z_TOA
             fs = fsed / np.exp(z_TOA / b)
@@ -934,7 +942,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #   fsed at middle of layer 
         if param is 'exp':
-            #fsed_mid = fsed * np.exp(z_layer / b) + eps
+            fsed_mid = fsed * np.exp(z_layer / b) + eps
+        elif param is 'exp_cd':
             fsed_mid = fs * np.exp(z_layer / b) + eps
         else: # 'const'
             fsed_mid = fsed 

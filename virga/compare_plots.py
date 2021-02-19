@@ -305,7 +305,7 @@ def plot_format(df):
     df.yaxis.axis_label_text_font_style = 'bold'
 
 
-def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_indx=0,**kwargs):
+def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_indx=None,**kwargs):
 
     kwargs['plot_height'] = kwargs.get('plot_height',400)
     kwargs['plot_width'] = kwargs.get('plot_width',700)
@@ -313,7 +313,11 @@ def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_ind
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
-    kwargs['x_range'] = kwargs.get('x_range', [1e-2, 2e1])
+    #kwargs['x_range'] = kwargs.get('x_range', [1e-2, 2e1])
+    if gas_indx is not None:
+        title = 'Condensible = ' + str(out[0]['condensibles'][gas_indx])
+        kwargs['title'] = kwargs.get('title', title)
+
 
     cols = Colorblind8[color_indx:color_indx+len(out)]
     pressure = out[0]['pressure']
@@ -322,24 +326,23 @@ def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_ind
 
     min_id=[]; max_id=[]
     for i in range(len(out)):
-        x = out[i]['fsed'][:,gas_indx]
+        if gas_indx is None: x = out[i]['fsed']
+        else: x = out[i]['fsed'][:,gas_indx]
 
         if y_axis is 'pressure':
             y = out[i]['pressure']
         elif y_axis is 'z':
             y = out[i]['altitude']
-        if cld_bounds:
+        col = Colorblind8[np.mod(i+color_indx, 8)]
+        fig.line(x, y, legend_label=labels[i], color=col, line_width=5)
+        if cld_bounds and gas_indx is not None:
+            low_clds = []; high_clds = []
             ndz = out[i]['column_density'][:,gas_indx]
             nonzero = np.where(ndz>1e-3)[0]
-            low_clds = nonzero[0]
-            high_clds = nonzero[-1]
-            #from IPython import embed; embed()
-            min_id.append(min(low_clds))
-            max_id.append(min(high_clds))
-        fig.line(x, y, legend_label=labels[i], color=cols[i], line_width=5)
-        #finally add color sections 
+            min_id.append(nonzero[0])
+            max_id.append(nonzero[-1])
         
-    if cld_bounds:
+    if cld_bounds and gas_indx is not None:
         xmin = kwargs['x_range'][0]
         xmax = kwargs['x_range'][1]
         x1 = np.linspace(xmin,xmax,10)
