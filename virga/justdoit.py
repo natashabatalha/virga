@@ -67,6 +67,9 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     # scale-height for fsed taken at Teff (default: temp at 1bar) 
     H = atmo.r_atmos * atmo.Teff / atmo.g
+    p1b = find_nearest_1d(atmo.p_layer,1)
+    z_shft = atmo.z[p1b]
+    
 
 
     #### First we need to either grab or compute Mie coefficients #### 
@@ -102,7 +105,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     #   run original eddysed code
     if og_solver:
-        if atmo.param is 'exp' or atmo.param is 'exp_cd': # fsed = fsed_in * exp(z/b) + eps 
+        if atmo.param is 'exp' or atmo.param is 'exp_cd' or atmo.param is 'logistic': # fsed = fsed_in * exp(z/b) + eps 
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) #/ np.exp(atmo.z[0] / atmo.b)
         elif atmo.param is 'const':
@@ -110,7 +113,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.mixl, 
-                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z[0], atmo.param,
+                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z[0], z_shft, atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              og_vfall, verbose=atmo.verbose)
@@ -140,6 +143,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
             fsed_out = np.zeros((len(atmo.t_layer), ngas))
             for i in range(ngas):
                 fsed_out[:,i] = fsed_in * np.exp(atmo.z[0] * (atmo.z - atmo.z[0])  / (atmo.z[0] - z_cld[i]) / atmo.b ) + atmo.eps
+        elif atmo.param is 'logistic':
+            fsed_out = fsed_in / (1 + np.exp(-(atmo.z - z_shft) / atmo.b )) + atmo.eps
         else: # 'const' or 'pow'
             fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
@@ -316,7 +321,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
-    fsed, b, eps, z_top, z_TOA, param,
+    fsed, b, eps, z_top, z_TOA, z_shft, param,
     mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
     og_vfall=True,do_virtual=True, supsat=0, verbose=True):
     """
@@ -479,7 +484,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                         #t,p layers, then t.p levels below and above
                         t_layer_virtual, p_layer_virtual, t_bot,t_base, p_bot, p_base,
                         kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
-                        supsat, fsed, b, eps, z_bot, z_base, z_TOA, param,
+                        supsat, fsed, b, eps, z_bot, z_base, z_TOA, z_shft, param,
                         sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalaers
                         og_vfall, z_cld
                     )
@@ -491,7 +496,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                 #t,p layers, then t.p levels below and above
                 t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz], p_top[iz+1],
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
-                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_TOA,  param,
+                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_TOA, z_shft,  param,
                 sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
                 og_vfall, z_cld
             )
@@ -504,7 +509,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
-    supsat, fsed, b, eps, z_top, z_bot, z_TOA, param,
+    supsat, fsed, b, eps, z_top, z_bot, z_TOA, z_shft, param,
     sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
     og_vfall, z_cld):
     """
@@ -673,7 +678,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub, z_cld, fsed_layer = calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_TOA,
+                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_TOA, z_shft,
                         sig,mh, rmin, nrad, og_vfall,z_cld)
 
 
@@ -726,7 +731,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_TOA, 
+    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_TOA, z_shft,
     sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
     """
     Calculate condensate optical depth and effective radius for a layer,
@@ -875,6 +880,11 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
             fs = fsed / np.exp(z_TOA / b)
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
+        elif param is "logistic":
+            c = np.exp(z_shft - z_bot)
+            qt_top = qvs + (q_below - qvs) * np.exp(b * fsed * (-dz_layer/b - 
+                        np.log(c * np.exp(-dz_layer/b) + 1) + np.log(c + 1)) / mixl 
+                        - eps * dz_layer / mixl)
 
         #   Use trapezoid rule (for now) to calculate layer averages
         #   -- should integrate exponential
@@ -944,8 +954,10 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #   fsed at middle of layer 
         if param is 'exp' or param is 'exp_cd':
             fsed_mid = fs * np.exp(z_layer / b) + eps
+        elif param is 'logistic':
+            fsed_mid = fsed
         else: # 'const'
-            fsed_mid = fsed 
+            fsed_mid = fsed / (1 + np.exp(-(z_layer - z_shft)/b)) + eps
 
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
