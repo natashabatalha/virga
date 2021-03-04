@@ -67,11 +67,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     # scale-height for fsed taken at Teff (default: temp at 1bar) 
     H = atmo.r_atmos * atmo.Teff / atmo.g
-    p1b = find_nearest_1d(atmo.p_layer,1)
-    z_shft = atmo.z[p1b]
     
-
-
+    
     #### First we need to either grab or compute Mie coefficients #### 
     for i, igas in zip(range(ngas),condensibles) : 
 
@@ -88,7 +85,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         if i==0: 
             nradii = len(radius)
             rmin = np.min(radius)
-            radius, rup, dr = get_r_grid(rmin, nradii)
+            radius, rup, dr = get_r_grid(rmin, n_radii=nradii)
             qext = np.zeros((nwave,nradii,ngas))
             qscat = np.zeros((nwave,nradii,ngas))
             cos_qscat = np.zeros((nwave,nradii,ngas))
@@ -113,7 +110,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.mixl, 
-                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z[0], z_shft, atmo.param,
+                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z_alpha, atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              og_vfall, verbose=atmo.verbose)
@@ -138,13 +135,14 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     if as_dict:
         if atmo.param is 'exp':
-            fsed_out = fsed_in * np.exp((atmo.z - atmo.z[0]) / atmo.b ) + atmo.eps
+            fsed_out = fsed_in * np.exp((atmo.z - atmo.z_alpha) / atmo.b ) + atmo.eps
         elif atmo.param is 'exp_cd':
             fsed_out = np.zeros((len(atmo.t_layer), ngas))
             for i in range(ngas):
-                fsed_out[:,i] = fsed_in * np.exp(atmo.z[0] * (atmo.z - atmo.z[0])  / (atmo.z[0] - z_cld[i]) / atmo.b ) + atmo.eps
+                fsed_out[:,i] = (fsed_in * np.exp(z_alpha * (atmo.z_alpha.z - atmo.z_alpha)  
+                                / (atmo.z_alpha - z_cld[i]) / atmo.b ) + atmo.eps)
         elif atmo.param is 'logistic':
-            fsed_out = fsed_in / (1 + np.exp(-(atmo.z - z_shft) / atmo.b )) + atmo.eps
+            fsed_out = fsed_in / (1 + np.exp(-(atmo.z - atmo.z_alpha) / atmo.b )) + atmo.eps
         else: # 'const' or 'pow'
             fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
@@ -248,6 +246,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     opd_gas = np.zeros((nz,ngas))
     w0 = np.zeros((nz,nwave))
     g0 = np.zeros((nz,nwave))
+    print('nrad = ', nrad)
+    print('qscat shape = ', qscat.shape)
 
     for iz in range(nz):
         for igas in range(ngas):
@@ -321,7 +321,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
-    fsed, b, eps, z_top, z_TOA, z_shft, param,
+    fsed, b, eps, z_top, z_alpha, param,
     mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
     og_vfall=True,do_virtual=True, supsat=0, verbose=True):
     """
@@ -360,7 +360,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     eps: float
         Minimum value of fsed function (if param=exp)
     z_top : float
-        Altitude at top of atmosphere
+        Altitude at each layer
+    z_alpha : float
+        Altitude at which fsed=alpha for variable fsed calculation
     param : str
         fsed parameterisation
         'const' (constant), 'exp' (exponential density derivation)
@@ -484,7 +486,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                         #t,p layers, then t.p levels below and above
                         t_layer_virtual, p_layer_virtual, t_bot,t_base, p_bot, p_base,
                         kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
-                        supsat, fsed, b, eps, z_bot, z_base, z_TOA, z_shft, param,
+                        supsat, fsed, b, eps, z_bot, z_base, z_alpha, param,
                         sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalaers
                         og_vfall, z_cld
                     )
@@ -496,7 +498,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                 #t,p layers, then t.p levels below and above
                 t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz], p_top[iz+1],
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
-                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_TOA, z_shft,  param,
+                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, param,
                 sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
                 og_vfall, z_cld
             )
@@ -509,7 +511,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
-    supsat, fsed, b, eps, z_top, z_bot, z_TOA, z_shft, param,
+    supsat, fsed, b, eps, z_top, z_bot, z_alpha, param,
     sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
     og_vfall, z_cld):
     """
@@ -556,6 +558,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Altitude at top of layer
     z_bot : float
         Altitude at bottom of layer
+    z_alpha : float
+        Altitude at which fsed=alpha for variable fsed calculation
     param : str
         fsed parameterisation
         'const' (constant), 'exp' (exponential density derivation)
@@ -678,7 +682,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub, z_cld, fsed_layer = calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_TOA, z_shft,
+                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_alpha,
                         sig,mh, rmin, nrad, og_vfall,z_cld)
 
 
@@ -731,7 +735,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_TOA, z_shft,
+    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha,
     sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
     """
     Calculate condensate optical depth and effective radius for a layer,
@@ -777,6 +781,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         Altitude at bottom of layer
     z_layer : float 
         Altitude of midpoint of layer (cm)
+    z_alpha : float
+        Altitude at which fsed=alpha for variable fsed calculation
     param : str
         fsed parameterisation
         'const' (constant), 'exp' (exponential density derivation)
@@ -871,17 +877,17 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         if param is "const":
             qt_top = qvs + (q_below - qvs) * np.exp(-fsed * dz_layer / mixl)
         elif param is "exp":
-            fs = fsed / np.exp(z_TOA / b)
+            fs = fsed / np.exp(z_alpha / b)
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
         elif param is "exp_cd":
             # cloud-deck normalised
-            b = b * (z_TOA - z_cld) / z_TOA
-            fs = fsed / np.exp(z_TOA / b)
+            b = b * (z_alpha - z_cld) / z_alpha
+            fs = fsed / np.exp(z_alpha / b)
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
         elif param is "logistic":
-            c = np.exp(z_shft - z_bot)
+            c = np.exp(z_alpha - z_bot)
             qt_top = qvs + (q_below - qvs) * np.exp(b * fsed * (-dz_layer/b - 
                         np.log(c * np.exp(-dz_layer/b) + 1) + np.log(c + 1)) / mixl 
                         - eps * dz_layer / mixl)
@@ -955,9 +961,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         if param is 'exp' or param is 'exp_cd':
             fsed_mid = fs * np.exp(z_layer / b) + eps
         elif param is 'logistic':
-            fsed_mid = fsed
+            fsed_mid = fsed / (1 + np.exp(-(z_layer - z_alpha)/b)) + eps
         else: # 'const'
-            fsed_mid = fsed / (1 + np.exp(-(z_layer - z_shft)/b)) + eps
+            fsed_mid = fsed
 
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
@@ -1034,7 +1040,7 @@ class Atmosphere():
 
     def ptk(self, df = None, filename=None,
         kz_min=1e5, constant_kz=None, latent_heat=False, convective_overshoot=None,
-        Teff=None, **pd_kwargs):
+        Teff=None, alpha_pressure=None, **pd_kwargs):
         """
         Read in file or define dataframe. 
     
@@ -1069,6 +1075,8 @@ class Atmosphere():
             This is ONLY used when a chf (convective heat flux) is supplied 
         Teff : float, optional
             Effective temperature. If None (default), Teff set to temperature at 1 bar
+        alpha_pressure : float
+            Pressure at which we want fsed=alpha for variable fsed calculation
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
@@ -1085,6 +1093,10 @@ class Atmosphere():
         #convert bars to dyne/cm^2 
         self.p_level = np.array(df['pressure'])*1e6
         self.t_level = np.array(df['temperature'])      
+        if alpha_pressure is None:
+            self.alpha_pressure=min(df['pressure'])
+        else:
+            self.alpha_pressure=alpha_pressure
         self.get_atmo_parameters()
         self.get_kz_mixl(df, constant_kz, latent_heat, convective_overshoot, kz_min)
 
@@ -1094,6 +1106,7 @@ class Atmosphere():
             self.Teff = self.t_level[onebar]
         else:
             self.Teff = Teff
+
 
 
     def get_atmo_parameters(self):
@@ -1140,6 +1153,11 @@ class Atmosphere():
         self.z_top = np.concatenate(([0],np.cumsum(self.dz_layer[::-1])))[::-1]
 
         self.z = self.z_top[1:]+self.dz_pmid
+
+        # altitude to set fsed = alpha
+        p_alpha = find_nearest_1d(self.p_layer/1e6, self.alpha_pressure)
+        self.z_alpha = self.z[p_alpha]
+        #z_alpha = atmo.z[0]
 
     def get_kz_mixl(self, df, constant_kz, latent_heat, convective_overshoot,
      kz_min):
@@ -1432,6 +1450,7 @@ def get_mie(gas, directory):
 
     nwave = int( df.iloc[0,0])
     nradii = int(df.iloc[0,1])
+    print('nradi = ', nradii)
 
     #get the radii (all the rows where there the last three rows are nans)
     radii = df.loc[np.isnan(df['qscat'])]['wave'].values
