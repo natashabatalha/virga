@@ -246,8 +246,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     opd_gas = np.zeros((nz,ngas))
     w0 = np.zeros((nz,nwave))
     g0 = np.zeros((nz,nwave))
-    print('nrad = ', nrad)
-    print('qscat shape = ', qscat.shape)
 
     for iz in range(nz):
         for igas in range(ngas):
@@ -1450,7 +1448,6 @@ def get_mie(gas, directory):
 
     nwave = int( df.iloc[0,0])
     nradii = int(df.iloc[0,1])
-    print('nradi = ', nradii)
 
     #get the radii (all the rows where there the last three rows are nans)
     radii = df.loc[np.isnan(df['qscat'])]['wave'].values
