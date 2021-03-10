@@ -101,7 +101,7 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         out=[out]
 
     lines = ['solid','dashed','dashdot']
-    lines = ['solid']*3
+    #lines = ['solid']*3
     if compare:
         lines = ['solid']*len(out)
         legend_it = []
@@ -183,7 +183,7 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         for i in gas_name:
             if gas is not None or compare: indx = j
             else: indx = gas_name.index(i)
-            f = p1.line(i, 'pressure', source=s1, alpha=1,color=color[np.mod(indx, len(color))] ,line_width=4,legend_label=i,line_dash='solid')#lines[j])
+            f = p1.line(i, 'pressure', source=s1, alpha=1,color=color[np.mod(indx, len(color))] ,line_width=4,legend_label=i,line_dash=lines[j])
             p2.line('r', i, source=s2,color=color[np.mod(indx, len(color))] ,line_width=4,line_dash=lines[j])
 
             if compare:
@@ -356,7 +356,7 @@ def condensate_mmr(out, gas=None, compare=False, legend=None, **kwargs):
 
         else:
             if gas is not None:
-                fig.line(cond_mmr[:,indx], pressure, line_width=4, legend_label = condensibles[indx], color=col[j], line_dash=lines[j])
+                fig.line(cond_mmr[:,indx], pressure, line_width=4, legend_label = condensibles[indx], color=Colorblind8[np.mod(j, len(Colorblind8))], line_dash=lines[j])
             else:
                 for i in range(ngas):
                     fig.line(cond_mmr[:,i], pressure, line_width=4, legend_label = condensibles[i], color=col[i], line_dash=lines[j])
@@ -579,3 +579,97 @@ def plot_format(df):
     df.yaxis.major_label_text_font='times'
     df.xaxis.axis_label_text_font_style = 'bold'
     df.yaxis.axis_label_text_font_style = 'bold'
+
+def plot_fsed(pressure, z, scale_height, alpha, beta, epsilon=1e-2, pres_alpha=None, **kwargs):
+
+    kwargs['plot_height'] = kwargs.get('plot_height',400)
+    kwargs['plot_width'] = kwargs.get('plot_width',700)
+    kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
+    kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
+    kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+
+    if type(alpha) is int:
+        alpha = [alpha]
+    if type(beta) is int:
+        beta = [beta]
+
+    if pres_alpha is None:
+        zstar = max(z)
+    else:
+        indx = find_nearest_1d(pressure, pres_alpha)
+        zstar = z[indx]
+    indx = find_nearest_1d(pressure, 1)
+    H = scale_height[indx]
+
+    cols = Colorblind8[:len(alpha)*len(beta)]
+    lines = ['solid','dashed','dotted','dotdash','dashdot']
+    kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
+    fig = figure(**kwargs)
+    
+    for i in range(len(alpha)):
+        for j in range(len(beta)):
+            lab = "alpha=%g" %alpha[i] + ", beta=%g" %beta[j]
+            col = Colorblind8[np.mod(i+len(alpha)*j, 8)]
+            line = lines[np.mod(j, 5)]
+            fsed = alpha[i] * np.exp((z-zstar)/(6*beta[j]*H)) + epsilon
+            fig.line(fsed, pressure, legend_label=lab, color=col, line_width=5, line_dash='solid')#line)
+
+    fig.legend.location = "bottom_right"
+
+    return fig
+
+def fsed_from_output(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_indx=None,**kwargs):
+
+    if type(out)==dict:
+        out=[out]
+
+    kwargs['plot_height'] = kwargs.get('plot_height',400)
+    kwargs['plot_width'] = kwargs.get('plot_width',700)
+    kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
+    kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
+    kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+    #kwargs['x_range'] = kwargs.get('x_range', [1e-2, 2e1])
+    if gas_indx is not None:
+        title = 'Condensible = ' + str(out[0]['condensibles'][gas_indx])
+        kwargs['title'] = kwargs.get('title', title)
+
+
+    cols = Colorblind8[color_indx:color_indx+len(out)]
+    pressure = out[0]['pressure']
+    kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
+    fig = figure(**kwargs)
+
+    min_id=[]; max_id=[]
+    for i in range(len(out)):
+        if gas_indx is None: x = out[i]['fsed']
+        else: x = out[i]['fsed'][:,gas_indx]
+
+        if y_axis is 'pressure':
+            y = out[i]['pressure']
+        elif y_axis is 'z':
+            y = out[i]['altitude']
+        col = Colorblind8[np.mod(i+color_indx, 8)]
+        fig.line(x, y, legend_label=labels[i], color=col, line_width=5)
+        if cld_bounds and gas_indx is not None:
+            low_clds = []; high_clds = []
+            ndz = out[i]['column_density'][:,gas_indx]
+            nonzero = np.where(ndz>1e-3)[0]
+            min_id.append(nonzero[0])
+            max_id.append(nonzero[-1])
+        
+    if cld_bounds and gas_indx is not None:
+        xmin = kwargs['x_range'][0]
+        xmax = kwargs['x_range'][1]
+        x1 = np.linspace(xmin,xmax,10)
+        y1 = x1*0+y[min(min_id)]
+        y2 = x1*0+y[max(max_id)]
+        fig.line(x1, y1, color='black',line_width=5, line_dash='dashed')
+        fig.line(x1, y2, color='black',line_width=5, line_dash='dashed')
+
+
+    if labels is not None:
+        fig.legend.location = "bottom_left"
+    plot_format(fig)
+    return fig

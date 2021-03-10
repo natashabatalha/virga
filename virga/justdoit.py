@@ -102,9 +102,9 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     #   run original eddysed code
     if og_solver:
-        if atmo.param is 'exp' or atmo.param is 'exp_cd' or atmo.param is 'logistic': # fsed = fsed_in * exp(z/b) + eps 
+        if atmo.param is 'exp' or atmo.param is 'exp_cd' or atmo.param is 'logistic': 
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
-            fsed_in = (atmo.fsed-atmo.eps) #/ np.exp(atmo.z[0] / atmo.b)
+            fsed_in = (atmo.fsed-atmo.eps) 
         elif atmo.param is 'const':
             fsed_in = atmo.fsed
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
