@@ -113,7 +113,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                              fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z_alpha, atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
-                                             og_vfall, verbose=atmo.verbose)
+                                             og_vfall, supsat=atmo.supsat,verbose=atmo.verbose)
         pres_out = atmo.p_layer
         temp_out = atmo.t_layer
         z_out = atmo.z
@@ -980,7 +980,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
 class Atmosphere():
     def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,
-                    param='const', verbose=True):
+                    param='const', verbose=True, supsat=0):
         """
         Parameters
         ----------
@@ -1016,6 +1016,7 @@ class Atmosphere():
         self.verbose = verbose 
         #grab constants
         self.constants()
+        self.supsat = supsat
 
     def constants(self):
         #   Depth of the Lennard-Jones potential well for the atmosphere 
