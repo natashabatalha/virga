@@ -75,7 +75,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         #Get gas properties including gas mean molecular weight,
         #gas mixing ratio, and the density
         run_gas = getattr(gas_properties, igas)
-        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh)
+        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh, gas_mmr=atmo.gas_mmr)
 
         #Get mie files that are already saved in 
         #directory
@@ -980,7 +980,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
 class Atmosphere():
     def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,
-                    param='const', verbose=True, supsat=0):
+                    param='const', verbose=True, supsat=0, gas_mmr=None):
         """
         Parameters
         ----------
@@ -1017,6 +1017,7 @@ class Atmosphere():
         #grab constants
         self.constants()
         self.supsat = supsat
+        self.gas_mmr = gas_mmr
 
     def constants(self):
         #   Depth of the Lennard-Jones potential well for the atmosphere 
