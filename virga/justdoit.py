@@ -105,6 +105,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         if atmo.param is 'exp' or atmo.param is 'exp_cd' or atmo.param is 'logistic': 
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) 
+        elif atmo.param is 'poly':
+            fsed_in = (atmo.fsed-atmo.eps) 
         elif atmo.param is 'const':
             fsed_in = atmo.fsed
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
@@ -136,13 +138,15 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     if as_dict:
         if atmo.param is 'exp':
             fsed_out = fsed_in * np.exp((atmo.z - atmo.z_alpha) / atmo.b ) + atmo.eps
-        elif atmo.param is 'exp_cd':
-            fsed_out = np.zeros((len(atmo.t_layer), ngas))
-            for i in range(ngas):
-                fsed_out[:,i] = (fsed_in * np.exp(z_alpha * (atmo.z_alpha.z - atmo.z_alpha)  
-                                / (atmo.z_alpha - z_cld[i]) / atmo.b ) + atmo.eps)
-        elif atmo.param is 'logistic':
-            fsed_out = fsed_in / (1 + np.exp(-(atmo.z - atmo.z_alpha) / atmo.b )) + atmo.eps
+        #elif atmo.param is 'exp_cd':
+        #    fsed_out = np.zeros((len(atmo.t_layer), ngas))
+        #    for i in range(ngas):
+        #        fsed_out[:,i] = (fsed_in * np.exp(z_alpha * (atmo.z_alpha.z - atmo.z_alpha)  
+        #                        / (atmo.z_alpha - z_cld[i]) / atmo.b ) + atmo.eps)
+        #elif atmo.param is 'logistic':
+        #    fsed_out = fsed_in / (1 + np.exp(-(atmo.z - atmo.z_alpha) / atmo.b )) + atmo.eps
+        elif atmo.param is 'poly':
+            fsed_out = fsed_in * ((atmo.z_alpha - atmo.z) / atmo.z_alpha) ** atmo.b + atmo.eps
         else: # 'const' or 'pow'
             fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
@@ -877,18 +881,28 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         elif param is "exp":
             fs = fsed / np.exp(z_alpha / b)
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
-                            * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
-        elif param is "exp_cd":
-            # cloud-deck normalised
-            b = b * (z_alpha - z_cld) / z_alpha
-            fs = fsed / np.exp(z_alpha / b)
-            qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
-                            * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
-        elif param is "logistic":
-            c = np.exp(z_alpha - z_bot)
-            qt_top = qvs + (q_below - qvs) * np.exp(b * fsed * (-dz_layer/b - 
-                        np.log(c * np.exp(-dz_layer/b) + 1) + np.log(c + 1)) / mixl 
-                        - eps * dz_layer / mixl)
+                            * (np.exp(dz_layer/b) -1) + eps*dz_layer/mixl)
+        elif param is "poly":
+            fs_int = (fsed / (z_alpha**b * (b+1)) * ((z_alpha - z_bot - dz_layer)**(b+1) - 
+                        (z_alpha - z_bot)**(b+1)) - eps * dz_layer )
+            qt_top = qvs + (q_below - qvs) * np.exp( 1 / mixl * fs_int) 
+                            
+        import math
+        if math.isnan(fs_int):
+            import IPython; IPython.embed()
+#        print(fs_int)
+
+        #elif param is "exp_cd":
+        #    # cloud-deck normalised
+        #    b = b * (z_alpha - z_cld) / z_alpha
+        #    fs = fsed / np.exp(z_alpha / b)
+        #    qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
+        #                    * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
+        #elif param is "logistic":
+        #    c = np.exp(z_alpha - z_bot)
+        #    qt_top = qvs + (q_below - qvs) * np.exp(b * fsed * (-dz_layer/b - 
+        #                np.log(c * np.exp(-dz_layer/b) + 1) + np.log(c + 1)) / mixl 
+        #                - eps * dz_layer / mixl)
 
         #   Use trapezoid rule (for now) to calculate layer averages
         #   -- should integrate exponential
@@ -958,8 +972,10 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #   fsed at middle of layer 
         if param is 'exp' or param is 'exp_cd':
             fsed_mid = fs * np.exp(z_layer / b) + eps
-        elif param is 'logistic':
-            fsed_mid = fsed / (1 + np.exp(-(z_layer - z_alpha)/b)) + eps
+        #elif param is 'logistic':
+        #    fsed_mid = fsed / (1 + np.exp(-(z_layer - z_alpha)/b)) + eps
+        elif param is 'poly':
+            fsed_mid = fsed * ((z_alpha - z_layer) / z_alpha)**b + eps
         else: # 'const'
             fsed_mid = fsed
 
