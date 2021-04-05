@@ -106,13 +106,13 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) 
         elif atmo.param is 'poly':
-            fsed_in = (atmo.fsed-atmo.eps) 
+            fsed_in = (atmo.fsed-atmo.eps) / (atmo.z_alpha - min(atmo.z)) ** atmo.b 
         elif atmo.param is 'const':
             fsed_in = atmo.fsed
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.mixl, 
-                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z_alpha, atmo.param,
+                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              og_vfall, supsat=atmo.supsat,verbose=atmo.verbose)
@@ -146,7 +146,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         #elif atmo.param is 'logistic':
         #    fsed_out = fsed_in / (1 + np.exp(-(atmo.z - atmo.z_alpha) / atmo.b )) + atmo.eps
         elif atmo.param is 'poly':
-            fsed_out = fsed_in * ((atmo.z_alpha - atmo.z) / atmo.z_alpha) ** atmo.b + atmo.eps
+            fsed_out = fsed_in * (atmo.z - min(atmo.z)) ** atmo.b + atmo.eps
         else: # 'const' or 'pow'
             fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
@@ -323,7 +323,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
-    fsed, b, eps, z_top, z_alpha, param,
+    fsed, b, eps, z_top, z_alpha, z_min, param,
     mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
     og_vfall=True,do_virtual=True, supsat=0, verbose=True):
     """
@@ -488,7 +488,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                         #t,p layers, then t.p levels below and above
                         t_layer_virtual, p_layer_virtual, t_bot,t_base, p_bot, p_base,
                         kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
-                        supsat, fsed, b, eps, z_bot, z_base, z_alpha, param,
+                        supsat, fsed, b, eps, z_bot, z_base, z_alpha, z_min, param,
                         sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalaers
                         og_vfall, z_cld
                     )
@@ -500,7 +500,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                 #t,p layers, then t.p levels below and above
                 t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz], p_top[iz+1],
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
-                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, param,
+                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
                 sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
                 og_vfall, z_cld
             )
@@ -513,7 +513,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
-    supsat, fsed, b, eps, z_top, z_bot, z_alpha, param,
+    supsat, fsed, b, eps, z_top, z_bot, z_alpha, z_min, param,
     sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
     og_vfall, z_cld):
     """
@@ -684,7 +684,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub, z_cld, fsed_layer = calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_alpha,
+                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_alpha, z_min,
                         sig,mh, rmin, nrad, og_vfall,z_cld)
 
 
@@ -737,7 +737,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha,
+    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha, z_min,
     sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
     """
     Calculate condensate optical depth and effective radius for a layer,
@@ -883,13 +883,10 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/mixl)
         elif param is "poly":
-            fs_int = (fsed / (z_alpha**b * (b+1)) * ((z_alpha - z_bot - dz_layer)**(b+1) - 
-                        (z_alpha - z_bot)**(b+1)) - eps * dz_layer )
+            fs_int = (fsed / (b+1) * (abs(z_bot + dz_layer - z_min)**(b+1) - 
+                        abs(z_bot - z_min)**(b+1)) - eps * dz_layer )
             qt_top = qvs + (q_below - qvs) * np.exp( 1 / mixl * fs_int) 
                             
-        import math
-        if math.isnan(fs_int):
-            import IPython; IPython.embed()
 #        print(fs_int)
 
         #elif param is "exp_cd":
@@ -975,7 +972,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #elif param is 'logistic':
         #    fsed_mid = fsed / (1 + np.exp(-(z_layer - z_alpha)/b)) + eps
         elif param is 'poly':
-            fsed_mid = fsed * ((z_alpha - z_layer) / z_alpha)**b + eps
+            fsed_mid = fsed * (z_layer - z_min) ** b + eps
         else: # 'const'
             fsed_mid = fsed
 
@@ -1172,7 +1169,9 @@ class Atmosphere():
 
         # altitude to set fsed = alpha
         p_alpha = find_nearest_1d(self.p_layer/1e6, self.alpha_pressure)
-        self.z_alpha = self.z[p_alpha]
+        #self.z_alpha = self.z[p_alpha]
+        z_temp = np.cumsum(self.dz_layer[::-1])[::-1]
+        self.z_alpha = z_temp[p_alpha]
         #z_alpha = atmo.z[0]
 
     def get_kz_mixl(self, df, constant_kz, latent_heat, convective_overshoot,
