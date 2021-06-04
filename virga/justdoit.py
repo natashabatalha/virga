@@ -78,7 +78,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         if i==0: 
             nradii = len(radius)
             rmin = np.min(radius)
-            radius, rup, dr = get_r_grid(rmin, nradii)
+            radius, rup, dr = get_r_grid(rmin, nradii) #todo: need to check that this radius is the same as from get_mei
             qext = np.zeros((nwave,nradii,ngas))
             qscat = np.zeros((nwave,nradii,ngas))
             cos_qscat = np.zeros((nwave,nradii,ngas))
@@ -224,8 +224,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
                 
-                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
-                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
+                #if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
+                #    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
 
                 r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
@@ -386,7 +386,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
         if do_virtual: 
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
-            if igas == 'Mg2SiO4':
+            if igas in ['Mg2SiO4','CaTiO3','CaAl12O19']:
                 pvap = get_pvap(t_bot, p_bot, mh=mh)
             else:
                 pvap = get_pvap(t_bot, mh=mh)
@@ -720,7 +720,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     """
 
     get_pvap = getattr(pvaps, gas_name)
-    if gas_name == 'Mg2SiO4':
+    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pvap = get_pvap(t_layer, p_layer,mh=mh)
     else:
         pvap = get_pvap(t_layer,mh=mh)
@@ -1341,12 +1341,22 @@ def get_refrind(igas,directory):
         Gas name 
     directory : str 
         Directory were reference files are located. 
+
+    Returns
+    -------
+    wavelength, real part, imaginary part 
     """
     filename = os.path.join(directory ,igas+".refrind")
     #put skiprows=1 in loadtxt to skip first line
-    idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
-
-    return wave_in,nn,kk
+    try:
+        idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
+        return wave_in,nn,kk
+    except: 
+        df = pd.read_csv(filename)
+        wave_in = df['micron'].values 
+        nn = df['real'].values
+        kk = df['imaginary'].values
+        return wave_in,nn,kk
 
 def get_r_grid(r_min=1e-8, n_radii=60):
     """
