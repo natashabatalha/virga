@@ -102,11 +102,9 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     #   run original eddysed code
     if og_solver:
-        if atmo.param is 'exp' or atmo.param is 'exp_cd' or atmo.param is 'logistic': 
+        if atmo.param is 'exp': 
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) 
-        elif atmo.param is 'poly':
-            fsed_in = (atmo.fsed-atmo.eps) / (atmo.z_alpha - min(atmo.z)) ** atmo.b 
         elif atmo.param is 'const':
             fsed_in = atmo.fsed
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
@@ -138,22 +136,12 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     if as_dict:
         if atmo.param is 'exp':
             fsed_out = fsed_in * np.exp((atmo.z - atmo.z_alpha) / atmo.b ) + atmo.eps
-        #elif atmo.param is 'exp_cd':
-        #    fsed_out = np.zeros((len(atmo.t_layer), ngas))
-        #    for i in range(ngas):
-        #        fsed_out[:,i] = (fsed_in * np.exp(z_alpha * (atmo.z_alpha.z - atmo.z_alpha)  
-        #                        / (atmo.z_alpha - z_cld[i]) / atmo.b ) + atmo.eps)
-        #elif atmo.param is 'logistic':
-        #    fsed_out = fsed_in / (1 + np.exp(-(atmo.z - atmo.z_alpha) / atmo.b )) + atmo.eps
-        elif atmo.param is 'poly':
-            fsed_out = fsed_in * (atmo.z - min(atmo.z)) ** atmo.b + atmo.eps
-        else: # 'const' or 'pow'
+        else: 
             fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
                            mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer, 
-                           mixl, atmo.kz, atmo.scale_h, z_cld,
-                           ) 
+                           mixl, atmo.kz, atmo.scale_h, z_cld) 
     else:
         return opd, w0, g0
 
@@ -273,19 +261,14 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                     #print (rr, rg[iz,igas],rsig,arg1,arg2)
 
                 # normalization
-                #print(norm)
                 norm = ndz[iz,igas] / norm
-                #print( norm, ndz[iz,igas] )
 
                 for irad in range(nrad):
                     rr = radius[irad]
                     arg1 = dr[irad] / ( np.sqrt(2.*PI)*np.log(rsig) )
                     arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
                     pir2ndz = norm*PI*rr*arg1*np.exp( arg2 )         
-                    #print(norm,PI,rr,arg1, arg2  )           
                     for iwave in range(nwave): 
-                        #print (rr, qscat[iwave,irad,igas], qext[iwave,irad,igas],cos_qscat[iwave,irad,igas],pir2ndz)
-                        #print(asdf)
                         scat_gas[iz,iwave,igas] = scat_gas[iz,iwave,igas]+qscat[iwave,irad,igas]*pir2ndz
                         ext_gas[iz,iwave,igas] = ext_gas[iz,iwave,igas]+qext[iwave,irad,igas]*pir2ndz
                         cqs_gas[iz,iwave,igas] = cqs_gas[iz,iwave,igas]+cos_qscat[iwave,irad,igas]*pir2ndz
@@ -882,24 +865,6 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
             fs = fsed / np.exp(z_alpha / b)
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/mixl)
-        elif param is "poly":
-            fs_int = (fsed / (b+1) * (abs(z_bot + dz_layer - z_min)**(b+1) - 
-                        abs(z_bot - z_min)**(b+1)) - eps * dz_layer )
-            qt_top = qvs + (q_below - qvs) * np.exp( 1 / mixl * fs_int) 
-                            
-#        print(fs_int)
-
-        #elif param is "exp_cd":
-        #    # cloud-deck normalised
-        #    b = b * (z_alpha - z_cld) / z_alpha
-        #    fs = fsed / np.exp(z_alpha / b)
-        #    qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
-        #                    * (np.exp(dz_layer/b) -1) + eps*dz_layer/b)
-        #elif param is "logistic":
-        #    c = np.exp(z_alpha - z_bot)
-        #    qt_top = qvs + (q_below - qvs) * np.exp(b * fsed * (-dz_layer/b - 
-        #                np.log(c * np.exp(-dz_layer/b) + 1) + np.log(c + 1)) / mixl 
-        #                - eps * dz_layer / mixl)
 
         #   Use trapezoid rule (for now) to calculate layer averages
         #   -- should integrate exponential
@@ -967,12 +932,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
 
         #   fsed at middle of layer 
-        if param is 'exp' or param is 'exp_cd':
+        if param is 'exp':
             fsed_mid = fs * np.exp(z_layer / b) + eps
-        #elif param is 'logistic':
-        #    fsed_mid = fsed / (1 + np.exp(-(z_layer - z_alpha)/b)) + eps
-        elif param is 'poly':
-            fsed_mid = fsed * (z_layer - z_min) ** b + eps
         else: # 'const'
             fsed_mid = fsed
 
@@ -1169,10 +1130,8 @@ class Atmosphere():
 
         # altitude to set fsed = alpha
         p_alpha = find_nearest_1d(self.p_layer/1e6, self.alpha_pressure)
-        #self.z_alpha = self.z[p_alpha]
         z_temp = np.cumsum(self.dz_layer[::-1])[::-1]
         self.z_alpha = z_temp[p_alpha]
-        #z_alpha = atmo.z[0]
 
     def get_kz_mixl(self, df, constant_kz, latent_heat, convective_overshoot,
      kz_min):
