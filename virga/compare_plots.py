@@ -62,7 +62,7 @@ def plot_cumsum(out,labels,lines,**kwargs):
     plot_format(fig)
     return fig
 
-def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,
+def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,average=False,
                     color_indx=0,**kwargs):
 
     condensibles = out[0]['condensibles']
@@ -72,7 +72,7 @@ def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
-    kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
+    #kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
 
     cols = viridis(len(out))
     cols = Colorblind8[color_indx:color_indx+len(out)]
@@ -81,7 +81,10 @@ def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,
     fig = figure(**kwargs)
     for i in range(len(out)):
         indx = out[i]['condensibles'].index(gas)
-        x = out[i][attribute][:,indx]
+        if not average:
+            x = out[i][attribute][:,indx]
+        else:
+            x = np.mean(out[i][attribute],1)
         if attribute is "column_density":
             x = out[i][attribute][:,indx]/out[i]["layer_thickness"]
         pressure = out[i]['pressure']
