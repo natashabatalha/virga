@@ -16,7 +16,7 @@ from .direct_mmr_solver import direct_solver
 
 
 def compute(atmo, directory = None, as_dict = True, og_solver = True, 
-    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True):
+    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True, do_virtual=True):
 
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
@@ -46,6 +46,9 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         Option to use analytical expression for rg, or alternatively deduce rg from calculation
         Calculation option will be most useful for future 
         inclusions of alternative particle size distributions
+    do_virtual : bool 
+        If the user adds an upper bound pressure that is too low. There are cases where a cloud wants to 
+        form off the grid towards higher pressures. This enables that. 
 
     Returns 
     -------
@@ -113,7 +116,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                              fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
-                                             og_vfall, supsat=atmo.supsat,verbose=atmo.verbose)
+                                             og_vfall, supsat=atmo.supsat,verbose=atmo.verbose,do_virtual=do_virtual)
         pres_out = atmo.p_layer
         temp_out = atmo.t_layer
         z_out = atmo.z
