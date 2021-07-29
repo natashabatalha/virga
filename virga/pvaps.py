@@ -92,7 +92,11 @@ def NH3(temp, mh = 1 ):
     mh = np.log10(mh)
     #NH3 vapor pressure above cloud
     # pvap_nh3 = np.exp(-86596./temp**2 - 2161./temp + 10.53)
-    pvap_nh3 = np.zeros(len(temp))
+    if isinstance(temp,float):
+        temp = np.array([temp])
+        pvap_nh3 = np.array([0])
+    else:
+        pvap_nh3 = np.zeros(len(temp))
     tlow = np.where(temp<195.4)[0]
     thigh = np.where(temp>=195.4)[0]
     if len(tlow) > 0: pvap_nh3[tlow] = 10**(6.900 - 1588/temp[tlow])
