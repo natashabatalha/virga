@@ -419,6 +419,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
         #include decrease in condensate mixing ratio below model domain
         if do_virtual: 
+
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
             if igas == 'Mg2SiO4':
@@ -428,10 +429,11 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
             qvs = qvs_factor*pvap/p_bot   
             if qvs <= q_below :   
+
                 #find the pressure at cloud base 
                 #   parameters for finding root 
                 p_lo = p_bot
-                p_hi = p_bot * 1e2
+                p_hi = p_bot * 1e3
 
                 #temperature gradient 
                 dtdlnp = ( t_top[-2] - t_bot ) / np.log( p_bot/p_top[-2] )
@@ -444,17 +446,18 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                 qv_factor = qvs_factor
 
                 try:
+
                     p_base = optimize.root_scalar(qvs_below_model, 
                                 bracket=[p_lo, p_hi], method='brentq', 
                                 args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below)
                                 )#, xtol = 1e-20)
+
                     if verbose: print('Virtual Cloud Found: '+ qv_gas_name)
                     root_was_found = True
                 except ValueError: 
                     root_was_found = False
 
                 if root_was_found:
-
                     #Yes, the gas did condense (below the grid)
                     did_gas_condense[i] = True
 
@@ -1462,7 +1465,7 @@ def get_refrind(igas,directory):
 
     return wave_in,nn,kk
 
-def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
+def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
     """
     Get spacing of radii to run Mie code
 
@@ -1483,7 +1486,7 @@ def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
 
     return radius, rup, dr
 
-def og_get_r_grid(r_min=1e-8, n_radii=60):
+def get_r_grid(r_min=1e-8, n_radii=60):
     """
     Warning
     -------
@@ -1619,7 +1622,6 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**
         show(fig) 
 
     return recommend 
-
 
 def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
     """
