@@ -224,8 +224,8 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
 
     p1.line('horizontal', 'average', source=s1, color='black',line_width=3,line_dash='dashed')
     p1.legend.location = 'bottom_left'
-    plot_format(p1)
-    plot_format(p2)
+    #plot_format(p1)
+    #plot_format(p2)
     if compare:
         legend = Legend(items=legend_it, location=(0, 0))
         legend.click_policy="mute"
@@ -297,7 +297,7 @@ def opd_by_gas(out, gas = None, color = magma, compare=False, legend=None, **kwa
         legend = Legend(items=legend_it, location=(0, 0))
         legend.click_policy="mute"
         fig.add_layout(legend, 'right')   
-    plot_format(fig)
+    #plot_format(fig)
     return fig
 
 def condensate_mmr(out, gas=None, compare=False, legend=None, **kwargs):
