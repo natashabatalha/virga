@@ -785,21 +785,12 @@ var element = document.currentScript.previousSibling.previousSibling;
 </pre></div>
 </div>
 </div>
-<div class="nboutput docutils container">
+<div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 [&#39;Cr&#39;, &#39;Fe&#39;, &#39;Mg2SiO4&#39;, &#39;MgSiO3&#39;, &#39;TiO2&#39;]
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-/Users/nbatalh1/Documents/codes/VIRGA/virga/virga/root_functions.py:227: RuntimeWarning: divide by zero encountered in log10
-  return np.log10(pv) - np.log10(partial_p)
 </pre></div></div>
 </div>
 <div class="section" id="Define-the-Atmosphere-Class">
@@ -864,21 +855,42 @@ var element = document.currentScript.previousSibling.previousSibling;
 <div class="highlight"><pre>
 Help on method ptk in module virga.justdoit:
 
-ptk(df=None, filename=None, kz_min=100000.0, **pd_kwargs) method of virga.justdoit.Atmosphere instance
+ptk(df=None, filename=None, kz_min=100000.0, constant_kz=None, latent_heat=False, convective_overshoot=None, Teff=None, alpha_pressure=None, **pd_kwargs) method of virga.justdoit.Atmosphere instance
     Read in file or define dataframe.
 
     Parameters
     ----------
     df : dataframe or dict
-        Dataframe with &#34;pressure&#34;(bars),&#34;temperature&#34;(K). Should have at least two
-        columns with names &#34;pressure&#34; and &#34;temperature&#34;. Can also include &#39;kz&#39; in CGS units.
+        Dataframe with &#34;pressure&#34;(bars),&#34;temperature&#34;(K). MUST have at least two
+        columns with names &#34;pressure&#34; and &#34;temperature&#34;.
+        Optional columns include the eddy diffusion &#34;kz&#34; in cm^2/s CGS units, and
+        the convective heat flux &#39;chf&#39; also in cgs (e.g. sigma_csg T^4)
     filename : str
         Filename read in. Will be read in with pd.read_csv and should
-        result in two named headers &#34;pressure&#34;(bars),&#34;temperature&#34;(K). Can also include &#39;kz&#39; in
-        CGS units. Use pd_kwargs to ensure file is read in properly.
+        result in two named headers &#34;pressure&#34;(bars),&#34;temperature&#34;(K).
+        Optional columns include the eddy diffusion &#34;kz&#34; in cm^2/s CGS units, and
+        the convective heat flux &#39;chf&#39; also in cgs (e.g. sigma_csg T^4)
+        Use pd_kwargs to ensure file is read in properly.
     kz_min : float, optional
         Minimum Kz value. This will reset everything below kz_min to kz_min.
         Default = 1e5 cm2/s
+    constant_kz : float, optional
+        Constant value for kz, if kz is supplied in df or filename,
+        it will inheret that value and not use this constant_value
+        Default = None
+    latent_heat : bool
+        optional, Default = False. The latent heat factors into the mixing length.
+        When False, the mixing length goes as the scale height
+        When True, the mixing length is scaled by the latent heat
+    convective_overshoot : float
+        Optional, Default is None. But the default value used in
+        Ackerman &amp; Marley 2001 is 1./3. If you are unsure of what to pick, start
+        there. This is only used when the
+        This is ONLY used when a chf (convective heat flux) is supplied
+    Teff : float, optional
+        Effective temperature. If None (default), Teff set to temperature at 1 bar
+    alpha_pressure : float
+        Pressure at which we want fsed=alpha for variable fsed calculation
     pd_kwargs : kwargs
         Pandas key words for file read in.
         If reading old style eddysed files, you would need:
@@ -906,6 +918,7 @@ ptk(df=None, filename=None, kz_min=100000.0, **pd_kwargs) method of virga.justdo
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Overwriting some Kz values to minimum value set by kz_min
+                     You can always turn off these warnings by setting verbose=False
 </pre></div></div>
 </div>
 </div>
@@ -922,7 +935,7 @@ Overwriting some Kz values to minimum value set by kz_min
 
 <span class="c1">#start with the simplest output</span>
 <span class="c1">#get total opacity, single scattering, asymmetry, and individual optical depths</span>
-<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span><span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">)</span>
+<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -932,7 +945,7 @@ Overwriting some Kz values to minimum value set by kz_min
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#get full dictionary output</span>
-<span class="n">all_out</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">)</span>
+<span class="n">all_out</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -957,7 +970,7 @@ Overwriting some Kz values to minimum value set by kz_min
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &#39;temperature_unit&#39;, &#39;wave&#39;, &#39;wave_unit&#39;, &#39;condensate_mmr&#39;, &#39;cond_plus_gas_mmr&#39;, &#39;mean_particle_r&#39;, &#39;droplet_eff_r&#39;, &#39;r_units&#39;, &#39;column_density&#39;, &#39;column_density_unit&#39;, &#39;opd_per_layer&#39;, &#39;single_scattering&#39;, &#39;asymmetry&#39;, &#39;opd_by_gas&#39;, &#39;condensibles&#39;, &#39;scalar_inputs&#39;, &#39;altitude&#39;, &#39;layer_thickness&#39;, &#39;z_unit&#39;])
+dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &#39;temperature_unit&#39;, &#39;wave&#39;, &#39;wave_unit&#39;, &#39;condensate_mmr&#39;, &#39;cond_plus_gas_mmr&#39;, &#39;mean_particle_r&#39;, &#39;droplet_eff_r&#39;, &#39;r_units&#39;, &#39;column_density&#39;, &#39;column_density_unit&#39;, &#39;opd_per_layer&#39;, &#39;single_scattering&#39;, &#39;asymmetry&#39;, &#39;opd_by_gas&#39;, &#39;condensibles&#39;, &#39;scalar_inputs&#39;, &#39;fsed&#39;, &#39;altitude&#39;, &#39;layer_thickness&#39;, &#39;z_unit&#39;, &#39;mixing_length&#39;, &#39;mixing_length_unit&#39;, &#39;kz&#39;, &#39;kz_unit&#39;, &#39;scale_height&#39;, &#39;cloud_deck&#39;])
 </pre></div></div>
 </div>
 <p>Hopefully the names of the <code class="docutils literal notranslate"><span class="pre">dict</span></code> elements are self explanatory. If not, here is a brief description of each. <code class="docutils literal notranslate"><span class="pre">nl</span></code>=number of layers, <code class="docutils literal notranslate"><span class="pre">nw</span></code>=number of wavelengths, <code class="docutils literal notranslate"><span class="pre">ng</span></code>=number of gases.</p>
@@ -974,7 +987,7 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 </ul>
 <p>Additionally, scalar input contains some of the original input</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -983,12 +996,12 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;mh&#39;: 1, &#39;mmw&#39;: 2.2, &#39;fsed&#39;: 0.1, &#39;sig&#39;: 2.0, &#39;nrad&#39;: 40, &#39;rmin&#39;: 1e-05}
+{&#39;mh&#39;: 1, &#39;mmw&#39;: 2.2, &#39;sig&#39;: 2.0, &#39;nrad&#39;: 60, &#39;rmin&#39;: 1e-08}
 </pre></div></div>
 </div>
 <div class="nbinput nblast docutils container">
