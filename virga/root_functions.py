@@ -307,12 +307,14 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     #  Extrapolate temperature lapse rate to test pressure
 
     t_test = qv_t + np.log( qv_p / p_test )*qv_dtdlnp
+    
     #  Compute saturation mixing ratio
     get_pvap = getattr(pvaps, qv_gas_name)
     if qv_gas_name == 'Mg2SiO4':
         pvap_test = get_pvap(t_test, p_test, mh=mh)
     else:
-        pvap_test = get_pvap(t_test,mh=mh)    
+        pvap_test = get_pvap(t_test,mh=mh)
+
     fx = qv_factor * pvap_test / p_test 
     return np.log(fx) - np.log(q_below)
 
