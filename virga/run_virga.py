@@ -10,12 +10,13 @@ from virga.direct_mmr_solver import generate_altitude
 
 #   locate data
 mieff_directory = "~/Documents/codes/all-data/mieff_files"
-fsed = 1.1
+fsed = 1
+b = 2
 eps = 10
 Mark_data = False
-refine_TP = True
-quick_stop = True
-generate = True
+refine_TP = False
+quick_stop = False
+generate = False
 
 if Mark_data:
     TP_directory = "~/Documents/codes/all-data/Mark_data/"
@@ -37,7 +38,7 @@ if Mark_data:
     recommended_gases = jdi.recommend_gas(pressure, temperature,
                                                  metallicity, mean_molecular_weight)
     
-    a = jdi.Atmosphere([recommended_gases[0]], fsed=fsed, mh=metallicity, mmw=mean_molecular_weight)
+    a = jdi.Atmosphere([recommended_gases[0]], fsed=fsed, mh=metallicity, mmw=mean_molecular_weight, b=b)
     a.gravity(gravity=grav, gravity_unit=u.Unit('cm/(s**2)'))
     a.ptk(df = pd.DataFrame({'pressure':pressure, 'temperature':temperature,
                                    'kz':kz}))
@@ -50,7 +51,7 @@ else:
     #a = jdi.Atmosphere(['MnS','Cr','MgSiO3','Fe'],
     a = jdi.Atmosphere(['MnS'],#, 'Cr'],
                       fsed=fsed,mh=metallicity,
-                     mmw = mean_molecular_weight)
+                     mmw = mean_molecular_weight, b=b)
     
     #set the planet gravity
     grav = 7.460
@@ -92,8 +93,7 @@ solver = [True, False]
 output = []
 fig1, ax1 = plt.subplots()
 for i in range(2):
-    all_out = jdi.compute(a, as_dict=True, directory=mieff_directory, layers=solver[i], refine_TP=refine_TP, 
-            quick_stop=quick_stop)
+    all_out = jdi.compute(a, as_dict=True, directory=mieff_directory)
     output.append(all_out)
     pres = all_out['pressure']
     qt = all_out['cond_plus_gas_mmr'][:,0]

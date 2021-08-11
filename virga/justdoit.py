@@ -6,15 +6,18 @@ import os
 from scipy import optimize 
 import PyMieScatt as ps
 
-from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t
+from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t, solve_force_balance
 from .calc_mie import fort_mie_calc, calc_new_mieff
 from . import gas_properties
 from . import pvaps
+from .justplotit import plot_format, find_nearest_1d
 
 from .direct_mmr_solver import direct_solver
 
 
-def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP = True, analytical_rg = True):
+def compute(atmo, directory = None, as_dict = True, og_solver = True, 
+    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True, do_virtual=True):
+
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -25,15 +28,27 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
         `Atmosphere` class 
     directory : str, optional 
         Directory string that describes where refrind files are 
-    as_dict : bool 
-        Option to view full output as dictionary
-    og_solver : bool
-        Option to change mmr solver (True = original eddysed, False = new direct solver)
-    refine_TP : bool
+    as_dict : bool, optional 
+        Default = False. Option to view full output as dictionary
+    og_solver : bool, optional
+        Default=True. BETA. Contact developers before changing to False.
+         Option to change mmr solver (True = original eddysed, False = new direct solver)
+    direct_tol : float , optional
+        Only used if og_solver =False. Default = True. 
+        Tolerance for direct solver
+    refine_TP : bool, optional
+        Only used if og_solver =False. 
         Option to refine temperature-pressure profile for direct solver 
-    analytical_rg : bool
+    og_vfall : bool, optional
+        Option to use original A&M or new Khan-Richardson method for finding vfall
+    analytical_rg : bool, optional
+        Only used if og_solver =False. 
         Option to use analytical expression for rg, or alternatively deduce rg from calculation
-        Calculation option will be most useful for future inclusions of alternative particle size distributions
+        Calculation option will be most useful for future 
+        inclusions of alternative particle size distributions
+    do_virtual : bool 
+        If the user adds an upper bound pressure that is too low. There are cases where a cloud wants to 
+        form off the grid towards higher pressures. This enables that. 
 
     Returns 
     -------
@@ -52,6 +67,10 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
     gas_mw = np.zeros(ngas)
     gas_mmr = np.zeros(ngas)
     rho_p = np.zeros(ngas)
+
+    # scale-height for fsed taken at Teff (default: temp at 1bar) 
+    H = atmo.r_atmos * atmo.Teff / atmo.g
+    
     
     #### First we need to either grab or compute Mie coefficients #### 
     for i, igas in zip(range(ngas),condensibles) : 
@@ -59,7 +78,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
         #Get gas properties including gas mean molecular weight,
         #gas mixing ratio, and the density
         run_gas = getattr(gas_properties, igas)
-        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh)
+        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh, gas_mmr=atmo.gas_mmr)
 
         #Get mie files that are already saved in 
         #directory
@@ -69,7 +88,7 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
         if i==0: 
             nradii = len(radius)
             rmin = np.min(radius)
-            radius, rup, dr = get_r_grid(rmin, nradii)
+            radius, rup, dr = get_r_grid(rmin, n_radii=nradii)
             qext = np.zeros((nwave,nradii,ngas))
             qscat = np.zeros((nwave,nradii,ngas))
             cos_qscat = np.zeros((nwave,nradii,ngas))
@@ -86,35 +105,51 @@ def compute(atmo, directory = None, as_dict = False, og_solver = True, refine_TP
 
     #   run original eddysed code
     if og_solver:
-        qc, qt, rg, reff, ndz, qc_path = eddysed(atmo.t_top, atmo.p_top, atmo.t, atmo.p, 
+        if atmo.param is 'exp': 
+            atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
+            fsed_in = (atmo.fsed-atmo.eps) 
+        elif atmo.param is 'const':
+            fsed_in = atmo.fsed
+        qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig)
-        pres_out = atmo.p
-        temp_out = atmo.t
+                                             atmo.g, atmo.kz, atmo.mixl, 
+                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
+                                             mh, atmo.sig, rmin, nradii,
+                                             atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
+                                             og_vfall, supsat=atmo.supsat,verbose=atmo.verbose,do_virtual=do_virtual)
+        pres_out = atmo.p_layer
+        temp_out = atmo.t_layer
         z_out = atmo.z
+
     
     #   run new, direct solver
     else:
-        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out = direct_solver(atmo.t, atmo.p, 
+        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(atmo.t_layer, atmo.p_layer,
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, refine_TP, analytical_rg)
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii, 
+                                             atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
+                                             direct_tol, refine_TP, og_vfall, analytical_rg)
 
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
-                                       dr,qext, qscat,cos_qscat,atmo.sig)
+                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii)
 
     if as_dict:
+        if atmo.param is 'exp':
+            fsed_out = fsed_in * np.exp((atmo.z - atmo.z_alpha) / atmo.b ) + atmo.eps
+        else: 
+            fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
-                           mh,mmw, atmo.fsed, atmo.sig, nradii,rmin, z_out, atmo.dz_layer
-                           ) 
+                           mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer, 
+                           mixl, atmo.kz, atmo.scale_h, z_cld) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer):
+    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, mixl, kz, scale_h, z_cld):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -134,13 +169,21 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "asymmetry": g0, 
         "opd_by_gas": opd_gas,
         "condensibles":gas_names,
-        "scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
+        #"scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
+        "scalar_inputs": {'mh':mh, 'mmw':mmw,'sig':sig,'nrad':nrad,'rmin':rmin},
+        "fsed": fsed,
         "altitude":z,
         "layer_thickness":dz_layer,
-        "z_unit":'cm'
+        "z_unit":'cm',
+        'mixing_length':mixl, 
+        'mixing_length_unit':'cm',
+        'kz':kz, 
+        'kz_unit':'cm^2/s',
+        'scale_height':scale_h,
+        'cloud_deck':z_cld
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig):
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -203,6 +246,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
         for igas in range(ngas):
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
+
+#                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
+#                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
+#
                 r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
 
@@ -217,19 +264,14 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                     #print (rr, rg[iz,igas],rsig,arg1,arg2)
 
                 # normalization
-                #print(norm)
                 norm = ndz[iz,igas] / norm
-                #print( norm, ndz[iz,igas] )
 
                 for irad in range(nrad):
                     rr = radius[irad]
                     arg1 = dr[irad] / ( np.sqrt(2.*PI)*np.log(rsig) )
                     arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
                     pir2ndz = norm*PI*rr*arg1*np.exp( arg2 )         
-                    #print(norm,PI,rr,arg1, arg2  )           
                     for iwave in range(nwave): 
-                        #print (rr, qscat[iwave,irad,igas], qext[iwave,irad,igas],cos_qscat[iwave,irad,igas],pir2ndz)
-                        #print(asdf)
                         scat_gas[iz,iwave,igas] = scat_gas[iz,iwave,igas]+qscat[iwave,irad,igas]*pir2ndz
                         ext_gas[iz,iwave,igas] = ext_gas[iz,iwave,igas]+qext[iwave,irad,igas]*pir2ndz
                         cqs_gas[iz,iwave,igas] = cqs_gas[iz,iwave,igas]+cos_qscat[iwave,irad,igas]*pir2ndz
@@ -250,6 +292,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                 if( opd_scat > 0. ):
                     opd[iz,iwave] = opd_ext
                     w0[iz,iwave] = opd_scat / opd_ext
+                    #if w0[iz,iwave]>1: 
+                    #    w0[iz,iwave]=1.
                     g0[iz,iwave] = cos_qs / opd_scat
                     
     #cumulative optical depths for conservative geometric scatterers
@@ -263,8 +307,11 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
     return opd, w0, g0, opd_gas
 
-def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
-    mw_atmos,gravity, kz,fsed, mh,sig, do_virtual=True, supsat=0):
+def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
+    gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
+    fsed, b, eps, z_top, z_alpha, z_min, param,
+    mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
+    og_vfall=True,do_virtual=True, supsat=0, verbose=True):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -295,13 +342,41 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         Kzz in cgs, either float or ndarray depending of whether or not 
         it is set as input
     fsed : float 
-        Sedimentation efficiency, unitless
+        Sedimentation efficiency coefficient, unitless
+    b : float
+        Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+    eps: float
+        Minimum value of fsed function (if param=exp)
+    z_top : float
+        Altitude at each layer
+    z_alpha : float
+        Altitude at which fsed=alpha for variable fsed calculation
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation)
     mh : float 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
+    d_molecule : float 
+        diameter of atmospheric molecule (cm) (Rosner, 2000)
+        (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
+        Set in Atmosphere constants 
+    eps_k : float 
+        Depth of the Lennard-Jones potential well for the atmosphere 
+        Used in the viscocity calculation (units are K) (Rosner, 2000)
+    c_p_factor : float 
+        specific heat of atmosphere (erg/K/g) . Usually 7/2 for ideal gas
+        diatomic molecules (e.g. H2, N2). Technically does slowly rise with 
+        increasing temperature
+    og_vfall : bool , optional
+        optional, default = True. True does the original fall velocity calculation. 
+        False does the updated one which runs a tad slower but is more consistent.
+        The main effect of turning on False is particle sizes in the upper atmosphere 
+        that are slightly bigger.
     do_virtual : bool,optional 
-        include decrease in condensate mixing ratio below model domain
+        optional, Default = True which adds a virtual layer if the 
+        species condenses below the model domain.
     supsat : float, optional
         Default = 0 , Saturation factor (after condensation)
 
@@ -321,9 +396,12 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
         vertical path of condensate 
     """
     #default for everything is false, will fill in as True as we go
+
+
     did_gas_condense = [False for i in condensibles]
     t_bot = t_top[-1]
     p_bot = p_top[-1]
+    z_bot = z_top[-1]
     ngas =  len(condensibles)
     nz = len(t_mid)
     qc = np.zeros((nz,ngas))
@@ -331,15 +409,17 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
     rg = np.zeros((nz, ngas))
     reff = np.zeros((nz, ngas))
     ndz = np.zeros((nz, ngas))
+    fsed_layer = np.zeros((nz,ngas))
     qc_path = np.zeros(ngas)
+    z_cld_out = np.zeros(ngas)
 
     for i, igas in zip(range(ngas), condensibles):
 
         q_below = gas_mmr[i]
 
-
         #include decrease in condensate mixing ratio below model domain
         if do_virtual: 
+
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
             if igas == 'Mg2SiO4':
@@ -348,12 +428,12 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                 pvap = get_pvap(t_bot, mh=mh)
 
             qvs = qvs_factor*pvap/p_bot   
-
             if qvs <= q_below :   
+
                 #find the pressure at cloud base 
                 #   parameters for finding root 
                 p_lo = p_bot
-                p_hi = p_bot * 1e2
+                p_hi = p_bot * 1e3
 
                 #temperature gradient 
                 dtdlnp = ( t_top[-2] - t_bot ) / np.log( p_bot/p_top[-2] )
@@ -364,49 +444,67 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr,rho_p,
                 qv_t = t_bot
                 qv_gas_name = igas
                 qv_factor = qvs_factor
+
                 try:
+
                     p_base = optimize.root_scalar(qvs_below_model, 
                                 bracket=[p_lo, p_hi], method='brentq', 
                                 args=(qv_dtdlnp,qv_p, qv_t,qv_factor ,qv_gas_name,mh,q_below)
                                 )#, xtol = 1e-20)
-                    print('Virtual Cloud Found: '+ qv_gas_name)
+
+                    if verbose: print('Virtual Cloud Found: '+ qv_gas_name)
                     root_was_found = True
                 except ValueError: 
                     root_was_found = False
 
                 if root_was_found:
-
                     #Yes, the gas did condense (below the grid)
                     did_gas_condense[i] = True
 
                     p_base = p_base.root 
                     t_base = t_bot + np.log( p_bot/p_base )*dtdlnp
+                    z_base = z_bot + scale_h * np.log( p_bot_sub/p_base ) 
                     
                     #   Calculate temperature and pressure below bottom layer
                     #   by adding a virtual layer 
 
-                    p_layer = 0.5*( p_bot + p_base )
-                    t_layer = t_bot + np.log10( p_bot/p_layer )*dtdlnp
+                    p_layer_virtual = 0.5*( p_bot + p_base )
+                    t_layer_virtual = t_bot + np.log10( p_bot/p_layer_virtual )*dtdlnp
+
                     #we just need to overwrite 
                     #q_below from this output for the next routine
-                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below = layer( igas, rho_p[i], t_layer, p_layer, 
-                        t_bot,t_base, p_bot, p_base,
-                         kz[-1], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
-                     )
+                    qc_v, qt_v, rg_v, reff_v,ndz_v,q_below, z_cld, fsed_layer_v = layer( igas, rho_p[i], 
+                        #t,p layers, then t.p levels below and above
+                        t_layer_virtual, p_layer_virtual, t_bot,t_base, p_bot, p_base,
+                        kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
+                        supsat, fsed, b, eps, z_bot, z_base, z_alpha, z_min, param,
+                        sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalaers
+                        og_vfall, z_cld
+                    )
 
+        z_cld=None
         for iz in range(nz-1,-1,-1): #goes from BOA to TOA
 
-            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below = layer( igas, rho_p[i], t_mid[iz], p_mid[iz], 
-                t_top[iz],t_top[iz+1], p_top[iz], p_top[iz+1],
-                 kz[iz], gravity, mw_atmos, gas_mw[i], q_below, supsat, fsed,sig,mh
-             )
+            qc[iz,i], qt[iz,i], rg[iz,i], reff[iz,i],ndz[iz,i],q_below, z_cld, fsed_layer[iz,i]  = layer( igas, rho_p[i], 
+                #t,p layers, then t.p levels below and above
+                t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz], p_top[iz+1],
+                kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
+                supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
+                sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
+                og_vfall, z_cld
+            )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
                             ( p_top[iz+1] - p_top[iz] ) / gravity)
-    return qc, qt, rg, reff, ndz, qc_path
+        z_cld_out[i] = z_cld
+
+    return qc, qt, rg, reff, ndz, qc_path,mixl, z_cld_out
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
-    kz, gravity, mw_atmos, gas_mw, q_below, supsat, fsed,sig,mh):
+    kz, mixl, gravity, mw_atmos, gas_mw, q_below,
+    supsat, fsed, b, eps, z_top, z_bot, z_alpha, z_min, param,
+    sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
+    og_vfall, z_cld):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -429,6 +527,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Pressure at botton of layer 
     kz : float 
         eddy diffusion coefficient (cm^2/s)
+    mixl : float 
+        Mixing length (cm)
     gravity : float 
         Gravity of planet cgs 
     mw_atmos : float 
@@ -440,11 +540,41 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     supsat : float 
         Super saturation factor
     fsed : float
-        Sedimentation efficiency (unitless) 
+        Sedimentation efficiency coefficient (unitless) 
+    b : float
+        Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+    eps: float
+        Minimum value of fsed function (if param=exp)
+    z_top : float
+        Altitude at top of layer
+    z_bot : float
+        Altitude at bottom of layer
+    z_alpha : float
+        Altitude at which fsed=alpha for variable fsed calculation
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation)
     sig : float 
         Width of the log normal particle distribution 
     mh : float 
         Metallicity NON log soar (1=1xSolar)
+    rmin : float 
+        Minium radius on grid (cm)
+    nrad : int 
+        Number of radii on Mie grid
+    d_molecule : float 
+        diameter of atmospheric molecule (cm) (Rosner, 2000)
+        (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
+        Set in Atmosphere constants 
+    eps_k : float 
+        Depth of the Lennard-Jones potential well for the atmosphere 
+        Used in the viscocity calculation (units are K) (Rosner, 2000)
+    c_p_factor : float 
+        specific heat of atmosphere (erg/K/g) . Usually 7/2 for ideal gas
+        diatomic molecules (e.g. H2, N2). Technically does slowly rise with 
+        increasing temperature
+    og_vfall : bool 
+        Use original or new vfall calculation
 
     Returns
     -------
@@ -470,15 +600,6 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     #   Number of levels of grid refinement used 
     nsub = 1
 
-    #   diameter of atmospheric molecule (cm) (Rosner, 2000)
-    #   (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
-    d_molecule = 2.827e-8
-
-    #   Depth of the Lennard-Jones potential well for the atmosphere 
-    # Used in the viscocity calculation (units are K) (Rosner, 2000)
-    #   (78.6 for air, 71.4 for N2, 59.7 for H2)
-    eps_k = 59.7
-
     #   specific gas constant for atmosphere (erg/K/g)
     r_atmos = R_GAS / mw_atmos
 
@@ -486,7 +607,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     r_cloud = R_GAS/ gas_mw
 
     #   specific heat of atmosphere (erg/K/g)
-    c_p = 7./2. * r_atmos
+    c_p = c_p_factor * r_atmos
 
     #   pressure thickness of layer
     dp_layer = p_bot - p_top
@@ -494,21 +615,13 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
     #   temperature gradient 
     dtdlnp = ( t_top - t_bot ) / dlnp
-    lapse_ratio = ( t_bot - t_top ) / dlnp / ( 2./7.*t_layer )
+    lapse_ratio = ( t_bot - t_top ) / dlnp / ( t_layer / c_p_factor )
 
     #   atmospheric density (g/cm^3)
     rho_atmos = p_layer / ( r_atmos * t_layer )
 
     #   atmospheric scale height (cm)
     scale_h = r_atmos * t_layer / gravity    
-
-    #   convective mixing length scale (cm): no less than 1/10 scale height
-    # Eqn. 6 in A & M 01 
-    mixl = np.max( [0.10, lapse_ratio ]) * scale_h
-
-
-    #   scale factor for eddy diffusion: 1/3 is baseline
-    scalef_kz = 1./3.
 
     #   convective velocity scale (cm/s) from mixing length theory
     w_convect = kz / mixl 
@@ -526,6 +639,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         ( PI*d_molecule**2 ) /
         ( 1.22 * ( t_layer / eps_k )**(-0.16) ))
 
+
     #   --------------------------------------------------------------------
     #   Top of convergence loop    
     converge = False
@@ -541,6 +655,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
         qt_bot_sub = q_below
         p_bot_sub = p_bot
+        z_bot_sub = z_bot
 
         #SUBALYER 
         dp_sub = dp_layer / nsub
@@ -548,14 +663,18 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         for isub in range(nsub): 
             qt_below = qt_bot_sub
             p_top_sub = p_bot_sub - dp_sub
-            dz_sub = scale_h * np.log( p_bot_sub/p_top_sub )
-            #print('dz',scale_h , p_bot_sub,p_top_sub )
+            dz_sub = scale_h * np.log( p_bot_sub/p_top_sub ) # width of layer
             p_sub = 0.5*( p_bot_sub + p_top_sub )
+            #################### CHECK #####################
+            z_top_sub = z_bot_sub + dz_sub
+            z_sub = z_bot_sub + scale_h * np.log( p_bot_sub/p_sub ) # midpoint of layer 
+            ################################################
             t_sub = t_bot + np.log( p_bot/p_sub )*dtdlnp
-            qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub= calc_qc(
+            qt_top, qc_sub, qt_sub, rg_sub, reff_sub,ndz_sub, z_cld, fsed_layer = calc_qc(
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
-                        rho_p,w_convect,fsed,sig,mh)
+                        rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_alpha, z_min,
+                        sig,mh, rmin, nrad, og_vfall,z_cld)
 
 
             #   vertical sums
@@ -571,6 +690,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
             qt_bot_sub = qt_top
             p_bot_sub = p_top_sub
+            z_bot_sub = z_top_sub
 
         #    Check convergence on optical depth
         if nsub_max == 1 :
@@ -602,11 +722,12 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     qc_layer = qc_layer*gravity / dp_layer
     qt_layer = qt_layer*gravity / dp_layer
 
-    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below
+    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below, z_cld, fsed_layer
 
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
-    ,mfp,visc,rho_p,w_convect, fsed,sig,mh):
+    ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha, z_min,
+    sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -628,7 +749,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     mxl : float 
         convective mixing length scale (cm): no less than 1/10 scale height
     dz_layer : float 
-        Altitude of layer cm 
+        Thickness of layer cm 
     gravity : float 
         Gravity of planet cgs 
     mw_atmos : float 
@@ -641,12 +762,29 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         density of condensed vapor (g/cm^3)
     w_convect : float    
         convective velocity scale (cm/s)
-    fsed : float 
-        Sedimentation efficiency (unitless)
+    fsed : float
+        Sedimentation efficiency coefficient (unitless) 
+    b : float
+        Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+    eps: float
+        Minimum value of fsed function (if param=exp)
+    z_bot : float
+        Altitude at bottom of layer
+    z_layer : float 
+        Altitude of midpoint of layer (cm)
+    z_alpha : float
+        Altitude at which fsed=alpha for variable fsed calculation
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation)
     sig : float 
         Width of the log normal particle distrubtion 
     mh : float 
         Metallicity NON log solar (1 = 1x solar)
+    rmin : float 
+        Minium radius on grid (cm)
+    nrad : int 
+        Number of radii on Mie grid
 
     Returns
     -------
@@ -672,13 +810,12 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
     fs = supsat + 1 
 
-
     #   atmospheric density (g/cm^3)
     rho_atmos = p_layer / ( r_atmos * t_layer )    
 
     #   mass mixing ratio of saturated vapor (g/g)
     qvs = fs*pvap / ( (r_cloud) * t_layer ) / rho_atmos
-    
+
     #   --------------------------------------------------------------------
     #   Layer is cloud free
 
@@ -690,19 +827,22 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         rg_layer = 0.
         reff_layer = 0.
         ndz_layer = 0.
+        z_cld = z_cld
+        fsed_mid = 0
 
     else:
 
         #   --------------------------------------------------------------------
         #   Cloudy layer: first calculate qt and qc at top of layer,
         #   then calculate layer averages
+        if z_cld is None:
+            z_cld = z_bot
+        else:
+            z_cld = z_cld
 
         #   range of mixing ratios to search (g/g)
         qhi = q_below
         qlo = qhi / 1e3
-
-        #   precision of advective-diffusive solution (g/g)
-        #delta_q = q_below / 1000.
 
         #   load parameters into advdiff common block
 
@@ -713,17 +853,24 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ad_rainf = fsed
 
         #   Find total vapor mixing ratio at top of layer
-        find_root = True
-        while find_root:
-            try:
-                qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
-                            args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf)
-                                )#, xtol = 1e-20)
-                find_root = False
-            except ValueError:
-                qlo = qlo/10
-        
-        qt_top = qt_top.root
+        #find_root = True
+        #while find_root:
+        #    try:
+        #        qt_top = optimize.root_scalar(advdiff, bracket=[qlo, qhi], method='brentq',
+        #                    args=(ad_qbelow,ad_qvs, ad_mixl,ad_dz ,ad_rainf,
+        #                        z_bot, b, eps, param)
+        #                        )#, xtol = 1e-20)
+        #        find_root = False
+        #    except ValueError:
+        #        qlo = qlo/10
+        #
+        #qt_top = qt_top.root
+        if param is "const":
+            qt_top = qvs + (q_below - qvs) * np.exp(-fsed * dz_layer / mixl)
+        elif param is "exp":
+            fs = fsed / np.exp(z_alpha / b)
+            qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
+                            * (np.exp(dz_layer/b) -1) + eps*dz_layer/mixl)
 
         #   Use trapezoid rule (for now) to calculate layer averages
         #   -- should integrate exponential
@@ -744,38 +891,61 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         find_root = True
         while find_root:
             try:
-                rw_layer = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+                if og_vfall:
+                    rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
                             args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
+                else:
+                    rw_temp = solve_force_balance("rw", w_convect, gravity, mw_atmos, mfp,
+                                                    visc, t_layer, p_layer, rho_p, rlo, rhi)
                 find_root = False
             except ValueError:
                 rlo = rlo/10
                 rhi = rhi*10
 
         #fall velocity particle radius 
-        rw_layer = rw_layer.root
+        if og_vfall: rw_layer = rw_temp.root
+        else: rw_layer = rw_temp
         
         #   geometric std dev of lognormal size distribution
         lnsig2 = 0.5*np.log( sig )**2
         #   sigma floor for the purpose of alpha calculation
         sig_alpha = np.max( [1.1, sig] )    
 
-        if fsed > 1 :
+        #   find alpha for power law fit vf = w(r/rw)^alpha
+        def pow_law(r, alpha):
+            return np.log(w_convect) + alpha * np.log (r / rw_layer) 
 
-            #   Bulk of precip at r > rw: exponent between rw and rw*sig
-            alpha = (np.log(
-                            vfall( rw_layer*sig_alpha,gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p ) 
-                            / w_convect )
-                                / np.log( sig_alpha ))
+        r_, rup, dr = get_r_grid(r_min = rmin, n_radii = nrad)
+        vfall_temp = []
+        for j in range(len(r_)):
+            if og_vfall:
+                vfall_temp.append(vfall(r_[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p))
+            else:
+                vlo = 1e0; vhi = 1e6
+                find_root = True
+                while find_root:
+                    try:
+                        vfall_temp.append(solve_force_balance("vfall", r_[j], gravity, mw_atmos, 
+                            mfp, visc, t_layer, p_layer, rho_p, vlo, vhi))
+                        find_root = False
+                    except ValueError:
+                        vlo = vlo/10
+                        vhi = vhi*10
 
-        else:
-            #   Bulk of precip at r < rw: exponent between rw/sig and rw
-            alpha = (np.log(
-                            w_convect / vfall( rw_layer/sig_alpha,gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p) )
-                                / np.log( sig_alpha ))
+        pars, cov = optimize.curve_fit(f=pow_law, xdata=r_, ydata=np.log(vfall_temp), p0=[0], 
+                            bounds=(-np.inf, np.inf))
+        alpha = pars[0]
+
+
+        #   fsed at middle of layer 
+        if param is 'exp':
+            fsed_mid = fs * np.exp(z_layer / b) + eps
+        else: # 'const'
+            fsed_mid = fsed
 
         #     EQN. 13 A&M 
         #   geometric mean radius of lognormal size distribution
-        rg_layer = (fsed**(1./alpha) *
+        rg_layer = (fsed_mid**(1./alpha) *
                     rw_layer * np.exp( -(alpha+6)*lnsig2 ))
 
         #   droplet effective radius (cm)
@@ -786,52 +956,113 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ndz_layer = (3*rho_atmos*qc_layer*dz_layer /
                     ( 4*np.pi*rho_p*rg_layer**3 ) * np.exp( -9*lnsig2 ))
 
-    return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer 
+    return qt_top, qc_layer,qt_layer, rg_layer,reff_layer,ndz_layer, z_cld, fsed_mid 
 
 class Atmosphere():
-    def __init__(self,condensibles,fsed = 0.5, mh=1,mmw=2.2,sig=2.0):
+    def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,
+                    param='const', verbose=True, supsat=0, gas_mmr=None):
         """
         Parameters
         ----------
         condensibles : list of str
             list of gases for which to consider as cloud species 
         fsed : float 
-            Sedimentation efficiency. Jupiter ~3-6. Hot Jupiters ~ 0.1-1.
+            Sedimentation efficiency coefficient. Jupiter ~3-6. Hot Jupiters ~ 0.1-1.
+        b : float
+            Denominator of exponential in sedimentation efficiency  (if param is 'exp')
+        eps: float
+            Minimum value of fsed function (if param=exp)
         mh : float 
             metalicity 
         mmw : float 
             MMW of the atmosphere 
         sig : float 
             Width of the log normal distribution for the particle sizes 
+        param : str
+            fsed parameterisation
+            'const' (constant), 'exp' (exponential density derivation)
+        verbose : bool 
+            Prints out warning statements throughout
     
         """
         self.mh = mh
         self.mmw = mmw
         self.condensibles = condensibles
         self.fsed = fsed
+        self.b = b
         self.sig = sig
+        self.param = param
+        self.eps = eps
+        self.verbose = verbose 
+        #grab constants
+        self.constants()
+        self.supsat = supsat
+        self.gas_mmr = gas_mmr
 
-    def ptk(self, df = None, filename=None,kz_min=1e5, **pd_kwargs):
+    def constants(self):
+        #   Depth of the Lennard-Jones potential well for the atmosphere 
+        # Used in the viscocity calculation (units are K) (Rosner, 2000)
+        #   (78.6 for air, 71.4 for N2, 59.7 for H2)
+        self.eps_k = 59.7
+        #   diameter of atmospheric molecule (cm) (Rosner, 2000)
+        #   (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
+        self.d_molecule = 2.827e-8
+
+        #specific heat factor of the atmosphere 
+        #7/2 comes from ideal gas assumption of permanent diatomic gas 
+        #e.g. h2, o2, n2, air, no, co
+        #this technically does increase slowly toward higher temperatures (>~700K)
+        self.c_p_factor = 7./2.
+
+        self.R_GAS = 8.3143e7
+        self.AVOGADRO = 6.02e23
+        self.K_BOLTZ = self.R_GAS / self.AVOGADRO
+
+    def ptk(self, df = None, filename=None,
+        kz_min=1e5, constant_kz=None, latent_heat=False, convective_overshoot=None,
+        Teff=None, alpha_pressure=None, **pd_kwargs):
         """
         Read in file or define dataframe. 
     
         Parameters
         ----------
         df : dataframe or dict
-            Dataframe with "pressure"(bars),"temperature"(K). Should have at least two 
-            columns with names "pressure" and "temperature". Can also include 'kz' in CGS units. 
+            Dataframe with "pressure"(bars),"temperature"(K). MUST have at least two 
+            columns with names "pressure" and "temperature". 
+            Optional columns include the eddy diffusion "kz" in cm^2/s CGS units, and 
+            the convective heat flux 'chf' also in cgs (e.g. sigma_csg T^4)
         filename : str 
             Filename read in. Will be read in with pd.read_csv and should 
-            result in two named headers "pressure"(bars),"temperature"(K). Can also include 'kz' in 
-            CGS units. Use pd_kwargs to ensure file is read in properly.
+            result in two named headers "pressure"(bars),"temperature"(K). 
+            Optional columns include the eddy diffusion "kz" in cm^2/s CGS units, and 
+            the convective heat flux 'chf' also in cgs (e.g. sigma_csg T^4)
+            Use pd_kwargs to ensure file is read in properly.
         kz_min : float, optional
             Minimum Kz value. This will reset everything below kz_min to kz_min. 
             Default = 1e5 cm2/s
+        constant_kz : float, optional
+            Constant value for kz, if kz is supplied in df or filename, 
+            it will inheret that value and not use this constant_value
+            Default = None 
+        latent_heat : bool 
+            optional, Default = False. The latent heat factors into the mixing length. 
+            When False, the mixing length goes as the scale height 
+            When True, the mixing length is scaled by the latent heat 
+        convective_overshoot : float 
+            Optional, Default is None. But the default value used in 
+            Ackerman & Marley 2001 is 1./3. If you are unsure of what to pick, start 
+            there. This is only used when the        
+            This is ONLY used when a chf (convective heat flux) is supplied 
+        Teff : float, optional
+            Effective temperature. If None (default), Teff set to temperature at 1 bar
+        alpha_pressure : float
+            Pressure at which we want fsed=alpha for variable fsed calculation
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
             skiprows=3, delim_whitespace=True, header=None, names=["ind","pressure","temperature","kz"]
         """
+        #first read in dataframe, dict or file and sort by pressure
         if not isinstance(df, type(None)):
             if isinstance(df, dict): df = pd.DataFrame(df)
             df = df.sort_values('pressure')
@@ -839,41 +1070,176 @@ class Atmosphere():
             df = pd.read_csv(filename, **pd_kwargs)
             df = df.sort_values('pressure')
 
-        self.pressure = np.array(df['pressure'])
-        self.temperature = np.array(df['temperature'])
-        if 'kz' in df.keys(): 
-            if df.loc[df['kz']<kz_min].shape[0] > 0:
-                df.loc[df['kz']<kz_min] = kz_min
-                print('Overwriting some Kz values to minimum value set by kz_min') 
-            self.kz = np.array(df['kz'])
-        else:
-            print('Kz not supplied. You can either add it as input here with p and t. Or, you can \
-                    add it separately to the `Atmosphere.kz` function')
-            self.kz = np.nan
-        r_atmos = 8.3143e7 / self.mmw
-
-        # itop=iz = [0:-1], ibot = [1:]
         #convert bars to dyne/cm^2 
-        self.p_top = self.pressure*1e6
-        self.t_top = self.temperature 
+        self.p_level = np.array(df['pressure'])*1e6
+        self.t_level = np.array(df['temperature'])      
+        if alpha_pressure is None:
+            self.alpha_pressure=min(df['pressure'])
+        else:
+            self.alpha_pressure=alpha_pressure
+        self.get_atmo_parameters()
+        self.get_kz_mixl(df, constant_kz, latent_heat, convective_overshoot, kz_min)
 
-        dlnp = np.log( self.p_top[1:] / self.p_top[0:-1] )#ag
+        # Teff
+        if isinstance(Teff, type(None)):
+            onebar = (np.abs(self.p_level/1e6 - 1.)).argmin()
+            self.Teff = self.t_level[onebar]
+        else:
+            self.Teff = Teff
 
-        #take pressures at midpoints of layers
-        self.p = 0.5*( self.p_top[1:] + self.p_top[0:-1]) #ag
-        dtdlnp = ( self.t_top[0:-1] - self.t_top[1:] ) / dlnp
-        self.t = self.t_top[1:] + np.log( self.p_top[1:]/self.p )*dtdlnp
 
-        self.scale_h = r_atmos * self.t / self.g
 
-        self.dz_pmid = self.scale_h * np.log( self.p_top[1:]/self.p )
+    def get_atmo_parameters(self):
+        """Defines all the atmospheric parameters needed for the calculation
+
+        Note: Some of this is repeated in the layer() function. 
+        This is done on purpose because layer is used to get a "virtual"
+        layer off the user input's grid. These parameters are also 
+        needed, though, to get the initial mixing parameters from the user. 
+        Therefore, we put them in both places. 
+        """
+        #   specific gas constant for atmosphere (erg/K/g)
+        self.r_atmos = self.R_GAS / self.mmw
+        
+        # pressure thickess 
+        dlnp = np.log( self.p_level[1:] / self.p_level[0:-1] ) #USED IN LAYER
+        self.p_layer = 0.5*( self.p_level[1:] + self.p_level[0:-1]) #USED IN LAYER
+        
+        #   temperature gradient - we use this for the sub layering
+        self.dtdlnp = ( self.t_level[0:-1] - self.t_level[1:] ) / dlnp #USED IN LAYER
+        
+        # get temperatures at layers
+        self.t_layer = self.t_level[1:] + np.log( self.p_level[1:]/self.p_layer )*self.dtdlnp #USED IN LAYER
+
+        #lapse ratio used for kz calculation if user asks for 
+        # us ot calculate it based on convective heat flux
+        self.lapse_ratio = ( self.t_level[1:] - self.t_level[0:-1] 
+                            ) / dlnp / ( self.t_layer/self.c_p_factor )
+
+        #   atmospheric density (g/cm^3)
+        self.rho_atmos = self.p_layer / (self.r_atmos * self.t_layer)
+
+        #scale height (todo=make this gravity dependent)
+        self.scale_h = self.r_atmos * self.t_layer / self.g
+
+        #specific heat of atmosphere
+        self.c_p = self.c_p_factor * self.r_atmos
+
+        #get altitudes 
+        self.dz_pmid = self.scale_h * np.log( self.p_level[1:]/self.p_layer )
+
         self.dz_layer = self.scale_h * dlnp
 
         self.z_top = np.concatenate(([0],np.cumsum(self.dz_layer[::-1])))[::-1]
 
         self.z = self.z_top[1:]+self.dz_pmid
 
-    def gravity(self, gravity=None, gravity_unit=None, radius=None, radius_unit=None, mass = None, mass_unit=None):
+        # altitude to set fsed = alpha
+        p_alpha = find_nearest_1d(self.p_layer/1e6, self.alpha_pressure)
+        z_temp = np.cumsum(self.dz_layer[::-1])[::-1]
+        self.z_alpha = z_temp[p_alpha]
+
+    def get_kz_mixl(self, df, constant_kz, latent_heat, convective_overshoot,
+     kz_min):
+        """
+        Computes kz profile and mixing length given user input. In brief the options are: 
+
+        1) Input Kz
+        2) Input constant kz
+        3) Input convective heat flux (supply chf in df)
+        3a) Input convective heat flux, correct for latent heat (supply chf in df and set latent_heat=True)
+        and/or 3b) Input convective heat flux, correct for convective overshoot (supply chf, convective_overshoot=1/3)
+        4) Set kz_min to prevent kz from going too low (any of the above and set kz_min~1e5)
+
+        Parameters
+        ----------
+        df : dataframe or dict
+            Dataframe from input with "pressure"(bars),"temperature"(K). MUST have at least two 
+            columns with names "pressure" and "temperature". 
+            Optional columns include the eddy diffusion "kz" in cm^2/s CGS units, and 
+            the convective heat flux 'chf' also in cgs (e.g. sigma_csg T^4)
+        constant_kz : float
+            Constant value for kz, if kz is supplied in df or filename, 
+            it will inheret that value and not use this constant_value
+            Default = None 
+        latent_heat : bool 
+            optional, Default = False. The latent heat factors into the mixing length. 
+            When False, the mixing length goes as the scale height 
+            When True, the mixing length is scaled by the latent heat 
+        convective_overshoot : float 
+            Optional, Default is None. But the default value used in 
+            Ackerman & Marley 2001 is 1./3. If you are unsure of what to pick, start 
+            there. This is only used when the        
+            This is ONLY used when a chf (convective heat flux) is supplied 
+        kz_min : float
+            Minimum Kz value. This will reset everything below kz_min to kz_min. 
+            Default = 1e5 cm2/s
+        """
+
+        #MIXING LENGTH ASSUMPTIONS 
+        if latent_heat:
+            #   convective mixing length scale (cm): no less than 1/10 scale height
+            self.mixl = np.array([np.max( [0.1, ilr] ) for ilr in self.lapse_ratio]) * self.scale_h
+        else:
+            #convective mixing length is the scale height
+            self.mixl = 1 * self.scale_h
+
+
+        #KZ OPTIONS 
+
+        #   option 1) the user has supplied it in their file or dictionary
+        if 'kz' in df.keys(): 
+            if df.loc[df['kz']<kz_min].shape[0] > 0:
+                df.loc[df['kz']<kz_min] = kz_min
+                if self.verbose: print('Overwriting some Kz values to minimum value set by kz_min \n \
+                    You can always turn off these warnings by setting verbose=False') 
+            kz_level = np.array(df['kz'])
+            self.kz = 0.5*(kz_level[1:] + kz_level[0:-1])
+            self.chf = None
+
+        #   option 2) the user wants a constant value
+        elif not isinstance(constant_kz , type(None)):
+            self.kz = np.zeros(df.shape[0]-1) + constant_kz
+            self.chf = None
+
+        #   option 3) the user wants to compute kz based on a convective heat flux 
+        elif 'chf' in df.keys():
+            self.chf =  np.array(df['chf'])
+
+
+            #CONVECTIVE OVERSHOOT ON OR OFF
+            #     sets the minimum allowed heat flux in a layer by assuming some overshoot
+            #     the default value of 1/3 is arbitrary, allowing convective flux to fall faster than
+            #     pressure scale height
+            if not isinstance(convective_overshoot, type(None)):
+                used = False
+                nz = len(self.p_layer)
+                for iz in range(nz-1,-1,-1):
+                    ratio_min = (convective_overshoot)*self.p_level[iz]/self.p_level[iz+1] 
+                    if self.chf[iz] < ratio_min*self.chf[iz+1]:
+                        self.chf[iz] = self.chf[iz+1]*ratio_min
+                        used=True
+                if self.verbose: print('Convective overshoot was turned on. The convective heat flux \n \
+                    has been adjusted such that it is not allowed to decrease more than {0} \n \
+                    the pressure. This number is set with the convective_overshoot parameter. \n \
+                    It can be disabled with convective_overshoot=None. To turn \n \
+                    off these messages set verbose=False in Atmosphere'.format(convective_overshoot)) 
+
+            #   vertical eddy diffusion coefficient (cm^2/s)
+            #   from Gierasch and Conrath (1985)
+            gc_kzz = ((1./3.) * self.scale_h * (self.mixl/self.scale_h)**(4./3.) * 
+                    ( ( self.r_atmos*self.chf[1:] ) / ( self.rho_atmos*self.c_p  ) )**(1./3.)) 
+            
+            self.kz =  [np.max([i, kz_min]) for i in gc_kzz ]
+        else:
+            raise Exception("Users can define kz by: \n \
+            1) Adding 'kz' as a column or key to your dataframe dict, or file \n \
+            2) Defining constant-w-altitude kz through the constant_kz input \n  \
+            3) Adding 'chf', the conective heat flux as a column to your \
+            dataframe, dict or file.")
+
+    def gravity(self, gravity=None, gravity_unit=None, radius=None, 
+        radius_unit=None, mass = None, mass_unit=None):
         """
         Get gravity based on mass and radius, or gravity inputs 
 
@@ -890,7 +1256,7 @@ class Atmosphere():
         mass : float 
             (Optional) mass of planet 
         mass_unit : astropy.unit
-            (Optional) Unit of mass    
+            (Optional) Unit of mass   
         """
         if (mass is not None) and (radius is not None):
             m = (mass*mass_unit).to(u.g)
@@ -907,21 +1273,33 @@ class Atmosphere():
             raise Exception('Need to specify gravity or radius and mass + additional units')
 
 
-    def kz(self,df = None, constant=None,kz_min = 1e5): 
+    def kz(self,df = None, constant_kz=None, chf = None, kz_min = 1e5, latent_heat=False): 
         """
         Define Kz in CGS. Should be on same grid as pressure. This overwrites whatever was 
         defined in get_pt ! Users can define kz by: 
             1) Defining a DataFrame with keys 'pressure' (in bars), and 'kz'
             2) Defining constant kz 
+            3) Supplying a convective heat flux and prescription for latent_heat
 
         Parameters
         ----------
         df : pandas.DataFrame, dict
             Dataframe or dictionary with 'kz' as one of the fields. 
-        
+        constant_kz : float 
+            Constant value for kz in units of cm^2/s
+        chf : ndarray 
+            Convective heat flux in cgs units (e.g. sigma T^4). This will be used to compute 
+            the kzz using the methodology of Gierasch and Conrath (1985)
+        latent_heat : bool 
+            optional, Default = False. The latent heat factors into the mixing length. 
+            When False, the mixing length goes as the scale height 
+            When True, the mixing length is scaled by the latent heat 
+            This is ONLY used when a chf (convective heat flux) is supplied 
         """
-
+        return "Depricating this function. Please use ptk instead. It has identical functionality."
         if not isinstance(df, type(None)):
+            #will not need any convective heat flux 
+            self.chf = None
             #reset to minimun value if specified by the user
             if df.loc[df['kz']<kz_min].shape[0] > 0:
                 df.loc[df['kz']<kz_min] = kz_min
@@ -931,20 +1309,31 @@ class Atmosphere():
             if len(self.kz) != len(self.pressure) : 
                 raise Exception('Kzz and pressure are not the same length')
 
-        elif not isinstance(constant, type(None)):
-            self.kz = constant
+        elif not isinstance(constant_kz, type(None)):
+            #will not need any convective heat flux
+            self.chf = None
+            self.kz = constant_kz
             if self.kz<kz_min:
                 self.kz = kz_min
                 print('Overwriting kz constant value to minimum value set by kz_min')
 
+        elif not isinstance(chf, type(None)):
+            def g_c_85(scale_h,r_atmos, chf, rho_atmos, c_p, lapse_ratio):
+                #   convective mixing length scale (cm): no less than 1/10 scale height
+                if latent_heat:
+                    mixl = np.max( 0.1, lapse_ratio ) * scale_h
+                else:
+                    mixl = scale_h
+                #   vertical eddy diffusion coefficient (cm^2/s)
+                #   from Gierasch and Conrath (1985)
+                gc_kzz = ((1./3.) * scale_h * (mixl/scale_h)**(4./3.) * 
+                        ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) 
+                return np.max(gc_kzz, kz_min), mixl
 
-        #   vertical eddy diffusion coefficient (cm^2/s)
-        #   from Gierasch and Conrath (1985)
-        # we are discontinuing this formalism
-        # self.kz = (scalef_kz * scale_h * (mixl/scale_h)**(4./3.) * #when dont know kz
-        #  ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) #when dont know kz
+            self.kz = g_c_85
+            self.chf = chf
 
-    def compute(self,directory = None, as_dict = False): 
+    def compute(self,directory = None, as_dict = True): 
         """
         Parameters
         ----------
@@ -953,20 +1342,20 @@ class Atmosphere():
         directory : str, optional 
             Directory string that describes where refrind files are 
         as_dict : bool 
-            Option to view full output as dictionary
+            Default = True, option to view full output as dictionary
 
         Returns 
         -------
+        dict 
+            When as_dict=True. Dictionary output that contains full output. See tutorials for explanation of all output.        
         opd, w0, g0
             Extinction per layer, single scattering abledo, asymmetry parameter, 
             All are ndarrays that are nlayer by nwave
-        dict 
-            When as_dict=True. Dictionary output that contains full output. See tutorials for explanation of all output.        
         """
         run = compute(self, directory = directory, as_dict = as_dict)
         return run
 
-def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-5, nradii = 40):
+def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
     """
     Function that calculations new Mie database using PyMieScatt. 
 
@@ -1047,7 +1436,7 @@ def get_mie(gas, directory):
 
     df = df.dropna()
 
-    assert len(radii) == nradii , "Number of radii specified in header is not the same as number of radii"
+    assert len(radii) == nradii , "Number of radii specified in header is not the same as number of radii."
     assert nwave*nradii == df.shape[0] , "Number of wavelength specified in header is not the same as number of waves in file"
 
     wave = df['wave'].values.reshape((nradii,nwave)).T
@@ -1076,8 +1465,34 @@ def get_refrind(igas,directory):
 
     return wave_in,nn,kk
 
-def get_r_grid(r_min=1e-5, n_radii=40):
+def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
     """
+    Get spacing of radii to run Mie code
+
+    r_min : float 
+            Minimum radius to compute (cm)
+    r_max : float 
+            Maximum radius to compute (cm)
+    n_radii : int
+            Number of radii to compute 
+    """
+
+    radius = np.logspace(np.log10(r_min),np.log10(r_max),n_radii)
+    rat = radius[1]/radius[0]
+    rup = 2*rat / (rat+1) * radius
+    dr = np.zeros(rup.shape)
+    dr[1:] = rup[1:]-rup[:-1]
+    dr[0] = dr[1]**2/dr[2]
+
+    return radius, rup, dr
+
+def get_r_grid(r_min=1e-8, n_radii=60):
+    """
+    Warning
+    -------
+    Original code from A&M code. 
+    Discontinued function. See 'get_r_grid'.
+
     Get spacing of radii to run Mie code
 
     r_min : float 
@@ -1125,7 +1540,7 @@ def available():
     gas_p = [i for i in dir(gas_properties) if i != 'np' and '_' not in i]
     return list(np.intersect1d(gas_p, pvs))
 
-def recommend_gas(pressure, temperature, mh, mmw, plot=False,**plot_kwargs):
+def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**plot_kwargs):
     """
     Recommends condensate species for a users calculation. 
 
@@ -1152,7 +1567,14 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False,**plot_kwargs):
     """    
     if plot: 
         from bokeh.plotting import figure, show
-        from bokeh.palettes import magma
+        from bokeh.models import Legend
+        from bokeh.palettes import magma   
+        plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-3])
+        plot_kwargs['plot_height'] = plot_kwargs.get('plot_height',400)
+        plot_kwargs['plot_width'] = plot_kwargs.get('plot_width',600)
+        plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
+        plot_kwargs['y_axis_label'] = plot_kwargs.get('y_axis_label','Pressure (bars)')
+        plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')        
         fig = figure(**plot_kwargs)
 
     all_gases = available()
@@ -1175,16 +1597,31 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False,**plot_kwargs):
             line_widths +=[1]        
 
     if plot: 
+        legend_it = []
         ngas = len(all_gases)
         cols = magma(ngas)
-        fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
-        for i in range(ngas):
+        if legend is 'inside':
+            fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
+            for i in range(ngas):
 
-            fig.line(cond_ts[i],cond_p, legend_label=all_gases[i],color=cols[i],line_width=line_widths[i])
+                fig.line(cond_ts[i],cond_p, legend_label=all_gases[i],color=cols[i],line_width=line_widths[i])
+        else:
+            f = fig.line(temperature,pressure, color='black',line_width=5,line_dash='dashed')
+            legend_it.append(('input profile', [f]))
+            for i in range(ngas):
+
+                f = fig.line(cond_ts[i],cond_p ,color=cols[i],line_width=line_widths[i])
+                legend_it.append((all_gases[i], [f]))
+
+        if legend is 'outside':
+            legend = Legend(items=legend_it, location=(0, 0))
+            legend.click_policy="mute"
+            fig.add_layout(legend, 'right')   
+        
+        plot_format(fig)
         show(fig) 
 
     return recommend 
-
 
 def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
     """
@@ -1216,14 +1653,26 @@ def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
     temps = []
     for p in pressure: 
         temp = optimize.root_scalar(find_cond_t, 
-                        bracket=[1, 10000], method='brentq', 
+                        bracket=[10, 10000], method='brentq', 
                         args=(p, mh, mmw, gas_name))
         temps += [temp.root]
     return np.array(pressure), np.array(temps)
 
-def hot_jupiter(directory=os.getcwd()):
-    df = pd.read_csv(os.path.join(directory,'hj.pt'),delim_whitespace=True, usecols=[1,2,3],
+def hot_jupiter():
+    directory = os.path.join(os.path.dirname(__file__), "reference",
+                                   "hj.pt")
+
+    df = pd.read_csv(directory,delim_whitespace=True, usecols=[1,2,3],
                   names = ['pressure','temperature','kz'],skiprows=1)
     df.loc[df['pressure']>12.8,'temperature'] = np.linspace(1822,2100,df.loc[df['pressure']>12.8].shape[0])
+    return df
+
+def brown_dwarf(): 
+    directory = os.path.join(os.path.dirname(__file__), "reference",
+                                   "t1000g100nc_m0.0.dat")
+
+    df  = pd.read_csv(directory,skiprows=1,delim_whitespace=True,
+                 header=None, usecols=[1,2,3],
+                 names=['pressure','temperature','chf'])
     return df
 
