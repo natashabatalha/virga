@@ -105,7 +105,9 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
     #   run original eddysed code
     if og_solver:
+        #here atmo.param describes the parameterization used for the variable fsed methodology
         if atmo.param is 'exp': 
+            #the formalism of this is detailed in Rooney et al. 2021
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) 
         elif atmo.param is 'const':
@@ -113,7 +115,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.mixl, 
-                                             fsed_in, atmo.b, atmo.eps, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
+                                             fsed_in,
+                                             atmo.b, atmo.eps, atmo.scale_h, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              og_vfall, supsat=atmo.supsat,verbose=atmo.verbose,do_virtual=do_virtual)
@@ -247,9 +250,9 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
 
-#                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
-#                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
-#
+                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
+                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
+
                 r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
 
@@ -309,7 +312,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
-    fsed, b, eps, z_top, z_alpha, z_min, param,
+    fsed, b, eps, scale_h, z_top, z_alpha, z_min, param,
     mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
     og_vfall=True,do_virtual=True, supsat=0, verbose=True):
     """
@@ -347,6 +350,8 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
         Denominator of exponential in sedimentation efficiency  (if param is 'exp')
     eps: float
         Minimum value of fsed function (if param=exp)
+    scale_h : float 
+        Scale height of the atmosphere
     z_top : float
         Altitude at each layer
     z_alpha : float
@@ -463,7 +468,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
                     p_base = p_base.root 
                     t_base = t_bot + np.log( p_bot/p_base )*dtdlnp
-                    z_base = z_bot + scale_h * np.log( p_bot_sub/p_base ) 
+                    z_base = z_bot + scale_h[-1] * np.log( p_bot/p_base ) 
                     
                     #   Calculate temperature and pressure below bottom layer
                     #   by adding a virtual layer 
