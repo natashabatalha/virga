@@ -424,7 +424,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
         #include decrease in condensate mixing ratio below model domain
         if do_virtual: 
-
+            z_cld=None
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
             if igas == 'Mg2SiO4':
