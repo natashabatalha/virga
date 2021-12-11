@@ -106,11 +106,11 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     #   run original eddysed code
     if og_solver:
         #here atmo.param describes the parameterization used for the variable fsed methodology
-        if atmo.param is 'exp': 
+        if atmo.param == 'exp': 
             #the formalism of this is detailed in Rooney et al. 2021
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
             fsed_in = (atmo.fsed-atmo.eps) 
-        elif atmo.param is 'const':
+        elif atmo.param == 'const':
             fsed_in = atmo.fsed
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
@@ -127,6 +127,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     
     #   run new, direct solver
     else:
+        fsed_in = atmo.fsed
+        z_cld = None #temporary fix 
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(atmo.t_layer, atmo.p_layer,
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii, 
@@ -137,10 +139,10 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
-                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii)
+                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii,verbose=atmo.verbose)
 
     if as_dict:
-        if atmo.param is 'exp':
+        if atmo.param == 'exp':
             fsed_out = fsed_in * np.exp((atmo.z - atmo.z_alpha) / atmo.b ) + atmo.eps
         else: 
             fsed_out = fsed_in 
@@ -186,7 +188,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         'cloud_deck':z_cld
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad):
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad,verbose):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -217,6 +219,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
         qscat-weighted <cos (scattering angle)>
     sig : float 
         Width of the log normal particle distribution
+    verbose: bool 
+        print out warnings or not
 
 
     Returns
@@ -244,14 +248,15 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     opd_gas = np.zeros((nz,ngas))
     w0 = np.zeros((nz,nwave))
     g0 = np.zeros((nz,nwave))
-
+    warning=''
     for iz in range(nz):
         for igas in range(ngas):
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
 
                 if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
-                    raise Exception ('There has been a calculated particle radii of {0}cm for the {1}th gas at the {2}th grid point. The minimum radius from the Mie grid is {3}cm, and youve requested a lognormal distribution of {4}. Therefore it is not possible to accurately compute the optical properties.'.format(str(rg[iz,igas]),str(igas),str(iz), str(rmin),str(sig)))
+                    warning0 = f'Take caution in analyzing results. There have been a calculated particle radii off the Mie grid, which has a min radius of {rmin}cm and distribution of {sig}. The following errors:'
+                    warning+='{0}cm for the {1}th gas at the {2}th grid point; '.format(str(rg[iz,igas]),str(igas),str(iz))
 
                 r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
@@ -307,7 +312,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
         for iz in range(1,nz):
             opd_gas[iz,igas] = opd_gas[iz-1,igas] + opd_layer[iz,igas]
-
+    if ((warning!='') & (verbose)): print(warning0+warning+' Turn off warnings by setting verbose=False.')
     return opd, w0, g0, opd_gas
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
@@ -424,7 +429,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 
         #include decrease in condensate mixing ratio below model domain
         if do_virtual: 
-
+            z_cld=None
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
             if igas == 'Mg2SiO4':
@@ -840,7 +845,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #   --------------------------------------------------------------------
         #   Cloudy layer: first calculate qt and qc at top of layer,
         #   then calculate layer averages
-        if z_cld is None:
+        if isinstance(z_cld,type(None)):
             z_cld = z_bot
         else:
             z_cld = z_cld
@@ -870,9 +875,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         #        qlo = qlo/10
         #
         #qt_top = qt_top.root
-        if param is "const":
+        if param == "const":
             qt_top = qvs + (q_below - qvs) * np.exp(-fsed * dz_layer / mixl)
-        elif param is "exp":
+        elif param == "exp":
             fs = fsed / np.exp(z_alpha / b)
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/mixl)
@@ -943,7 +948,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
 
         #   fsed at middle of layer 
-        if param is 'exp':
+        if param == 'exp':
             fsed_mid = fs * np.exp(z_layer / b) + eps
         else: # 'const'
             fsed_mid = fsed
@@ -1224,11 +1229,11 @@ class Atmosphere():
                     if self.chf[iz] < ratio_min*self.chf[iz+1]:
                         self.chf[iz] = self.chf[iz+1]*ratio_min
                         used=True
-                if self.verbose: print('Convective overshoot was turned on. The convective heat flux \n \
-                    has been adjusted such that it is not allowed to decrease more than {0} \n \
-                    the pressure. This number is set with the convective_overshoot parameter. \n \
-                    It can be disabled with convective_overshoot=None. To turn \n \
-                    off these messages set verbose=False in Atmosphere'.format(convective_overshoot)) 
+                if self.verbose: print("""Convective overshoot was turned on. The convective heat flux 
+                    has been adjusted such that it is not allowed to decrease more than {0} 
+                    the pressure. This number is set with the convective_overshoot parameter. 
+                    It can be disabled with convective_overshoot=None. To turn
+                    off these messages set verbose=False in Atmosphere""".format(convective_overshoot)) 
 
             #   vertical eddy diffusion coefficient (cm^2/s)
             #   from Gierasch and Conrath (1985)
@@ -1605,7 +1610,7 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**
         legend_it = []
         ngas = len(all_gases)
         cols = magma(ngas)
-        if legend is 'inside':
+        if legend == 'inside':
             fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
             for i in range(ngas):
 
@@ -1618,7 +1623,7 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**
                 f = fig.line(cond_ts[i],cond_p ,color=cols[i],line_width=line_widths[i])
                 legend_it.append((all_gases[i], [f]))
 
-        if legend is 'outside':
+        if legend == 'outside':
             legend = Legend(items=legend_it, location=(0, 0))
             legend.click_policy="mute"
             fig.add_layout(legend, 'right')   
