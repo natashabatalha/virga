@@ -796,7 +796,7 @@ is generally sufficient.</p></li>
 
 <dl class="function">
 <dt id="virga.justdoit.calc_optics">
-<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">calc_optics</code><span class="sig-paren">(</span><em class="sig-param">nwave</em>, <em class="sig-param">qc</em>, <em class="sig-param">qt</em>, <em class="sig-param">rg</em>, <em class="sig-param">reff</em>, <em class="sig-param">ndz</em>, <em class="sig-param">radius</em>, <em class="sig-param">dr</em>, <em class="sig-param">qext</em>, <em class="sig-param">qscat</em>, <em class="sig-param">cos_qscat</em>, <em class="sig-param">sig</em>, <em class="sig-param">rmin</em>, <em class="sig-param">nrad</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_optics" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">calc_optics</code><span class="sig-paren">(</span><em class="sig-param">nwave</em>, <em class="sig-param">qc</em>, <em class="sig-param">qt</em>, <em class="sig-param">rg</em>, <em class="sig-param">reff</em>, <em class="sig-param">ndz</em>, <em class="sig-param">radius</em>, <em class="sig-param">dr</em>, <em class="sig-param">qext</em>, <em class="sig-param">qscat</em>, <em class="sig-param">cos_qscat</em>, <em class="sig-param">sig</em>, <em class="sig-param">rmin</em>, <em class="sig-param">nrad</em>, <em class="sig-param">verbose</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_optics" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate spectrally-resolved profiles of optical depth, single-scattering
 albedo, and asymmetry parameter.</p>
 <dl class="field-list simple">
@@ -814,6 +814,7 @@ albedo, and asymmetry parameter.</p>
 <li><p><strong>qext</strong> (<em>ndarray</em>) – Extinction efficiency</p></li>
 <li><p><strong>cos_qscat</strong> (<em>ndarray</em>) – qscat-weighted &lt;cos (scattering angle)&gt;</p></li>
 <li><p><strong>sig</strong> (<em>float</em>) – Width of the log normal particle distribution</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>) – print out warnings or not</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -976,7 +977,7 @@ Default = np.logspace(-3,2,20)</p></li>
 
 <dl class="function">
 <dt id="virga.justdoit.eddysed">
-<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">eddysed</code><span class="sig-paren">(</span><em class="sig-param">t_top</em>, <em class="sig-param">p_top</em>, <em class="sig-param">t_mid</em>, <em class="sig-param">p_mid</em>, <em class="sig-param">condensibles</em>, <em class="sig-param">gas_mw</em>, <em class="sig-param">gas_mmr</em>, <em class="sig-param">rho_p</em>, <em class="sig-param">mw_atmos</em>, <em class="sig-param">gravity</em>, <em class="sig-param">kz</em>, <em class="sig-param">mixl</em>, <em class="sig-param">fsed</em>, <em class="sig-param">b</em>, <em class="sig-param">eps</em>, <em class="sig-param">z_top</em>, <em class="sig-param">z_alpha</em>, <em class="sig-param">z_min</em>, <em class="sig-param">param</em>, <em class="sig-param">mh</em>, <em class="sig-param">sig</em>, <em class="sig-param">rmin</em>, <em class="sig-param">nrad</em>, <em class="sig-param">d_molecule</em>, <em class="sig-param">eps_k</em>, <em class="sig-param">c_p_factor</em>, <em class="sig-param">og_vfall=True</em>, <em class="sig-param">do_virtual=True</em>, <em class="sig-param">supsat=0</em>, <em class="sig-param">verbose=True</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.eddysed" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">virga.justdoit.</code><code class="sig-name descname">eddysed</code><span class="sig-paren">(</span><em class="sig-param">t_top</em>, <em class="sig-param">p_top</em>, <em class="sig-param">t_mid</em>, <em class="sig-param">p_mid</em>, <em class="sig-param">condensibles</em>, <em class="sig-param">gas_mw</em>, <em class="sig-param">gas_mmr</em>, <em class="sig-param">rho_p</em>, <em class="sig-param">mw_atmos</em>, <em class="sig-param">gravity</em>, <em class="sig-param">kz</em>, <em class="sig-param">mixl</em>, <em class="sig-param">fsed</em>, <em class="sig-param">b</em>, <em class="sig-param">eps</em>, <em class="sig-param">scale_h</em>, <em class="sig-param">z_top</em>, <em class="sig-param">z_alpha</em>, <em class="sig-param">z_min</em>, <em class="sig-param">param</em>, <em class="sig-param">mh</em>, <em class="sig-param">sig</em>, <em class="sig-param">rmin</em>, <em class="sig-param">nrad</em>, <em class="sig-param">d_molecule</em>, <em class="sig-param">eps_k</em>, <em class="sig-param">c_p_factor</em>, <em class="sig-param">og_vfall=True</em>, <em class="sig-param">do_virtual=True</em>, <em class="sig-param">supsat=0</em>, <em class="sig-param">verbose=True</em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.eddysed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Given an atmosphere and condensates, calculate size and concentration
 of condensates in balance between eddy diffusion and sedimentation.</p>
 <dl class="field-list simple">
@@ -997,6 +998,7 @@ it is set as input</p></li>
 <li><p><strong>fsed</strong> (<em>float</em>) – Sedimentation efficiency coefficient, unitless</p></li>
 <li><p><strong>b</strong> (<em>float</em>) – Denominator of exponential in sedimentation efficiency  (if param is ‘exp’)</p></li>
 <li><p><strong>eps</strong> (<em>float</em>) – Minimum value of fsed function (if param=exp)</p></li>
+<li><p><strong>scale_h</strong> (<em>float</em>) – Scale height of the atmosphere</p></li>
 <li><p><strong>z_top</strong> (<em>float</em>) – Altitude at each layer</p></li>
 <li><p><strong>z_alpha</strong> (<em>float</em>) – Altitude at which fsed=alpha for variable fsed calculation</p></li>
 <li><p><strong>param</strong> (<em>str</em>) – fsed parameterisation

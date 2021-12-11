@@ -102,6 +102,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#pairing-cloud-models-to-spectroscopy">Pairing Cloud Models to Spectroscopy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#adding-cloud-complexity">Adding Cloud Complexity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#switch-to-direct-solver">Switch to Direct Solver</a></li>
 </ul>
 </li>
@@ -456,7 +457,7 @@ div.rendered_html tbody tr:hover {
 <div class="output_area rendered_html docutils container">
 <div class="bk-root">
     <a href="https://bokeh.org" target="_blank" class="bk-logo bk-logo-small bk-logo-notebook"></a>
-    <span id="1001">Loading BokehJS ...</span>
+    <span id="1002">Loading BokehJS ...</span>
 </div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -534,7 +535,7 @@ var element = document.currentScript.previousSibling.previousSibling;
     var output = handle.output;
 
     // limit handleAddOutput to display_data with EXEC_MIME_TYPE content only
-    if ((output.output_type != "display_data") || (!output.data.hasOwnProperty(EXEC_MIME_TYPE))) {
+    if ((output.output_type != "display_data") || (!Object.prototype.hasOwnProperty.call(output.data, EXEC_MIME_TYPE))) {
       return
     }
 
@@ -551,6 +552,7 @@ var element = document.currentScript.previousSibling.previousSibling;
       var script_attrs = bk_div.children[0].attributes;
       for (var i = 0; i < script_attrs.length; i++) {
         toinsert[toinsert.length - 1].firstChild.setAttribute(script_attrs[i].name, script_attrs[i].value);
+        toinsert[toinsert.length - 1].firstChild.textContent = bk_div.children[0].textContent
       }
       // store reference to server id on output_area
       output_area._bokeh_server_id = output.metadata[EXEC_MIME_TYPE]["server_id"];
@@ -625,7 +627,7 @@ var element = document.currentScript.previousSibling.previousSibling;
      "</div>"}};
 
   function display_loaded() {
-    var el = document.getElementById("1001");
+    var el = document.getElementById("1002");
     if (el != null) {
       el.textContent = "BokehJS is loading...";
     }
@@ -675,15 +677,15 @@ var element = document.currentScript.previousSibling.previousSibling;
       }
     }
 
-    function on_error() {
+    function on_error(url) {
       console.error("failed to load " + url);
     }
 
-    for (var i = 0; i < css_urls.length; i++) {
-      var url = css_urls[i];
+    for (let i = 0; i < css_urls.length; i++) {
+      const url = css_urls[i];
       const element = document.createElement("link");
       element.onload = on_load;
-      element.onerror = on_error;
+      element.onerror = on_error.bind(null, url);
       element.rel = "stylesheet";
       element.type = "text/css";
       element.href = url;
@@ -691,21 +693,23 @@ var element = document.currentScript.previousSibling.previousSibling;
       document.body.appendChild(element);
     }
 
-    for (var i = 0; i < js_urls.length; i++) {
-      var url = js_urls[i];
-      var element = document.createElement('script');
+    const hashes = {"https://cdn.bokeh.org/bokeh/release/bokeh-2.3.3.min.js": "dM3QQsP+wXdHg42wTqW85BjZQdLNNIXqlPw/BgKoExPmTG7ZLML4EGqLMfqHT6ON", "https://cdn.bokeh.org/bokeh/release/bokeh-tables-2.3.3.min.js": "8x57I4YuIfu8XyZfFo0XVr2WAT8EK4rh/uDe3wF7YuW2FNUSNEpJbsPaB1nJ2fz2", "https://cdn.bokeh.org/bokeh/release/bokeh-widgets-2.3.3.min.js": "3QTqdz9LyAm2i0sG5XTePsHec3UHWwVsrOL68SYRoAXsafvfAyqtQ+h440+qIBhS"};
+
+    for (let i = 0; i < js_urls.length; i++) {
+      const url = js_urls[i];
+      const element = document.createElement('script');
       element.onload = on_load;
-      element.onerror = on_error;
+      element.onerror = on_error.bind(null, url);
       element.async = false;
       element.src = url;
+      if (url in hashes) {
+        element.crossOrigin = "anonymous";
+        element.integrity = "sha384-" + hashes[url];
+      }
       console.debug("Bokeh: injecting script tag for BokehJS library: ", url);
       document.head.appendChild(element);
     }
-  };var element = document.getElementById("1001");
-  if (element == null) {
-    console.error("Bokeh: ERROR: autoload.js configured with elementid '1001' but no matching script tag was found. ")
-    return false;
-  }
+  };
 
   function inject_raw_css(css) {
     const element = document.createElement("style");
@@ -714,7 +718,7 @@ var element = document.currentScript.previousSibling.previousSibling;
   }
 
 
-  var js_urls = ["https://cdn.pydata.org/bokeh/release/bokeh-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-widgets-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-tables-1.4.0.min.js", "https://cdn.pydata.org/bokeh/release/bokeh-gl-1.4.0.min.js"];
+  var js_urls = ["https://cdn.bokeh.org/bokeh/release/bokeh-2.3.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-widgets-2.3.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-tables-2.3.3.min.js"];
   var css_urls = [];
 
 
@@ -743,7 +747,7 @@ var element = document.currentScript.previousSibling.previousSibling;
       console.log("Bokeh: BokehJS failed to load within specified timeout.");
       root._bokeh_failed_load = true;
     } else if (force !== true) {
-      var cell = $(document.getElementById("1001")).parents('.cell').data().cell;
+      var cell = $(document.getElementById("1002")).parents('.cell').data().cell;
       cell.output_area.append_execute_result(NB_LOAD_WARNING)
     }
 
@@ -765,13 +769,13 @@ var element = document.currentScript.previousSibling.previousSibling;
 <h2>Simple Isothermal/Constant <span class="math notranslate nohighlight">\(K_{z}\)</span> Example<a class="headerlink" href="#Simple-Isothermal/Constant-K_{z}-Example" title="Permalink to this headline">¶</a></h2>
 <p>Let’s take the isothermal example from the first tutorial to begin gaining intuition for using the code</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="n">pressure</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span> <span class="c1">#simple isotherml PT profile (kelvin)</span>
 <span class="n">temperature</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">+</span><span class="mi">1600</span>
-<span class="n">kz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">+</span> <span class="mf">1e9</span> <span class="c1">#constant kz profile</span>
+<span class="n">kz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">+</span> <span class="mf">1e10</span> <span class="c1">#constant kz profile</span>
 
 <span class="n">metallicity</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1">#atmospheric metallicity relative to Solar</span>
 <span class="n">mean_molecular_weight</span> <span class="o">=</span> <span class="mf">2.2</span> <span class="c1"># atmospheric mean molecular weight</span>
@@ -796,7 +800,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <div class="section" id="Define-the-Atmosphere-Class">
 <h3>Define the <code class="docutils literal notranslate"><span class="pre">Atmosphere</span> <span class="pre">Class</span></code><a class="headerlink" href="#Define-the-Atmosphere-Class" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -811,7 +815,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <div class="section" id="Set-gravity-and-the-P/T/Kz-profile">
 <h3>Set gravity and the P/T/Kz profile<a class="headerlink" href="#Set-gravity-and-the-P/T/Kz-profile" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -825,7 +829,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -840,7 +844,7 @@ var element = document.currentScript.previousSibling.previousSibling;
 <h4>The minimum values for <code class="docutils literal notranslate"><span class="pre">kz</span></code><a class="headerlink" href="#The-minimum-values-for-kz" title="Permalink to this headline">¶</a></h4>
 <p>There is a parameter called <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> in the ptk function. The default value is <code class="docutils literal notranslate"><span class="pre">kz_min=1e5</span></code>. This number isn’t necessarily a hard and fast rule, but it does avoid numerical instabilities. Another thing to note is that <strong>this excludes negative kz values</strong>. The code will alert you if you are tripping the <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> reset.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -926,21 +930,23 @@ Overwriting some Kz values to minimum value set by kz_min
 <div class="section" id="Run-the-code">
 <h3>Run the code<a class="headerlink" href="#Run-the-code" title="Permalink to this headline">¶</a></h3>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
 <span></span><span class="c1">#directory where mieff files are</span>
 <span class="n">mieff_directory</span> <span class="o">=</span> <span class="s1">&#39;/Users/nbatalh1/Documents/data/virga/&#39;</span>
-
+<span class="n">sum_planet</span><span class="o">.</span><span class="n">ptk</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test.csv&#39;</span><span class="p">,</span><span class="n">usecols</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
 <span class="c1">#start with the simplest output</span>
 <span class="c1">#get total opacity, single scattering, asymmetry, and individual optical depths</span>
-<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">,</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">opd</span><span class="p">,</span> <span class="n">w0</span><span class="p">,</span> <span class="n">g0</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">,</span>
+                                 <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
 </pre></div>
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -955,7 +961,7 @@ Overwriting some Kz values to minimum value set by kz_min
 <h2>Exploring <code class="docutils literal notranslate"><span class="pre">dict</span></code> Output<a class="headerlink" href="#Exploring-dict-Output" title="Permalink to this headline">¶</a></h2>
 <p>There are many things to explore in the <code class="docutils literal notranslate"><span class="pre">dict</span></code> output. In the next tutorial, we will reproduce some of the most common plots used in papers to analyze cloud runs.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -965,7 +971,7 @@ Overwriting some Kz values to minimum value set by kz_min
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
@@ -987,7 +993,7 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 </ul>
 <p>Additionally, scalar input contains some of the original input</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
@@ -996,7 +1002,7 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
