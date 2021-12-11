@@ -62,13 +62,11 @@ setup(
   package_data={'': ['reference/*']},
   install_requires=[
           'numpy',
-          'extension-helpers',
           'pandas',
           'bokeh',
           'joblib',
           'photutils',
           'astropy',
-          'sphinx',
           'scipy',
           'PyMieScatt'
           ], 
