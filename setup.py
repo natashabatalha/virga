@@ -41,7 +41,7 @@ except ImportError:
 # to this sample package.
 setup(
     name='virga-exo', 
-    version = '0.3.3',
+    version = '0.3.4',
     description = 'exoplanet code for compute cloud structure',
     long_description = 'README.rst',
     author = 'Natasha E. Batalha',
@@ -62,8 +62,9 @@ setup(
   package_data={'': ['reference/*']},
   install_requires=[
           'numpy',
-          'bokeh',
+          'extension-helpers',
           'pandas',
+          'bokeh',
           'joblib',
           'photutils',
           'astropy',
