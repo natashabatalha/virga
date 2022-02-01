@@ -310,7 +310,7 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     
     #  Compute saturation mixing ratio
     get_pvap = getattr(pvaps, qv_gas_name)
-    if qv_gas_name == 'Mg2SiO4':
+    if qv_gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pvap_test = get_pvap(t_test, p_test, mh=mh)
     else:
         pvap_test = get_pvap(t_test,mh=mh)
@@ -344,7 +344,7 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):
     #get gas mixing ratio 
     gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh)
     #get vapor pressure and correct for masses of atmo and gas 
-    if gas_name == 'Mg2SiO4':
+    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pv = gas_mw/mmw*pvap_fun(t_test,p_test, mh=mh)/1e6 #dynes to bars 
     else:
         pv = gas_mw/mmw*pvap_fun(t_test, mh=mh)/1e6 #dynes to bars 

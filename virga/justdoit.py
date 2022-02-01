@@ -88,6 +88,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         if i==0: 
             nradii = len(radius)
             rmin = np.min(radius)
+
             radius, rup, dr = get_r_grid(rmin, n_radii=nradii)
             qext = np.zeros((nwave,nradii,ngas))
             qscat = np.zeros((nwave,nradii,ngas))
@@ -432,7 +433,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
             z_cld=None
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
-            if igas == 'Mg2SiO4':
+            if igas in ['Mg2SiO4','CaTiO3','CaAl12O19']:
                 pvap = get_pvap(t_bot, p_bot, mh=mh)
             else:
                 pvap = get_pvap(t_bot, mh=mh)
@@ -813,7 +814,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     """
 
     get_pvap = getattr(pvaps, gas_name)
-    if gas_name == 'Mg2SiO4':
+    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pvap = get_pvap(t_layer, p_layer,mh=mh)
     else:
         pvap = get_pvap(t_layer,mh=mh)
@@ -1468,12 +1469,22 @@ def get_refrind(igas,directory):
         Gas name 
     directory : str 
         Directory were reference files are located. 
+
+    Returns
+    -------
+    wavelength, real part, imaginary part 
     """
     filename = os.path.join(directory ,igas+".refrind")
     #put skiprows=1 in loadtxt to skip first line
-    idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
-
-    return wave_in,nn,kk
+    try:
+        idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
+        return wave_in,nn,kk
+    except: 
+        df = pd.read_csv(filename)
+        wave_in = df['micron'].values 
+        nn = df['real'].values
+        kk = df['imaginary'].values
+        return wave_in,nn,kk
 
 def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
     """
