@@ -5,7 +5,8 @@ from scipy.stats import lognorm
 from scipy.integrate import quad, simps
 from scipy import optimize
 
-def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None):
+def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
+        zb=None, b=None, eps=None, param='const'):
     """
     Calculate divergence from advective-diffusive balance for 
     condensate in a model layer
@@ -28,6 +29,13 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         layer thickness (cm) 
     ad_rainf : float
         rain efficiency factor 
+    zb : float
+        altitude at bottom of layer
+    b : float
+        denominator of fsed exponential (if param is 'exp')
+    param : str
+        fsed parameterisation
+        'const' (constant), 'exp' (exponential density derivation)
 
     Returns
     -------
@@ -35,14 +43,20 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         mixing ratio of condensed condensate (g/g)
     """
     #   All vapor in excess of saturation condenses
-    ad_qc = np.max([ 0., qt - ad_qvs ])
+    if param is 'const':
+        ad_qc = np.max([ 0., qt - ad_qvs ])
 
-    # Eqn. 7 in A & M 
-    #   Difference from advective-diffusive balance 
-    advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
-    #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
+        # Eqn. 7 in A & M 
+        #   Difference from advective-diffusive balance 
+        advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
+        #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
+    elif param is 'exp':
+        fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
+        qc = (ad_qbelow - ad_qvs) * np.exp( - b * fsed / mixl * np.exp(zb/b) 
+                            * (np.exp(z/b) -1) + eps*z/b)
+        advdif = qc + ad_qvs
+
     advdif = advdif - qt
-    #print(advdif, qt )
     return advdif
 
 
@@ -293,12 +307,14 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     #  Extrapolate temperature lapse rate to test pressure
 
     t_test = qv_t + np.log( qv_p / p_test )*qv_dtdlnp
+    
     #  Compute saturation mixing ratio
     get_pvap = getattr(pvaps, qv_gas_name)
     if qv_gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pvap_test = get_pvap(t_test, p_test, mh=mh)
     else:
-        pvap_test = get_pvap(t_test,mh=mh)    
+        pvap_test = get_pvap(t_test,mh=mh)
+
     fx = qv_factor * pvap_test / p_test 
     return np.log(fx) - np.log(q_below)
 
@@ -409,3 +425,4 @@ def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
     """
 
     return fsed - moment(3+alpha, s, loc, rg, dist) / rw**alpha / moment(3, s, loc, rg, dist)
+
