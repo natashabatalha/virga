@@ -7,6 +7,7 @@ from bokeh.palettes import magma as colfun1
 from bokeh.palettes import viridis as colfun2
 from bokeh.palettes import gray as colfun3
 import bokeh.palettes as colpals
+from bokeh.io import output_notebook 
 import astropy.units as u
 import numpy as np
 
