@@ -1366,7 +1366,7 @@ class Atmosphere():
         run = compute(self, directory = directory, as_dict = as_dict)
         return run
 
-def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
+def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60,fort_calc_mie = False):
     """
     Function that calculations new Mie database using PyMieScatt. 
 
@@ -1417,7 +1417,7 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
 
         #get extinction, scattering, and asymmetry
         #all of these are  [nwave by nradii]
-        qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False)
+        qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = fort_calc_mie)
 
         #add to master matrix that contains the per gas Mie stuff
         qext_all[:,:,i], qscat_all[:,:,i], cos_qscat_all[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas 
