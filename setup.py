@@ -13,11 +13,11 @@
 # uses the ez_setup bootstrap script to install setuptools, then retries the
 # import.  This is common practice for packages using setuptools.
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
-    from setuptools import setup
+    from setuptools import setup, find_packages
 
 # The standard setup() call.  Notice, however, that most of the arguments
 # normally passed to setup() are absent.  They will instead be read from the
@@ -41,7 +41,7 @@ except ImportError:
 # to this sample package.
 setup(
     name='virga-exo', 
-    version = '0.1',
+    version = '0.3.4',
     description = 'exoplanet code for compute cloud structure',
     long_description = 'README.rst',
     author = 'Natasha E. Batalha',
@@ -58,15 +58,15 @@ setup(
                   'Topic :: Scientific/Engineering :: Astronomy',
                   'Topic :: Software Development :: Libraries :: Python Modules'
   ],
-  packages=['virga'],include_package_data=True,
+  packages=find_packages(),include_package_data=True,
+  package_data={'': ['reference/*']},
   install_requires=[
           'numpy',
-          'bokeh',
           'pandas',
+          'bokeh',
           'joblib',
           'photutils',
           'astropy',
-          'sphinx',
           'scipy',
           'PyMieScatt'
           ], 

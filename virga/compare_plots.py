@@ -7,7 +7,8 @@ from bokeh.palettes import magma as colfun1
 from bokeh.palettes import viridis as colfun2
 from bokeh.palettes import gray as colfun3
 from bokeh.palettes import plasma as colfun4
-
+from bokeh.palettes import Colorblind8
+ 
 import astropy.units as u
 import numpy as np
 
@@ -61,29 +62,34 @@ def plot_cumsum(out,labels,lines,**kwargs):
     plot_format(fig)
     return fig
 
-def plot_output(out,attribute,attribute_label,labels,lines,**kwargs):
+def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,
+                    color_indx=0,**kwargs):
 
     condensibles = out[0]['condensibles']
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',600)
+    kwargs['plot_height'] = kwargs.get('plot_height',400)
+    kwargs['plot_width'] = kwargs.get('plot_width',350)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label',attribute_label)
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+    kwargs['x_range'] = kwargs.get('x_range', [1e-2, 1e4])
 
     cols = viridis(len(out))
+    cols = Colorblind8[color_indx:color_indx+len(out)]
     pressure = out[0]['pressure']
     kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
     fig = figure(**kwargs)
     for i in range(len(out)):
-        x = out[i][attribute][:,0]
+        indx = out[i]['condensibles'].index(gas)
+        x = out[i][attribute][:,indx]
         if attribute is "column_density":
-            x = out[i][attribute][:,0]/out[i]["layer_thickness"]
+            x = out[i][attribute][:,indx]/out[i]["layer_thickness"]
         pressure = out[i]['pressure']
 
         fig.line(x, pressure, legend_label=labels[i], color=cols[i],line_width=5, line_dash=lines[i])
 
-    fig.legend.location = "bottom_left"
+    if legend_on:
+        fig.legend.location = "bottom_left"
     plot_format(fig)
     return fig
 
@@ -297,3 +303,56 @@ def plot_format(df):
     df.yaxis.major_label_text_font='times'
     df.xaxis.axis_label_text_font_style = 'bold'
     df.yaxis.axis_label_text_font_style = 'bold'
+
+
+def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_indx=None,**kwargs):
+
+    kwargs['plot_height'] = kwargs.get('plot_height',400)
+    kwargs['plot_width'] = kwargs.get('plot_width',700)
+    kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
+    kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
+    kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
+    #kwargs['x_range'] = kwargs.get('x_range', [1e-2, 2e1])
+    if gas_indx is not None:
+        title = 'Condensible = ' + str(out[0]['condensibles'][gas_indx])
+        kwargs['title'] = kwargs.get('title', title)
+
+
+    cols = Colorblind8[color_indx:color_indx+len(out)]
+    pressure = out[0]['pressure']
+    kwargs['y_range'] = kwargs.get('y_range',[np.max(pressure), np.min(pressure)])
+    fig = figure(**kwargs)
+
+    min_id=[]; max_id=[]
+    for i in range(len(out)):
+        if gas_indx is None: x = out[i]['fsed']
+        else: x = out[i]['fsed'][:,gas_indx]
+
+        if y_axis is 'pressure':
+            y = out[i]['pressure']
+        elif y_axis is 'z':
+            y = out[i]['altitude']
+        col = Colorblind8[np.mod(i+color_indx, 8)]
+        fig.line(x, y, legend_label=labels[i], color=col, line_width=5)
+        if cld_bounds and gas_indx is not None:
+            low_clds = []; high_clds = []
+            ndz = out[i]['column_density'][:,gas_indx]
+            nonzero = np.where(ndz>1e-3)[0]
+            min_id.append(nonzero[0])
+            max_id.append(nonzero[-1])
+        
+    if cld_bounds and gas_indx is not None:
+        xmin = kwargs['x_range'][0]
+        xmax = kwargs['x_range'][1]
+        x1 = np.linspace(xmin,xmax,10)
+        y1 = x1*0+y[min(min_id)]
+        y2 = x1*0+y[max(max_id)]
+        fig.line(x1, y1, color='black',line_width=5, line_dash='dashed')
+        fig.line(x1, y2, color='black',line_width=5, line_dash='dashed')
+
+
+    fig.legend.location = "bottom_left"
+    plot_format(fig)
+    return fig
+
