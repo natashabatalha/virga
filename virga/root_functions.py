@@ -171,6 +171,119 @@ def vfall(r, grav,mw_atmos,mfp,visc,
 
     return vfall_r 
 
+
+ def vfall_aggregrates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=r):
+    """
+    Calculate fallspeed for a particle at one layer in an
+    atmosphere, assuming low Reynolds number and in the molecular regime (Epstein drag), 
+    i.e., where Knudsen number (mfp/r) is high (>>1). 
+
+    User chooses whether particle is spherical or an aggregate.
+    If aggregrate, the monomer size is given by r and the outer effective radius of the aggregrate is Ragg.
+    
+    all units are cgs
+    
+    Parameters
+    ----------
+    r : float
+        monomer particle radius (cm)
+    mw_atmos : float 
+        atmospheric molecular weight (g/mol)
+    t : float 
+        atmospheric temperature (K)
+    p  : float
+        atmospheric pressure (dyne/cm^2)
+    rhop : float 
+        density of particle (g/cm^3)
+    grav : float 
+        acceleration of gravity (cm/s^2)
+    Ragg : float
+        aggregate particle effective radius (cm). (Defaults to r for spherical monomers).
+    D : float
+        fractal number (Default is 2 because function reduces to monomers at this value).
+    """
+    R_GAS = 8.3143e7  #universial gas constant; cgs units cm3-bar/mole-K
+    k = 1.38e-16  #boltzmann contant in cgs units -  cm2 g s-2 K-1 (ergs/K)
+    
+    N_avo = 6.022e23
+    
+    mass = mw_atmos/N_avo 
+    
+    rho_atmos = (mw_atmos*p) / (R*t) #atmospheric density
+    drho = rhop - rho_atmos
+    v_thermal = np.sqrt((3*k*t)/mass) #root mean speed of the gas 
+    
+    #the stopping time of the particle
+    t_stop_epstein_r = (2.0/3.0) * (r*drho) / (rho_atmos*v_thermal) 
+    
+    vfall_epstein_agg_r = t_stop_epstein_r * grav * (Ragg/r)**(D-2)
+
+    return vfall_epstein_agg_r
+
+def vfall_aggregrates_ohno(r, grav,mw_atmos,mfp, t, p, rhop, ad_qc, D=2):
+    """
+    Calculates fallspeed for a fractal aggegrate particle as performed
+    by Ohno et al., 2020, with an outer 
+    effective radius of R_agg made up of monomers of size r, at one layer in an
+    atmosphere. ***Requires characteristic radius ragg to have D > or equal 2, i.e., not very fluffy aggregrates.
+
+    Essentially a more explicit version of the regular "vfall_aggregates" function, 
+    and is not dependent on being in free molecular (Esptein) regime
+    
+    all units are cgs
+    
+    Parameters
+    ----------
+    r : float
+        monomer particle radius (cm)
+    grav : float 
+        acceleration of gravity (cm/s^2)
+    rhop : float
+        density of aggregrate particle (g/cm^3)
+    t : float 
+        atmospheric temperature (K)
+    p  : float
+        atmospheric pressure (dyne/cm^2)
+    mw_atmos : float 
+        atmospheric molecular weight (g/mol)
+    mfp : float 
+        atmospheric molecular mean free path (cm)
+    ad_qc : float 
+        mixing ratio of condensed condensate (g/g)
+    D : float
+        fractal number (Default is 2).
+    gas_mw : float
+        condensate gas mean molecular weight (g/mol)
+    """
+    #Define some constants
+    R_GAS = 8.3143e7  #universial gas constant; cgs units cm3-bar/mole-K
+    k = 1.38e-16  #boltzmann contant in cgs units -  cm2 g s-2 K-1 (ergs/K)
+    N_avo = 6.022e23 #avogadro's number
+
+    #determine the number density of monomer particles
+    N = ad_qc * N_avo/ gas_mw
+
+    #calculate the aggregrate radius based on the fractal dimension, monomer radius, and number density of monomers
+    Ragg = r * N**(1/D) 
+
+    mass = mw_atmos/N_avo
+    rho_atmos = (mw_atmos*p) / (R*t) #atmospheric density
+    drho = rho_agg - rho_atmos
+
+    kn = mfp / Ragg #Knudsen number
+    beta = 1.0 + (1.26*kn) #Cunningham correction (slip factor for gas kinetic effects)
+    v_thermal = np.sqrt((8*k*t)/(mass*np.pi)) #thermal speed of the gas 
+
+    #visc = (1.0/3.0)*rho_atmos*v_thermal*mfp #viscosity of the atmosphere, appropriate for large Kn (Esptein)
+    visc = 5.877e-6 * np.sqrt(t) #in dyne/cm^2 with t in K (via Woitke & Helling 2003)
+
+    vfall_stokes = (2.0/9.0) * beta * grav * ((Ragg)**2) * (drho/visc) 
+    v_bracket = (1.0 + (((0.45/54.0) * (grav/((visc)**2)) * ((Ragg)**3) * rho_atmos * rho_agg)**(2./5.)))**(-5.0/4.0)
+    
+    vfall_r_ohno = vfall_stokes  * v_bracket
+   
+    return vfall_r_ohno
+
 def vfall_find_root(r, grav=None,mw_atmos=None,mfp=None,visc=None,
               t=None,p=None, rhop=None,w_convect=None ):
     """
