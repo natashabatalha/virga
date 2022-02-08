@@ -9,6 +9,7 @@ from bokeh.palettes import viridis as colfun2
 from bokeh.palettes import gray as colfun3
 from bokeh.palettes import Colorblind8
 import bokeh.palettes as colpals
+from bokeh.io import output_notebook 
 import astropy.units as u
 import numpy as np
 
@@ -524,26 +525,28 @@ def all_optics_1d(out, wave_range, return_output = False,legend=None,
 
     
     for i,results in enumerate(out): 
-        inds = np.where((results['wave']>wave_range[0]) & 
-            (results['wave']<wave_range[1]))
-
-        opd.line(np.mean(results['opd_per_layer'][:,inds],axis=2)[:,0], 
+        inds = np.where((results['wave']*1e4>wave_range[0]) & 
+            (results['wave']*1e4<wave_range[1]))
+        opd_dat = np.mean(results['opd_per_layer'][:,inds],axis=2)[:,0]
+        opd.line(opd_dat, 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
-        
-        g0.line(np.mean(results['asymmetry'][:,inds],axis=2)[:,0], 
+        g0_dat = np.mean(results['asymmetry'][:,inds],axis=2)[:,0]
+        g0.line(g0_dat, 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
         
         if isinstance(legend, type(None)):
-            ssa.line(np.mean(results['single_scattering'][:,inds],axis=2)[:,0], 
+            ssa_dat = np.mean(results['single_scattering'][:,inds],axis=2)[:,0]
+            ssa.line(ssa_dat, 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
         else:
-            ssa.line(np.mean(results['single_scattering'][:,inds],axis=2)[:,0], 
+            ssa_dat = np.mean(results['single_scattering'][:,inds],axis=2)[:,0]
+            ssa.line(ssa_dat, 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3,
                  legend_label=legend[i])
             ssa.legend.location='top_left'
 
     if return_output:   
-        return gridplot([[opd,ssa,g0]]), [opd,ssa,g0]
+        return gridplot([[opd,ssa,g0]]), [opd_dat,ssa_dat,g0_dat]
     else:   
         return gridplot([[opd,ssa,g0]])
 
