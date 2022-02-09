@@ -172,7 +172,7 @@ def vfall(r, grav,mw_atmos,mfp,visc,
     return vfall_r 
 
 
- def vfall_aggregrates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=r):
+def vfall_aggregrates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=1):
     """
     Calculate fallspeed for a particle at one layer in an
     atmosphere, assuming low Reynolds number and in the molecular regime (Epstein drag), 
@@ -198,7 +198,7 @@ def vfall(r, grav,mw_atmos,mfp,visc,
     grav : float 
         acceleration of gravity (cm/s^2)
     Ragg : float
-        aggregate particle effective radius (cm). (Defaults to r for spherical monomers).
+        aggregate particle effective radius (cm). (Defaults to 1 for spherical monomers).
     D : float
         fractal number (Default is 2 because function reduces to monomers at this value).
     """
