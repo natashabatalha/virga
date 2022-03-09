@@ -525,8 +525,8 @@ def all_optics_1d(out, wave_range, return_output = False,legend=None,
 
     
     for i,results in enumerate(out): 
-        inds = np.where((results['wave']*1e4>wave_range[0]) & 
-            (results['wave']*1e4<wave_range[1]))
+        inds = np.where((results['wave']>wave_range[0]) & 
+            (results['wave']<wave_range[1]))
         opd_dat = np.mean(results['opd_per_layer'][:,inds],axis=2)[:,0]
         opd.line(opd_dat, 
                  results['pressure'], color=colors[np.mod(i, len(colors))],line_width=3)
