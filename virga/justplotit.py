@@ -649,9 +649,9 @@ def fsed_from_output(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,
         if gas_indx is None: x = out[i]['fsed']
         else: x = out[i]['fsed'][:,gas_indx]
 
-        if y_axis is 'pressure':
+        if y_axis == 'pressure':
             y = out[i]['pressure']
-        elif y_axis is 'z':
+        elif y_axis == 'z':
             y = out[i]['altitude']
         col = Colorblind8[np.mod(i+color_indx, 8)]
         fig.line(x, y, legend_label=labels[i], color=col, line_width=5)
