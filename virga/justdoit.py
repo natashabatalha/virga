@@ -286,7 +286,28 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                         cqs_gas[iz,iwave,igas] = cqs_gas[iz,iwave,igas]+cos_qscat[iwave,irad,igas]*pir2ndz
 
                     #TO DO ADD IN CLOUD SUBLAYER KLUGE LATER 
+    
+    for igas in range(ngas):
+        for iz in range(nz-1,-1,-1):
 
+            if np.sum(ext_gas[iz,:,igas]) > 0:
+                ibot = iz
+                break
+            if iz == 0:
+                ibot=0
+        #print(igas,ibot)
+        if ibot >= nz -2:
+            print("Not doing sublayer as cloud deck at the bottom of pressure grid")
+            
+        else:
+            opd_layer[ibot+1,igas] = opd_layer[ibot,igas]*0.1
+            scat_gas[ibot+1,:,igas] = scat_gas[ibot,:,igas]*0.1
+            ext_gas[ibot+1,:,igas] = ext_gas[ibot,:,igas]*0.1
+            cqs_gas[ibot+1,:,igas] = cqs_gas[ibot,:,igas]*0.1
+            opd_layer[ibot+2,igas] = opd_layer[ibot,igas]*0.05
+            scat_gas[ibot+2,:,igas] = scat_gas[ibot,:,igas]*0.05
+            ext_gas[ibot+2,:,igas] = ext_gas[ibot,:,igas]*0.05
+            cqs_gas[ibot+2,:,igas] = cqs_gas[ibot,:,igas]*0.05
     #Sum over gases and compute spectral optical depth profile etc
     for iz in range(nz):
         for iwave in range(nwave): 
