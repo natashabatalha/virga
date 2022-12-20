@@ -43,14 +43,14 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         mixing ratio of condensed condensate (g/g)
     """
     #   All vapor in excess of saturation condenses
-    if param is 'const':
+    if param == 'const':
         ad_qc = np.max([ 0., qt - ad_qvs ])
 
         # Eqn. 7 in A & M 
         #   Difference from advective-diffusive balance 
         advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
         #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
-    elif param is 'exp':
+    elif param == 'exp':
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
         qc = (ad_qbelow - ad_qvs) * np.exp( - b * fsed / mixl * np.exp(zb/b) 
                             * (np.exp(z/b) -1) + eps*z/b)
@@ -400,9 +400,9 @@ def solve_force_balance(solve_for, temp, grav, mw_atmos, mfp, visc, t, p, rhop, 
     """
 
     def force_balance_new(u):
-        if solve_for is "vfall":
+        if solve_for == "vfall":
             return force_balance(u, temp, grav, mw_atmos, mfp, visc, t, p, rhop) 
-        elif solve_for is "rw":
+        elif solve_for == "rw":
             return force_balance(temp, u, grav, mw_atmos, mfp, visc, t, p, rhop) 
 
     soln = optimize.root_scalar(force_balance_new, bracket=[lo, hi], method='brentq') 
