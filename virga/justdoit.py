@@ -1612,8 +1612,8 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**
         from bokeh.models import Legend
         from bokeh.palettes import magma   
         plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-3])
-        plot_kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',400))
-        plot_kwargs['width'] = plot_kwargs.get('plot_width', kwargs.get('width',600))
+        plot_kwargs['height'] = plot_kwargs.get('plot_height',plot_kwargs.get('height',400))
+        plot_kwargs['width'] = plot_kwargs.get('plot_width', plot_kwargs.get('width',600))
         if 'plot_width' in plot_kwargs.keys() : plot_kwargs.pop('plot_width')
         if 'plot_height' in plot_kwargs.keys() : plot_kwargs.pop('plot_height')
         plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
