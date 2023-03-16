@@ -39,9 +39,10 @@ def pt(out, with_condensation=True,return_condensation=False, **kwargs):
     if return_condensation: fig, cond temperature curves, ,cond pressure grid , name of all available gases
     else: fig
     """
-
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',600)
+    kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',300))
+    kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',600))
+    if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
+    if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','Temperature (K)')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
@@ -167,11 +168,11 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         dndr['r'] = r*1e4 #convert to microns
 
         if j==0:
-            p1 = figure(plot_width=p1w, plot_height=p1h, title="Select Pressure Level", 
+            p1 = figure(width=p1w, height=p1h, title="Select Pressure Level", 
                 x_axis_type='log',y_axis_type='log',y_axis_label='Pressure (bars)',x_axis_label='Mean Particle Radius (um)',
                 y_range=[np.max(pressure),np.min(pressure)])
 
-            p2 = figure(plot_width=p2w, plot_height=p2h, title="Particle Distribution at %.0e bars" %at_pressure,
+            p2 = figure(width=p2w, height=p2h, title="Particle Distribution at %.0e bars" %at_pressure,
                          x_axis_type='log', y_axis_type='log', y_axis_label='dn/dr (cm-3)',x_axis_label='Particle Radius (um)')
 
         #add to r_g for that plot 
@@ -248,8 +249,10 @@ def opd_by_gas(out, gas = None, color = magma, compare=False, legend=None, **kwa
         Kwargs for bokeh.figure() 
     """
 
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',400)
+    kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',300))
+    kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',400))
+    if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
+    if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','Column Optical Depth')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
@@ -314,9 +317,10 @@ def condensate_mmr(out, gas=None, compare=False, legend=None, **kwargs):
     **kwargs : kwargs 
         Kwargs for bokeh.figure() 
     """
-
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',400)
+    kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',300))
+    kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',400))
+    if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
+    if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','Condensate MMR')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
@@ -406,7 +410,7 @@ def all_optics(out):
     f01a = figure(x_range=[0, yr], y_range=[0,xr],
                            x_axis_label=wavelength_label, y_axis_label=pressure_label,
                            title="Single Scattering Albedo",
-                          plot_width=300, plot_height=300)
+                          width=300, height=300)
 
 
     f01a.image(image=[scat01],  color_mapper=color_mapper, x=0,y=0,dh=xr,dw =yr )
@@ -428,7 +432,7 @@ def all_optics(out):
     f01 = figure(x_range=[0, yr], y_range=[0,xr],
                            x_axis_label=wavelength_label, y_axis_label=pressure_label,
                            title="Cloud Optical Depth Per Layer",
-                          plot_width=320, plot_height=300)
+                          width=320, height=300)
 
     f01.image(image=[scat01],  color_mapper=color_mapper, x=0,y=0,dh=xr,dw =yr )
 
@@ -447,7 +451,7 @@ def all_optics(out):
     f01b = figure(x_range=[0, yr], y_range=[0,xr],
                            x_axis_label=wavelength_label, y_axis_label=pressure_label,
                            title="Asymmetry Parameter",
-                          plot_width=300, plot_height=300)
+                          width=300, height=300)
 
     f01b.image(image=[scat01],  color_mapper=color_mapper, x=0,y=0,dh=xr,dw =yr )
 
@@ -505,8 +509,10 @@ def all_optics_1d(out, wave_range, return_output = False,legend=None,
         Key word arguments will be supplied to each bokeh figure function
     """
 
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',300)
+    kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',300))
+    kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',300))
+    if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
+    if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
 
     if not isinstance(out, list):
@@ -562,8 +568,10 @@ def find_nearest_1d(array,value):
 
 def pressure_fig(**plot_kwargs):
     plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-6])
-    plot_kwargs['plot_height'] = plot_kwargs.get('plot_height',400)
-    plot_kwargs['plot_width'] = plot_kwargs.get('plot_width',600)
+    kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',400))
+    kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',600))
+    if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
+    if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
     plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
     plot_kwargs['y_axis_label'] = plot_kwargs.get('y_axis_label','Pressure (bars)')
     plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')        
@@ -585,8 +593,10 @@ def plot_format(df):
 
 def plot_fsed(pressure, z, scale_height, alpha, beta, epsilon=1e-2, pres_alpha=None, **kwargs):
 
-    kwargs['plot_height'] = kwargs.get('plot_height',400)
-    kwargs['plot_width'] = kwargs.get('plot_width',700)
+    kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',300))
+    kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',700))
+    if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
+    if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
@@ -627,8 +637,10 @@ def fsed_from_output(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,
     if type(out)==dict:
         out=[out]
 
-    kwargs['plot_height'] = kwargs.get('plot_height',400)
-    kwargs['plot_width'] = kwargs.get('plot_width',700)
+    kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',300))
+    kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',700))
+    if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
+    if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
