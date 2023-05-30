@@ -484,3 +484,37 @@ def CaAl12O19(temp,p,mh = 1 ):
     #calculated from wakeford 2017
     pvap_caal12o19 = 1e6 * 10.0 ** (16.46 -44021./temp  - 0.083*np.log10(p/1e6) - 1.67*mh)
     return pvap_caal12o19
+
+def SiO2(temp, mh = 1 ):
+    """PLACEHODER
+    Not suited yet for public use 
+    Computes vapor pressure curve
+    
+    Parameters 
+    ----------
+    temp : float, ndarray 
+        Temperature (K)
+    mh : float 
+        NON log metallicity relative to solar (1=1Xsolar)
+
+    Returns
+    -------
+    vapor pressure in dyne/cm^2
+    
+    Notes
+    -----
+    .. [1] MADE UP
+    """
+    mh = np.log10(mh)
+    
+    #V1 undepleted gas source
+    pvap_sio2 = 10.0**(13.168 - 28265/temp - mh)
+
+    #V1 depleted gas source 
+    #13.360 - 28265/T(K) - mh
+
+    #convert bars -> dynes/cm^2
+    pvap_sio2 = 1e6 * pvap_sio2 
+    return pvap_sio2
+
+

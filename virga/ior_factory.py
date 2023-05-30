@@ -188,6 +188,19 @@ def configure_ior_choices():
                 "skiprows":12, 
                 "names":['cm-1','um','n','k','nerr','kerr']
             }
+        }, 
+    "SiO2":{
+        "inhouse_file":"zeidler_sio2_928k_ab.dat",
+        "reference":"\\cite{Zeidler2013SiO2}",
+        "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
+        "hitran2020":"ascii/exoplanets/jager_mg2sio4.dat",
+        "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/zeidler_sio2_928k_ab.dat",
+        "pandas_kwargs":
+            {
+                "delim_whitespace":True, 
+                "skiprows":13, 
+                "names":['cm-1','um','n','k']
+            }
         }
 }
 
@@ -228,10 +241,10 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
     else: 
         files_lxmie = None
 
-    fn = [jpi.figure(plot_width=200,plot_height=200, x_axis_type='log', 
+    fn = [jpi.figure(width=200,height=200, x_axis_type='log', 
                      y_axis_type='linear',x_range=[0.3,150],y_range=[0,7],
                      title=avail[i]) for i in range(len(avail))]
-    fk = [jpi.figure(plot_width=200,plot_height=200, x_axis_type='log', 
+    fk = [jpi.figure(width=200,height=200, x_axis_type='log', 
                      y_axis_type='log',x_range=[0.3,150],y_range=[1e-4,1e2],
                      title=avail[i]) for i in range(len(avail))]
 

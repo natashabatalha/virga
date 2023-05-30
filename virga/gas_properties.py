@@ -480,3 +480,31 @@ def CaAl12O19(mw_atmos, mh = 1,gas_mmr=None):
     gas_mmr = gas_mmr * (gas_mw/mw_atmos)
     rho_p =  7.15
     return gas_mw, gas_mmr, rho_p
+
+def SiO2(mw_atmos, mh=1, gas_mmr = None):
+    """Defines properties for TiO2 as condensible
+    
+    Parameters 
+    ----------
+    mw_atmos : float 
+        Mean molecular weight of the atmosphere amu
+    gas_mmr : float , optional
+        Gas mass mixing ratio.
+        None points to the default value of : 1.69e-7
+    mh : float , optional
+        Metallicity, Default is 1=1xSolar
+    
+    Returns
+    -------
+    mean molecular weight of gas,
+    gas mass mixing ratio 
+    density of gas cgs
+    """
+    if mh != 1: raise Exception("Alert: No M/H Dependence in SiO2 Routine. Consult your local theorist to determine next steps.")
+    if isinstance(gas_mmr, type(None)):
+        #PLACEHOLDER
+        gas_mmr = 60.3e-6 * mh
+    gas_mw = 60
+    gas_mmr = gas_mmr * (gas_mw/mw_atmos) 
+    rho_p =  2.648
+    return gas_mw, gas_mmr, rho_p
