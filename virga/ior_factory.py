@@ -190,18 +190,18 @@ def configure_ior_choices():
             }
         }, 
     "SiO2":{
-        "inhouse_file":"zeidler_sio2_928k_ab.dat",
-        "reference":"\\cite{Zeidler2013SiO2}",
-        "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
-        "hitran2020":"ascii/exoplanets/jager_mg2sio4.dat",
-        "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/zeidler_sio2_928k_ab.dat",
+        "inhouse_file":"SiO2_alpha.dat",
+        "reference":"\\cite{Zeidler2013SiO2,Philipp1985}",
+         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/SiO2_alpha.dat", 
+        "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}",
         "pandas_kwargs":
             {
                 "delim_whitespace":True, 
-                "skiprows":13, 
-                "names":['cm-1','um','n','k']
+                "skiprows":3, 
+                "names":['um','n','k']
             }
-        }
+            }
+
 }
 
 
