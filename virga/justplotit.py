@@ -175,7 +175,7 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
             p2 = figure(width=p2w, height=p2h, title="Particle Distribution at %.0e bars" %at_pressure,
                          x_axis_type='log', y_axis_type='log', y_axis_label='dn/dr (cm-3)',
                          x_axis_label='Particle Radius (um)', 
-                         y_range=[np.max([min(dndr), 1e-50]), np.max(dndr)])
+                         y_range=[np.max([np.min(dndr), 1e-50]), np.max(dndr)])
 
         #add to r_g for that plot 
         df_r_g['average'] = [pressure[nl]]*len(pressure)
