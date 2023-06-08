@@ -285,6 +285,7 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             if imol=='Fe': hitfile =[ihit for ihit in files_hitran if imol.lower()+'.' in ihit]
             #using anatase AB for Tio2
             if imol=='TiO2': hitfile = [hitfile[-1]]
+            if imol=='SiO2': hitfile = ['/'.join(hitfile[0].split('/')[0:-1])+ '/zeidler_sio2_928k_ab.dat']
             if len(hitfile)>0: 
                 skiprows = 5 
                 tryread=True

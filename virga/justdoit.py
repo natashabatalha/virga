@@ -1451,7 +1451,7 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60,fort_ca
         qscat = [nradii]  + sum([[np.nan]+list(iscat) for iscat in qscat_gas.T],[])
         qext = [np.nan]  + sum([[np.nan]+list(iext) for iext in qext_gas.T],[])
         cos_qscat = [np.nan]  + sum([[np.nan]+list(icos) for icos in cos_qscat_gas.T],[])
-
+        print(os.path.join(dir_out,gas_name[i]+".mieff"))
         pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(os.path.join(dir_out,gas_name[i]+".mieff"),
                                                                                    sep=' ',
                                                                                   index=False,header=None)
@@ -1558,23 +1558,16 @@ def get_r_grid(r_min=1e-8, n_radii=60):
     return radius, rup, dr
 
 
-def picaso_format(opd, w0, g0 ):
-    df = pd.DataFrame(index=[ i for i in range(opd.shape[0]*opd.shape[1])], columns=['lvl','w','opd','w0','g0'])
-    i = 0 
-    LVL = []
-    WV,OPD,WW0,GG0 =[],[],[],[]
-    for j in range(opd.shape[0]):
-           for w in range(opd.shape[1]):
-                LVL +=[j+1]
-                WV+=[w+1]
-                OPD+=[opd[j,w]]
-                WW0+=[w0[j,w]]
-                GG0+=[g0[j,w]]
-    df.iloc[:,0 ] = LVL
-    df.iloc[:,1 ] = WV
-    df.iloc[:,2 ] = OPD
-    df.iloc[:,3 ] = WW0
-    df.iloc[:,4 ] = GG0
+def picaso_format(opd, w0, g0, pressure=None, wavenumber=None ):
+    df = pd.DataFrame(
+                dict(opd = opd.flatten(), 
+                     w0 = w0.flatten(), 
+                     g0 = g0.flatten()))
+                     
+    if not isinstance(pressure,type(None)):
+        df['pressure'] = np.concatenate([[i]*len(wavenumber) for i in pressure])
+    if  not isinstance(wavenumber,type(None)):
+        df['wavenumber'] = np.concatenate([wavenumber]*len(pressure))
     return df
 
 def available():
