@@ -1578,7 +1578,7 @@ def available():
     gas_p = [i for i in dir(gas_properties) if i != 'np' and '_' not in i]
     return list(np.intersect1d(gas_p, pvs))
 
-def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**plot_kwargs):
+def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False, legend='inside', **plot_kwargs):
     """
     Recommends condensate species for a users calculation. 
 
@@ -1657,9 +1657,12 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, legend='inside',**
             legend = Legend(items=legend_it, location=(0, 0))
             legend.click_policy="mute"
             fig.add_layout(legend, 'right')   
-        
+            
         plot_format(fig)
-        show(fig) 
+        if outputplot:
+            return recommend, fig
+        else:
+            show(fig) 
 
     return recommend 
 
