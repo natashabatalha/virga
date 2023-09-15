@@ -206,7 +206,7 @@ def configure_ior_choices():
 
 
 def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
-                new_micron_grid = None ): 
+                new_micron_grid = None, ior_config='default' ): 
     """
     Function uses raw data from either HITRAN, LX-MIE repository, or Virga 
     aggregated data. It interpolates data onto the original 196 grid. 
@@ -231,8 +231,22 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
     new_micron_grid : array, optional
         Input a diffrent array. If nothing is added it pulls from the historical 196 grid used 
         in Ackerman & Marley 2001. 
+    ior_config : str or dict
+        (optional) This allows users to modify their ior choices from the config file before 
+        running. optiosn are "default" which uses the defaults listed in configure_ior_choices
+        Alternatively, users can update their parameters and then pass the full dictionary 
+        to this file. 
     """
-    config = configure_ior_choices()
+    if isinstance(ior_config, str):
+        if 'default' in ior_config: 
+            config = configure_ior_choices()
+        else:
+            raise Exception('The only string choice for ior_config is default. Please select default or input a dict')
+    elif isinstance(ior_config, dict):
+            config = ior_config
+    else: 
+        raise Exception('Not an allowable input for ior_config. Must be either string type defualt or modified dict from configure_ior_choices')
+
     files_hitran = glob.glob(os.path.join(hitran_dir,'ascii','exoplanets','*.dat'))
     avail = list(config.keys())
 
@@ -382,7 +396,7 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             ip.outline_line_alpha=0
 
         if not isinstance(output_dir ,type(None)):
-
+            print("Saving", os.path.join(output_dir,imol+'.refrind'))
             df=pd.DataFrame({'micron':w,
              'real':int_n,
              'imaginary':int_k})
