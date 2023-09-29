@@ -16,7 +16,8 @@ from .direct_mmr_solver import direct_solver
 
 
 def compute(atmo, directory = None, as_dict = True, og_solver = True, 
-    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True, do_virtual=True):
+    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True, do_virtual=True,
+    force_pvap=None):
 
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
@@ -120,7 +121,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                              atmo.b, atmo.eps, atmo.scale_h, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
                                              mh, atmo.sig, rmin, nradii,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
-                                             og_vfall, supsat=atmo.supsat,verbose=atmo.verbose,do_virtual=do_virtual)
+                                             og_vfall, supsat=atmo.supsat,verbose=atmo.verbose,do_virtual=do_virtual,
+                                             force_pvap=force_pvap)
         pres_out = atmo.p_layer
         temp_out = atmo.t_layer
         z_out = atmo.z
@@ -341,7 +343,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
     fsed, b, eps, scale_h, z_top, z_alpha, z_min, param,
     mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
-    og_vfall=True,do_virtual=True, supsat=0, verbose=True):
+    og_vfall=True,do_virtual=True, supsat=0, verbose=True,force_pvap=None):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -523,7 +525,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
                 supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
                 sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
-                og_vfall, z_cld
+                og_vfall, z_cld,force_pvap
             )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -536,7 +538,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
     supsat, fsed, b, eps, z_top, z_bot, z_alpha, z_min, param,
     sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
-    og_vfall, z_cld):
+    og_vfall, z_cld,force_pvap=None):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (convering on optical depth over sublayers)
@@ -706,7 +708,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
                         rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_alpha, z_min,
-                        sig,mh, rmin, nrad, og_vfall,z_cld)
+                        sig,mh, rmin, nrad, og_vfall,z_cld, force_pvap)
 
 
             #   vertical sums
@@ -759,7 +761,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
     ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha, z_min,
-    sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
+    sig, mh, rmin, nrad, og_vfall=True, z_cld=None,force_pvap=None):
     """
     Calculate condensate optical depth and effective radius for a layer,
     assuming geometric scatterers. 
@@ -817,7 +819,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         Minium radius on grid (cm)
     nrad : int 
         Number of radii on Mie grid
-
+    force_pvap : float 
+        Default = None 
+        This will over-ride pvap and stick a cloud deck wherever you want it to go
     Returns
     -------
     qt_top : float 
@@ -837,8 +841,13 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     get_pvap = getattr(pvaps, gas_name)
     if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pvap = get_pvap(t_layer, p_layer,mh=mh)
+    elif isinstance(force_pvap,float):
+        pvap = force_pvap
+        print('force')
     else:
         pvap = get_pvap(t_layer,mh=mh)
+
+    if isinstance(force_pvap,type(None)):force_pvap=1e-200
 
     fs = supsat + 1 
 
@@ -849,10 +858,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     qvs = fs*pvap / ( (r_cloud) * t_layer ) / rho_atmos
 
     #   --------------------------------------------------------------------
-    #   Layer is cloud free
-
+    #   Layer is cloud free -neb-
     if( q_below < qvs ):
-
         qt_layer = q_below
         qt_top   = q_below
         qc_layer = 0.
@@ -861,9 +868,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ndz_layer = 0.
         z_cld = z_cld
         fsed_mid = 0
-
     else:
-
         #   --------------------------------------------------------------------
         #   Cloudy layer: first calculate qt and qc at top of layer,
         #   then calculate layer averages
@@ -903,7 +908,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
             fs = fsed / np.exp(z_alpha / b)
             qt_top = qvs + (q_below - qvs) * np.exp( - b * fs / mixl * np.exp(z_bot/b) 
                             * (np.exp(dz_layer/b) -1) + eps*dz_layer/mixl)
-
+        print('qt_top',qt_top)
         #   Use trapezoid rule (for now) to calculate layer averages
         #   -- should integrate exponential
         qt_layer = 0.5*( q_below + qt_top )
@@ -1659,7 +1664,7 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
             fig.add_layout(legend, 'right')   
             
         plot_format(fig)
-        if outputplot:
+        if returnplot:
             return recommend, fig
         else:
             show(fig) 
