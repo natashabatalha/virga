@@ -337,7 +337,9 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     if ((warning!='') & (verbose)): print(warning0+warning+' Turn off warnings by setting verbose=False.')
     return opd, w0, g0, opd_gas
 
-def calc_optics_user_r_dist(wave_in, ndz, radius, qext, qscat ,cos_qscat, r_distribution, verbose=False):
+def calc_optics_user_r_dist(wave_in, ndz, 
+    radius, radius_unit, r_distribution, 
+    qext, qscat ,cos_qscat,  verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter for a user-input particle radius distribution
@@ -353,7 +355,9 @@ def calc_optics_user_r_dist(wave_in, ndz, radius, qext, qscat ,cos_qscat, r_dist
             May have to use values of 1e8 or so
     radius : ndarray
         Radius bin values - the range of particle sizes of interest. Maybe measured in the lab, 
-        maybe generated from a microphysics code, etc. This is given in (nanometers)
+        Ensure radius_unit is specified 
+    radius_unit : astropy.unit.Units
+        Astropy compatible unit
     qscat : ndarray
         Scattering efficiency
     qext : ndarray
@@ -361,7 +365,8 @@ def calc_optics_user_r_dist(wave_in, ndz, radius, qext, qscat ,cos_qscat, r_dist
     cos_qscat : ndarray
         qscat-weighted <cos (scattering angle)>
     r_distribution : ndarray
-        the radius distribution (by percent) in each bin. Maybe measured from the lab, generated from microphysics, etc.
+        the radius distribution in each bin. Maybe measured from the lab, generated from microphysics, etc.
+        Should integrate to 1. 
     verbose: bool 
         print out warnings or not
 
@@ -375,6 +380,9 @@ def calc_optics_user_r_dist(wave_in, ndz, radius, qext, qscat ,cos_qscat, r_dist
     g0 : ndarray 
         asymmetry parameter = Q_scat wtd avg of <cos theta>
     """
+
+    radius = (radius*radius_unit).to(u.cm)
+    radius = radius.value
     
     wavenumber_grid = 1e4/wave_in
     wavenumber_grid = np.array([item[0] for item in wavenumber_grid])
@@ -397,10 +405,8 @@ def calc_optics_user_r_dist(wave_in, ndz, radius, qext, qscat ,cos_qscat, r_dist
         #  Calculate normalization factor 
     for irad in range(nrad):
             rr = radius[irad] # the get the radius at each grid point, this is in nanometers 
-            #print(rr)
-            rr = rr / 1e7 # convert to cm, assuming your radii are in nm!
     
-            each_r_bin = ndz * (r_distribution[irad]) # weight the radius bin by the distribution (which is in percent)
+            each_r_bin = ndz * (r_distribution[irad]) # weight the radius bin by the distribution 
             pir2ndz = PI * rr**2 * each_r_bin # find the weighted cross section
             
             for iwave in range(nwave): 
@@ -1649,6 +1655,23 @@ def get_r_grid(r_min=1e-8, n_radii=60):
 
 
 def picaso_format(opd, w0, g0, pressure=None, wavenumber=None ):
+    """
+    Gets virga output to picaso format 
+
+    Parameters
+    ----------
+    opd : ndarray 
+        array from virga of extinction optical depths per layer 
+    w0 : ndarray 
+        array from virga of single scattering albedo 
+    g0 : ndarray
+        array from virga of asymmetry 
+    pressure : array 
+        pressure array in bars 
+    wavenumber: array 
+        wavenumber arry in cm^(-1)
+
+    """
     df = pd.DataFrame(
                 dict(opd = opd.flatten(), 
                      w0 = w0.flatten(), 
@@ -1661,6 +1684,11 @@ def picaso_format(opd, w0, g0, pressure=None, wavenumber=None ):
     return df
 
 def picaso_format_custom_wavenumber_grid(opd, w0, g0, wavenumber_grid ):
+    """
+    This is currently redundant with picaso_format now that picaso_format 
+    reads in wavenumber grid. 
+    Keeping for now, but will discontinue soon. 
+    """
     df = pd.DataFrame(index=[ i for i in range(opd.shape[0]*opd.shape[1])], columns=['pressure','wavenumber','opd','w0','g0'])
     i = 0 
     LVL = []
@@ -1679,7 +1707,8 @@ def picaso_format_custom_wavenumber_grid(opd, w0, g0, wavenumber_grid ):
     df.iloc[:,4 ] = GG0
     return df
 
-def picaso_format_wavelength_dependent_slab(p_bottom, p_top, opd, w0, g0, wavenumber_grid, pressure_grid ):
+def picaso_format_slab(p_bottom,  opd, w0, g0, 
+    wavenumber_grid, pressure_grid ,p_top=None,p_decay=None):
     """
     Sets up a PICASO-readable dataframe that inserts a wavelength dependent aerosol layer at the user's 
     given pressure bounds, i.e., a wavelength-dependent slab of clouds or haze.
@@ -1689,9 +1718,6 @@ def picaso_format_wavelength_dependent_slab(p_bottom, p_top, opd, w0, g0, wavenu
     p_bottom : float 
         the cloud/haze base pressure
         the upper bound of pressure (i.e., lower altitude bound) to set the aerosol layer. (Bars)
-    p_top : float
-         the cloud/haze-top pressure
-         the lower bound of pressure (i.e., upper altitude bound) to set the aerosol layer. (Bars)
     opd : ndarray
         wavelength-dependent optical depth of the aerosol
     w0 : ndarray
@@ -1701,14 +1727,28 @@ def picaso_format_wavelength_dependent_slab(p_bottom, p_top, opd, w0, g0, wavenu
     wavenumber_grid : ndarray
         wavenumber grid in (cm^-1) 
     pressure_grid : ndarray
-        user-defined pressure grid for the model atmosphere (Bars)
- 
+        bars, user-defined pressure grid for the model atmosphere
+    p_top : float
+         bars, the cloud/haze-top pressure
+         This cuts off the upper cloud region as a step function. 
+         You must specify either p_top or p_decay. 
+    p_decay : ndarray
+        noramlized to 1, unitless
+        array the same size as pressure_grid which specifies a 
+        height dependent optical depth. The usual format of p_decay is 
+        a fsed like exponential decay ~np.exp(-fsed*z/H)
+
 
     Returns
     -------
     Dataframe of aerosol layer with pressure (in levels - non-physical units!), wavenumber, opd, w0, and g0 to be read by PICASO
     """
-    
+    if (isinstance(p_top, type(None)) & isinstance(p_decay, type(None))): 
+        raise Exception("Must specify cloud top pressure via p_top, or the vertical pressure decay via p_decay")
+    elif (isinstance(p_top, type(None)) & (~isinstance(p_decay, type(None)))): 
+        p_top = 1e-10#arbitarily small pressure to make sure float comparison doest break
+
+
     df = pd.DataFrame(index=[ i for i in range(pressure_grid.shape[0]*opd.shape[0])], columns=['pressure','wavenumber','opd','w0','g0'])
     i = 0 
     LVL = []
@@ -1721,7 +1761,10 @@ def picaso_format_wavelength_dependent_slab(p_bottom, p_top, opd, w0, g0, wavenu
                 if p_top <= pressure_grid[j] <= p_bottom:
                     LVL+=[j+1]
                     WV+=[wavenumber_grid[w]]
-                    OPD+=[opd[w]]
+                    if isinstance(p_decay,type(None)):
+                        OPD+=[opd[w]]
+                    else: 
+                        OPD+=[p_decay[j]/np.max(p_decay)*opd[w]]
                     WW0+=[w0[w]]
                     GG0+=[g0[w]]
                 else:
