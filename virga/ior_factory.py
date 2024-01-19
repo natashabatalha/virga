@@ -265,8 +265,6 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
 
     files_hitran = glob.glob(os.path.join(hitran_dir,'ascii','exoplanets','*.dat'))
     avail = list(config.keys())
-    print(avail)
-    print(len(avail))
     if not isinstance(lxmie_dir,type(None)):
         files_lxmie = glob.glob(os.path.join(lxmie_dir,"*.dat"))
     else: 
@@ -279,12 +277,11 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                      y_axis_type='log',x_range=[0.3,150],y_range=[1e-4,1e2],
                      title=avail[i]) for i in range(len(avail))]
 
-    colors = jpi.colpals.Turbo256[0::10][3:]#jpi.colpals.Set3[12] + [jpi.colpals.Set2[7][-1] ]
+    colors = jpi.colpals.turbo(len(avail)+10)[9:]#jpi.colpals.Set3[12] + [jpi.colpals.Set2[7][-1] ]
     bo_h   =True
     bo_kit =True
     bo_vir =True
     for i, imol in enumerate(avail):
-        print(i,imol)
         # get origina data if the user wants it
         if not isinstance(virga_dir,type(None)):
             w, n, k = jdi.get_refrind(imol, virga_dir )
@@ -437,7 +434,6 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             old_cm_k = np.concatenate((old_cm_k,kitz_cm))
             old_k = np.concatenate((old_k,kitz_k))
             
-        print(i)
         #finally interpolate    
         int_n = np.interp(new_cm, old_cm_n,old_n)
         int_k = np.interp(new_cm, old_cm_k,old_k)
