@@ -15,7 +15,7 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -38,7 +38,7 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}.",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -50,7 +50,7 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. Original Palik Vol 2 (1991) data can be found in Part 2, subpart 1",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -62,7 +62,7 @@ def configure_ior_choices():
         "usr_note":"Data stripped from Palik Vol 2 (1991). Data can be found in Part 2, subpart 1",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -75,7 +75,7 @@ def configure_ior_choices():
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/single_files/warren_ice.dat",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":12, 
                 "names":['cm-1','um','n','k']
             }        
@@ -88,7 +88,7 @@ def configure_ior_choices():
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/querry_kcl.dat",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":12, 
                 "names":['cm-1','um','n','k','nerr','kerr']
             },
@@ -97,7 +97,7 @@ def configure_ior_choices():
             "usr_note":"0.1-0.2 micron data used to anchor edge interpolation of Querry 1987 data. Therefore the data doesn't actually show up in Virga. Data source from LX-MIE, Kitzmann & Heng (2018) \cite{Kitzmann2018optical}. Original Palik Vol 1 (1985).",
             "pandas_kwargs":
                 {
-                    "delim_whitespace":True, 
+                    "sep":"\s+", 
                     "skiprows":3, 
                     "names":['um','n','k']
                 }            
@@ -111,7 +111,7 @@ def configure_ior_choices():
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/jager_mg2sio4.dat",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":13, 
                 "names":['cm-1','um','n','k']
             }        
@@ -123,7 +123,7 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}.",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -135,7 +135,7 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}.",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -148,7 +148,7 @@ def configure_ior_choices():
         "pandas_kwargs":
             {
                 "skiprows":8, 
-                "delim_whitespace":True,
+                "sep":"\s+",
                 "names":['cm-1','n','k']
             }
         },
@@ -159,7 +159,7 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. ",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -171,7 +171,7 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. ",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -184,7 +184,7 @@ def configure_ior_choices():
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/querry_zns.dat",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":12, 
                 "names":['cm-1','um','n','k','nerr','kerr']
             }
@@ -196,12 +196,28 @@ def configure_ior_choices():
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}",
         "pandas_kwargs":
             {
-                "delim_whitespace":True, 
+                "sep":"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
-            }
+            },
 
+    "H2SO4":{
+        "inhouse_file":"h2so4T293.biermann",
+        "reference":"\\cite{querry1987optical}",
+        "hitran2020":"ascii/biermann_h2so4/h2so4T293.biermann",
+        "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
+        "usr_note":"Taken from HITRAN 2020, see folder: ascii/biermann_h2so4/h2so4T293.biermann",
+        "pandas_kwargs":
+            {
+                "skiprows":18, 
+                "header":None, 
+                "names":['cm-1','um','00%',   '10%',   '20%',   '30%',   '40%',   '45%',   '50%',
+                          '57%',   '60%',   '64%',   '75%'  , '80%'],
+                "sep":"\s+",
+                "stacked":[8191, 8194,'00%']
+            }
+        }
 }
 
 
@@ -249,7 +265,8 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
 
     files_hitran = glob.glob(os.path.join(hitran_dir,'ascii','exoplanets','*.dat'))
     avail = list(config.keys())
-
+    print(avail)
+    print(len(avail))
     if not isinstance(lxmie_dir,type(None)):
         files_lxmie = glob.glob(os.path.join(lxmie_dir,"*.dat"))
     else: 
@@ -262,11 +279,12 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                      y_axis_type='log',x_range=[0.3,150],y_range=[1e-4,1e2],
                      title=avail[i]) for i in range(len(avail))]
 
-    colors = jpi.colpals.Turbo256[0::15][3:]#jpi.colpals.Set3[12] + [jpi.colpals.Set2[7][-1] ]
+    colors = jpi.colpals.Turbo256[0::10][3:]#jpi.colpals.Set3[12] + [jpi.colpals.Set2[7][-1] ]
     bo_h   =True
     bo_kit =True
     bo_vir =True
     for i, imol in enumerate(avail):
+        print(i,imol)
         # get origina data if the user wants it
         if not isinstance(virga_dir,type(None)):
             w, n, k = jdi.get_refrind(imol, virga_dir )
@@ -280,6 +298,7 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             n = None 
             k = None 
 
+
         #kitzman read from files we have and define as readin which will be used to interpolate
         if 'LX-MIE' in config[imol]['url']: 
             readin = pd.read_csv(config[imol]['url'],
@@ -290,6 +309,7 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             else: 
                 readin['cm-1'] = 1e4/readin['um']
             readin = readin.sort_values(by='cm-1')
+            datasets = {'n':readin,'k':readin}
             fn[i].line(readin['um'], readin['n'], color='grey',line_width=6)
             fk[i].line(readin['um'], readin['k'], color='grey',line_width=6)
 
@@ -307,7 +327,7 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                 while tryread: 
                     try: 
                         
-                        read_hit = pd.read_csv(os.path.join(hitfile[0]), delim_whitespace=True, skiprows=skiprows)
+                        read_hit = pd.read_csv(os.path.join(hitfile[0]), sep='\s+', skiprows=skiprows)
                         x,y=1e4/read_hit['cm-1'], read_hit['real']
                         fn[i].circle(x,y, color='black',size=9)
                         x,y =1e4/read_hit['cm-1'], read_hit['imaginary']
@@ -322,7 +342,7 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                 if imol=='Fe':kitz = [ikit for ikit in files_lxmie if imol+'.' in ikit ]
                 if imol=='MgSiO3':kitz = [ikit for ikit in files_lxmie if 'MgSiO3_amorph_sol-gel' in ikit ]
                 for ikit in kitz: 
-                    readin_LX=pd.read_csv(ikit,delim_whitespace=True, skiprows=3, names=['um','n','k'])
+                    readin_LX=pd.read_csv(ikit,sep='\s+', skiprows=3, names=['um','n','k'])
                     fn[i].line(readin_LX['um'], readin_LX['n'], color='grey',line_width=6)
                     fk[i].line(readin_LX['um'], readin_LX['k'], color='grey',line_width=6) 
 
@@ -335,17 +355,54 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             else: 
                 raw_dir = os.path.join(os.path.dirname(__file__), "reference")
                 filename = os.path.join(raw_dir,'raw_iors',config[imol]['inhouse_file'])
-            readin = pd.read_csv(filename
-                ,
+            
+
+            #some hitran files are read in stacked (e.g. img, followed by real)
+            if 'stacked' in config[imol]['pandas_kwargs'].keys(): 
+                stacked = True
+                real_ind = config[imol]['pandas_kwargs']['stacked'][0]
+                img_ind = config[imol]['pandas_kwargs']['stacked'][1]
+                col_name = config[imol]['pandas_kwargs']['stacked'][2]
+                #delete as it does not belong in pandas kwargs
+                del config[imol]['pandas_kwargs']['stacked']
+            else: stacked=False
+
+            readin = pd.read_csv(filename,
                 **config[imol]['pandas_kwargs']
             )
-            if 'cm-1' in readin.keys(): 
-                readin['um'] = 1e4/readin['cm-1']
-            else: 
-                readin['cm-1'] = 1e4/readin['um']
-            readin = readin.sort_values(by='cm-1')
-            fn[i].circle(readin['um'], readin['n'], color='black',size=9)
-            fk[i].circle(readin['um'], readin['k'], color='black',size=9)
+
+            if stacked: 
+                real_df= pd.DataFrame(columns=['um','cm-1','n']) 
+                img_df = pd.DataFrame(columns=['um','cm-1','k'])
+                real = readin.loc[0:real_ind,:].astype(float)
+                real=real.loc[real['um']!=0]
+                img = readin.loc[img_ind:,:].astype(float) 
+                img = img.loc[img['um']!=0]              
+                
+                real_df['um'] = real['um'].values 
+                real_df['cm-1'] = real['cm-1'].values 
+                real_df['n'] = real[col_name].values 
+
+                img_df['um'] = img['um'].values 
+                img_df['cm-1'] = img['cm-1'].values 
+                img_df['k'] = img[col_name].values 
+            else : 
+                real_df = readin.loc[:,
+                        [ii for  ii in readin.keys() if ii in ['um','cm-1','n']]]
+                img_df = readin.loc[:,
+                        [ii for  ii in readin.keys() if ii in ['um','cm-1','k']]]
+
+            datasets = {'n':real_df,'k':img_df}
+            for idf in datasets.keys():
+                if 'cm-1' in datasets[idf].keys(): 
+                    datasets[idf]['um'] = 1e4/datasets[idf]['cm-1']
+                else: 
+                    datasets[idf]['cm-1'] = 1e4/datasets[idf]['um']
+
+                datasets[idf] = datasets[idf].sort_values(by='cm-1')
+
+            fn[i].circle(datasets['n']['um'], datasets['n']['n'], color='black',size=9)
+            fk[i].circle(datasets['k']['um'], datasets['k']['k'], color='black',size=9)
             
         
         #plot old data if the user asks for it
@@ -355,10 +412,10 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             fk[i].line(w, k, color=colors[i],line_width=3, line_dash='dashed')
         
         #new interpolated 
-        old_cm_n = readin['cm-1'].values
-        old_cm_k = readin['cm-1'].values
-        old_n = readin['n'].values
-        old_k =  readin['k'].values
+        old_cm_n = datasets['n']['cm-1'].values
+        old_cm_k = datasets['k']['cm-1'].values
+        old_n = datasets['n']['n'].values
+        old_k =  datasets['k']['k'].values
         new_cm = 1e4/w
         
         #remove zeros 
@@ -380,7 +437,7 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             old_cm_k = np.concatenate((old_cm_k,kitz_cm))
             old_k = np.concatenate((old_k,kitz_k))
             
-            
+        print(i)
         #finally interpolate    
         int_n = np.interp(new_cm, old_cm_n,old_n)
         int_k = np.interp(new_cm, old_cm_k,old_k)
