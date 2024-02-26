@@ -432,7 +432,7 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     return np.log(fx) - np.log(q_below)
 
 
-def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):    
+def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None, gas_mmr=None):    
     """
     Root function used used to find condenstation temperature. E.g. 
     the temperature when  
@@ -455,7 +455,7 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):
     pvap_fun = getattr(pvaps, gas_name)
     gas_p_fun = getattr(gas_properties, gas_name)
     #get gas mixing ratio 
-    gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh)
+    gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh , gas_mmr=gas_mmr)
     #get vapor pressure and correct for masses of atmo and gas 
     if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pv = gas_mw/mmw*pvap_fun(t_test,p_test, mh=mh)/1e6 #dynes to bars 

@@ -1889,7 +1889,7 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
 
     return recommend 
 
-def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
+def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20), gas_mmr=None):
     """
     Find condensation curve for any planet given a pressure. These are computed 
     based on pressure vapor curves defined in pvaps.py. 
@@ -1914,13 +1914,14 @@ def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
     ndarray, ndarray
         pressure (bars), condensation temperature (Kelvin)
     """
+
     if isinstance(pressure,(float,int)):
         pressure = [pressure]
     temps = []
     for p in pressure: 
         temp = optimize.root_scalar(find_cond_t, 
                         bracket=[10, 10000], method='brentq', 
-                        args=(p, mh, mmw, gas_name))
+                        args=(p, mh, mmw, gas_name, gas_mmr))
         temps += [temp.root]
     return np.array(pressure), np.array(temps)
 
