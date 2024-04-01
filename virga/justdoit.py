@@ -1187,7 +1187,7 @@ class Atmosphere():
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
-            skiprows=3, delim_whitespace=True, header=None, names=["ind","pressure","temperature","kz"]
+            skiprows=3, sep='\s+', header=None, names=["ind","pressure","temperature","kz"]
         """
         #first read in dataframe, dict or file and sort by pressure
         if not isinstance(df, type(None)):
@@ -1553,7 +1553,7 @@ def get_mie(gas, directory):
     """
     Get Mie parameters from old ass formatted files
     """
-    df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], delim_whitespace=True)
+    df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], sep='\s+')
 
     nwave = int( df.iloc[0,0])
     nradii = int(df.iloc[0,1])
@@ -1929,7 +1929,7 @@ def hot_jupiter():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "hj.pt")
 
-    df = pd.read_csv(directory,delim_whitespace=True, usecols=[1,2,3],
+    df = pd.read_csv(directory,sep='\s+', usecols=[1,2,3],
                   names = ['pressure','temperature','kz'],skiprows=1)
     df.loc[df['pressure']>12.8,'temperature'] = np.linspace(1822,2100,df.loc[df['pressure']>12.8].shape[0])
     return df
@@ -1938,7 +1938,7 @@ def brown_dwarf():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "t1000g100nc_m0.0.dat")
 
-    df  = pd.read_csv(directory,skiprows=1,delim_whitespace=True,
+    df  = pd.read_csv(directory,skiprows=1,sep='\s+',
                  header=None, usecols=[1,2,3],
                  names=['pressure','temperature','chf'])
     return df
@@ -1950,7 +1950,7 @@ def temperate_neptune():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "temperate_neptune.pt")
 
-    df  = pd.read_csv(directory,skiprows=0,delim_whitespace=True,
+    df  = pd.read_csv(directory,skiprows=0,sep='\s+',
                  header=None,
                  names=['pressure','temperature','kz'])
     return df
