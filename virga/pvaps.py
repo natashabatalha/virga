@@ -91,18 +91,23 @@ def NH3(temp, mh = 1 ):
     if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for NH3")
     mh = np.log10(mh)
     #NH3 vapor pressure above cloud
-    # pvap_nh3 = np.exp(-86596./temp**2 - 2161./temp + 10.53)
+    #pvap_nh3 = np.exp(-86596./temp**2 - 2161./temp + 10.53)
+
     if isinstance(temp,float):
         temp = np.array([temp])
         pvap_nh3 = np.array([0])
+        convert_arr = True
     else:
         pvap_nh3 = np.zeros(len(temp))
+        convert_arr = False
     tlow = np.where(temp<195.4)[0]
     thigh = np.where(temp>=195.4)[0]
     if len(tlow) > 0: pvap_nh3[tlow] = 10**(6.900 - 1588/temp[tlow])
     if len(thigh) > 0: pvap_nh3[thigh] = 10**(5.201 - 1248/temp[thigh])
     # convert from bars to dyne/cm^2
-    pvap_nh3 = pvap_nh3*1e6    
+    pvap_nh3 = pvap_nh3*1e6   
+    if convert_arr: 
+        pvap_nh3 = pvap_nh3[0]
     return pvap_nh3
 
 def Na2S(temp,mh = 1 ):
