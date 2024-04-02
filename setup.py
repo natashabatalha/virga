@@ -41,7 +41,7 @@ except ImportError:
 # to this sample package.
 setup(
     name='virga-exo', 
-    version = '0.3.4',
+    version = '0.4',
     description = 'exoplanet code for compute cloud structure',
     long_description = 'README.rst',
     author = 'Natasha E. Batalha',
