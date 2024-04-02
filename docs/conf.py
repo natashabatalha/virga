@@ -13,7 +13,8 @@
 import os
 import sys
 import sphinx_rtd_theme
-sys.path.insert(0, os.path.abspath('/Users/nbatalh1/Documents/codes/VIRGA/virga/'))
+sys.path.insert(0, os.path.abspath('/home/nbatalh1/codes/virga'))
+#/Users/nbatalh1/Documents/codes/VIRGA/virga/'))
 
 
 # -- Project information -----------------------------------------------------
@@ -22,8 +23,8 @@ project = 'virga'
 author = 'Batalha, Rooney, Marley'
 
 # The full version, including alpha/beta/rc tags
-version = '0.0'
-release = 'v0.0'
+version = '0.4'
+release = 'v0.4'
 
 
 # -- General configuration ---------------------------------------------------
@@ -37,8 +38,8 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'nbsphinx']
-nbsphinx_allow_errors = True
-nbsphinx_execute = 'never'
+nbsphinx_allow_errors = False
+nbsphinx_execute = 'always'
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 

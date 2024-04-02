@@ -43,14 +43,14 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
         mixing ratio of condensed condensate (g/g)
     """
     #   All vapor in excess of saturation condenses
-    if param is 'const':
+    if param == 'const':
         ad_qc = np.max([ 0., qt - ad_qvs ])
 
         # Eqn. 7 in A & M 
         #   Difference from advective-diffusive balance 
         advdif = ad_qbelow*np.exp( - ad_rainf*ad_qc*ad_dz / ( qt*ad_mixl ) )
         #print(advdif, ad_qc, ad_dz ,ad_mixl,qt )
-    elif param is 'exp':
+    elif param == 'exp':
         fsed = ad_rainf; mixl = ad_mixl; z = ad_dz
         qc = (ad_qbelow - ad_qvs) * np.exp( - b * fsed / mixl * np.exp(zb/b) 
                             * (np.exp(z/b) -1) + eps*z/b)
@@ -171,6 +171,119 @@ def vfall(r, grav,mw_atmos,mfp,visc,
 
     return vfall_r 
 
+
+def vfall_aggregrates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=1):
+    """
+    Calculate fallspeed for a particle at one layer in an
+    atmosphere, assuming low Reynolds number and in the molecular regime (Epstein drag), 
+    i.e., where Knudsen number (mfp/r) is high (>>1). 
+
+    User chooses whether particle is spherical or an aggregate.
+    If aggregrate, the monomer size is given by r and the outer effective radius of the aggregrate is Ragg.
+    
+    all units are cgs
+    
+    Parameters
+    ----------
+    r : float
+        monomer particle radius (cm)
+    mw_atmos : float 
+        atmospheric molecular weight (g/mol)
+    t : float 
+        atmospheric temperature (K)
+    p  : float
+        atmospheric pressure (dyne/cm^2)
+    rhop : float 
+        density of particle (g/cm^3)
+    grav : float 
+        acceleration of gravity (cm/s^2)
+    Ragg : float
+        aggregate particle effective radius (cm). (Defaults to 1 for spherical monomers).
+    D : float
+        fractal number (Default is 2 because function reduces to monomers at this value).
+    """
+    R_GAS = 8.3143e7  #universial gas constant; cgs units cm3-bar/mole-K
+    k = 1.38e-16  #boltzmann contant in cgs units -  cm2 g s-2 K-1 (ergs/K)
+    
+    N_avo = 6.022e23
+    
+    mass = mw_atmos/N_avo 
+    
+    rho_atmos = (mw_atmos*p) / (R*t) #atmospheric density
+    drho = rhop - rho_atmos
+    v_thermal = np.sqrt((3*k*t)/mass) #root mean speed of the gas 
+    
+    #the stopping time of the particle
+    t_stop_epstein_r = (2.0/3.0) * (r*drho) / (rho_atmos*v_thermal) 
+    
+    vfall_epstein_agg_r = t_stop_epstein_r * grav * (Ragg/r)**(D-2)
+
+    return vfall_epstein_agg_r
+
+def vfall_aggregrates_ohno(r, grav,mw_atmos,mfp, t, p, rhop, ad_qc, D=2):
+    """
+    Calculates fallspeed for a fractal aggegrate particle as performed
+    by Ohno et al., 2020, with an outer 
+    effective radius of R_agg made up of monomers of size r, at one layer in an
+    atmosphere. ***Requires characteristic radius ragg to have D > or equal 2, i.e., not very fluffy aggregrates.
+
+    Essentially a more explicit version of the regular "vfall_aggregates" function, 
+    and is not dependent on being in free molecular (Esptein) regime
+    
+    all units are cgs
+    
+    Parameters
+    ----------
+    r : float
+        monomer particle radius (cm)
+    grav : float 
+        acceleration of gravity (cm/s^2)
+    rhop : float
+        density of aggregrate particle (g/cm^3)
+    t : float 
+        atmospheric temperature (K)
+    p  : float
+        atmospheric pressure (dyne/cm^2)
+    mw_atmos : float 
+        atmospheric molecular weight (g/mol)
+    mfp : float 
+        atmospheric molecular mean free path (cm)
+    ad_qc : float 
+        mixing ratio of condensed condensate (g/g)
+    D : float
+        fractal number (Default is 2).
+    gas_mw : float
+        condensate gas mean molecular weight (g/mol)
+    """
+    #Define some constants
+    R_GAS = 8.3143e7  #universial gas constant; cgs units cm3-bar/mole-K
+    k = 1.38e-16  #boltzmann contant in cgs units -  cm2 g s-2 K-1 (ergs/K)
+    N_avo = 6.022e23 #avogadro's number
+
+    #determine the number density of monomer particles
+    N = ad_qc * N_avo/ gas_mw
+
+    #calculate the aggregrate radius based on the fractal dimension, monomer radius, and number density of monomers
+    Ragg = r * N**(1/D) 
+
+    mass = mw_atmos/N_avo
+    rho_atmos = (mw_atmos*p) / (R*t) #atmospheric density
+    drho = rho_agg - rho_atmos
+
+    kn = mfp / Ragg #Knudsen number
+    beta = 1.0 + (1.26*kn) #Cunningham correction (slip factor for gas kinetic effects)
+    v_thermal = np.sqrt((8*k*t)/(mass*np.pi)) #thermal speed of the gas 
+
+    #visc = (1.0/3.0)*rho_atmos*v_thermal*mfp #viscosity of the atmosphere, appropriate for large Kn (Esptein)
+    visc = 5.877e-6 * np.sqrt(t) #in dyne/cm^2 with t in K (via Woitke & Helling 2003)
+
+    vfall_stokes = (2.0/9.0) * beta * grav * ((Ragg)**2) * (drho/visc) 
+    v_bracket = (1.0 + (((0.45/54.0) * (grav/((visc)**2)) * ((Ragg)**3) * rho_atmos * rho_agg)**(2./5.)))**(-5.0/4.0)
+    
+    vfall_r_ohno = vfall_stokes  * v_bracket
+   
+    return vfall_r_ohno
+
 def vfall_find_root(r, grav=None,mw_atmos=None,mfp=None,visc=None,
               t=None,p=None, rhop=None,w_convect=None ):
     """
@@ -287,9 +400,9 @@ def solve_force_balance(solve_for, temp, grav, mw_atmos, mfp, visc, t, p, rhop, 
     """
 
     def force_balance_new(u):
-        if solve_for is "vfall":
+        if solve_for == "vfall":
             return force_balance(u, temp, grav, mw_atmos, mfp, visc, t, p, rhop) 
-        elif solve_for is "rw":
+        elif solve_for == "rw":
             return force_balance(temp, u, grav, mw_atmos, mfp, visc, t, p, rhop) 
 
     soln = optimize.root_scalar(force_balance_new, bracket=[lo, hi], method='brentq') 
@@ -310,7 +423,7 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     
     #  Compute saturation mixing ratio
     get_pvap = getattr(pvaps, qv_gas_name)
-    if qv_gas_name == 'Mg2SiO4':
+    if qv_gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pvap_test = get_pvap(t_test, p_test, mh=mh)
     else:
         pvap_test = get_pvap(t_test,mh=mh)
@@ -319,7 +432,7 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     return np.log(fx) - np.log(q_below)
 
 
-def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):    
+def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None, gas_mmr=None):    
     """
     Root function used used to find condenstation temperature. E.g. 
     the temperature when  
@@ -342,9 +455,9 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):
     pvap_fun = getattr(pvaps, gas_name)
     gas_p_fun = getattr(gas_properties, gas_name)
     #get gas mixing ratio 
-    gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh)
+    gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh , gas_mmr=gas_mmr)
     #get vapor pressure and correct for masses of atmo and gas 
-    if gas_name == 'Mg2SiO4':
+    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
         pv = gas_mw/mmw*pvap_fun(t_test,p_test, mh=mh)/1e6 #dynes to bars 
     else:
         pv = gas_mw/mmw*pvap_fun(t_test, mh=mh)/1e6 #dynes to bars 

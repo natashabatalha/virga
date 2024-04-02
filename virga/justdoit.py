@@ -78,7 +78,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         #Get gas properties including gas mean molecular weight,
         #gas mixing ratio, and the density
         run_gas = getattr(gas_properties, igas)
-        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh, gas_mmr=atmo.gas_mmr)
+        gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh, gas_mmr=atmo.gas_mmr[igas])
 
         #Get mie files that are already saved in 
         #directory
@@ -88,6 +88,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         if i==0: 
             nradii = len(radius)
             rmin = np.min(radius)
+
             radius, rup, dr = get_r_grid(rmin, n_radii=nradii)
             qext = np.zeros((nwave,nradii,ngas))
             qscat = np.zeros((nwave,nradii,ngas))
@@ -188,7 +189,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         'cloud_deck':z_cld
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad,verbose):
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad,verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -262,7 +263,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
 
                 #  Calculate normalization factor (forces lognormal sum = 1.0)
-                rsig = sig
+                rsig = sig #the log normal particle size distribution 
                 norm = 0.
                 for irad in range(nrad):
                     rr = radius[irad]
@@ -272,11 +273,11 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                     #print (rr, rg[iz,igas],rsig,arg1,arg2)
 
                 # normalization
-                norm = ndz[iz,igas] / norm
+                norm = ndz[iz,igas] / norm #number density distribution
 
                 for irad in range(nrad):
                     rr = radius[irad]
-                    arg1 = dr[irad] / ( np.sqrt(2.*PI)*np.log(rsig) )
+                    arg1 = dr[irad] / ( np.sqrt(2.*PI)*np.log(rsig) ) # log normal distribution is the rsig
                     arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
                     pir2ndz = norm*PI*rr*arg1*np.exp( arg2 )         
                     for iwave in range(nwave): 
@@ -285,7 +286,28 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
                         cqs_gas[iz,iwave,igas] = cqs_gas[iz,iwave,igas]+cos_qscat[iwave,irad,igas]*pir2ndz
 
                     #TO DO ADD IN CLOUD SUBLAYER KLUGE LATER 
+    
+    for igas in range(ngas):
+        for iz in range(nz-1,-1,-1):
 
+            if np.sum(ext_gas[iz,:,igas]) > 0:
+                ibot = iz
+                break
+            if iz == 0:
+                ibot=0
+        #print(igas,ibot)
+        if ibot >= nz -2:
+            print("Not doing sublayer as cloud deck at the bottom of pressure grid")
+            
+        else:
+            opd_layer[ibot+1,igas] = opd_layer[ibot,igas]*0.1
+            scat_gas[ibot+1,:,igas] = scat_gas[ibot,:,igas]*0.1
+            ext_gas[ibot+1,:,igas] = ext_gas[ibot,:,igas]*0.1
+            cqs_gas[ibot+1,:,igas] = cqs_gas[ibot,:,igas]*0.1
+            opd_layer[ibot+2,igas] = opd_layer[ibot,igas]*0.05
+            scat_gas[ibot+2,:,igas] = scat_gas[ibot,:,igas]*0.05
+            ext_gas[ibot+2,:,igas] = ext_gas[ibot,:,igas]*0.05
+            cqs_gas[ibot+2,:,igas] = cqs_gas[ibot,:,igas]*0.05
     #Sum over gases and compute spectral optical depth profile etc
     for iz in range(nz):
         for iwave in range(nwave): 
@@ -315,11 +337,107 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     if ((warning!='') & (verbose)): print(warning0+warning+' Turn off warnings by setting verbose=False.')
     return opd, w0, g0, opd_gas
 
+def calc_optics_user_r_dist(wave_in, ndz, 
+    radius, radius_unit, r_distribution, 
+    qext, qscat ,cos_qscat,  verbose=False):
+    """
+    Calculate spectrally-resolved profiles of optical depth, single-scattering
+    albedo, and asymmetry parameter for a user-input particle radius distribution
+
+    Parameters
+    ----------
+    wave_in : ndarray
+        your wavelength grid in microns
+    ndz : float
+        Column density of total particle concentration (#/cm^2) 
+            Note: set to whatever, it's your free knob 
+            ---- this does not directly translate to something physical because it's for all particles in your slab
+            May have to use values of 1e8 or so
+    radius : ndarray
+        Radius bin values - the range of particle sizes of interest. Maybe measured in the lab, 
+        Ensure radius_unit is specified 
+    radius_unit : astropy.unit.Units
+        Astropy compatible unit
+    qscat : ndarray
+        Scattering efficiency
+    qext : ndarray
+        Extinction efficiency
+    cos_qscat : ndarray
+        qscat-weighted <cos (scattering angle)>
+    r_distribution : ndarray
+        the radius distribution in each bin. Maybe measured from the lab, generated from microphysics, etc.
+        Should integrate to 1. 
+    verbose: bool 
+        print out warnings or not
+
+
+    Returns
+    -------
+    opd : ndarray 
+        extinction optical depth due to all condensates in layer
+    w0 : ndarray 
+        single scattering albedo
+    g0 : ndarray 
+        asymmetry parameter = Q_scat wtd avg of <cos theta>
+    """
+
+    radius = (radius*radius_unit).to(u.cm)
+    radius = radius.value
+    
+    wavenumber_grid = 1e4/wave_in
+    wavenumber_grid = np.array([item[0] for item in wavenumber_grid])
+    nwave = len(wavenumber_grid)
+    PI=np.pi
+    nrad = len(radius) ## where radius is the radius grid of the particle size distribution
+    
+    scat= np.zeros((nwave))
+    ext = np.zeros((nwave))
+    cqs = np.zeros((nwave))
+    
+    opd = np.zeros((nwave))
+    w0 = np.zeros((nwave))
+    g0 = np.zeros((nwave))
+    
+    opd_scat = 0.
+    opd_ext = 0.
+    cos_qs = 0.
+                    
+        #  Calculate normalization factor 
+    for irad in range(nrad):
+            rr = radius[irad] # the get the radius at each grid point, this is in nanometers 
+    
+            each_r_bin = ndz * (r_distribution[irad]) # weight the radius bin by the distribution 
+            pir2ndz = PI * rr**2 * each_r_bin # find the weighted cross section
+            
+            for iwave in range(nwave): 
+                scat[iwave] = scat[iwave] + qscat[iwave,irad]*pir2ndz 
+                ext[iwave] = ext[iwave] + qext[iwave,irad]*pir2ndz
+                cqs[iwave] = cqs[iwave] + cos_qscat[iwave,irad]*pir2ndz
+                
+                
+                    # calculate the spectral optical depth profile etc
+    for iwave in range(nwave): 
+            opd_scat = 0.
+            opd_ext = 0.
+            cos_qs = 0.
+            
+            opd_scat = opd_scat + scat[iwave]
+            opd_ext = opd_ext + ext[iwave]
+            cos_qs = cos_qs + cqs[iwave]
+   
+                    
+            if( opd_scat > 0. ):
+                            opd[iwave] = opd_ext 
+                            w0[iwave] = opd_scat / opd_ext
+                            g0[iwave] = cos_qs / opd_scat
+                    
+    return opd, w0, g0, wavenumber_grid
+
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
     fsed, b, eps, scale_h, z_top, z_alpha, z_min, param,
     mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
-    og_vfall=True,do_virtual=True, supsat=0, verbose=True):
+    og_vfall=True,do_virtual=True, supsat=0, verbose=False):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -432,7 +550,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
             z_cld=None
             qvs_factor = (supsat+1)*gas_mw[i]/mw_atmos
             get_pvap = getattr(pvaps, igas)
-            if igas == 'Mg2SiO4':
+            if igas in ['Mg2SiO4','CaTiO3','CaAl12O19','FakeHaze','H2SO4','KhareHaze','SteamHaze300K','SteamHaze400K']:
                 pvap = get_pvap(t_bot, p_bot, mh=mh)
             else:
                 pvap = get_pvap(t_bot, mh=mh)
@@ -813,7 +931,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     """
 
     get_pvap = getattr(pvaps, gas_name)
-    if gas_name == 'Mg2SiO4':
+    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19','FakeHaze','H2SO4','KhareHaze','SteamHaze300K','SteamHaze400K']:
         pvap = get_pvap(t_layer, p_layer,mh=mh)
     else:
         pvap = get_pvap(t_layer,mh=mh)
@@ -827,10 +945,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     qvs = fs*pvap / ( (r_cloud) * t_layer ) / rho_atmos
 
     #   --------------------------------------------------------------------
-    #   Layer is cloud free
-
+    #   Layer is cloud free -neb-
     if( q_below < qvs ):
-
         qt_layer = q_below
         qt_top   = q_below
         qc_layer = 0.
@@ -839,9 +955,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         ndz_layer = 0.
         z_cld = z_cld
         fsed_mid = 0
-
     else:
-
         #   --------------------------------------------------------------------
         #   Cloudy layer: first calculate qt and qc at top of layer,
         #   then calculate layer averages
@@ -970,7 +1084,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
 class Atmosphere():
     def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,
-                    param='const', verbose=True, supsat=0, gas_mmr=None):
+                    param='const', verbose=False, supsat=0, gas_mmr=None):
         """
         Parameters
         ----------
@@ -1007,7 +1121,10 @@ class Atmosphere():
         #grab constants
         self.constants()
         self.supsat = supsat
-        self.gas_mmr = gas_mmr
+        if isinstance(gas_mmr, type(None)):
+            self.gas_mmr = {igas:None for igas in condensibles}
+        else: 
+            self.gas_mmr = gas_mmr
 
     def constants(self):
         #   Depth of the Lennard-Jones potential well for the atmosphere 
@@ -1070,7 +1187,7 @@ class Atmosphere():
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
-            skiprows=3, delim_whitespace=True, header=None, names=["ind","pressure","temperature","kz"]
+            skiprows=3, sep='\s+', header=None, names=["ind","pressure","temperature","kz"]
         """
         #first read in dataframe, dict or file and sort by pressure
         if not isinstance(df, type(None)):
@@ -1365,10 +1482,9 @@ class Atmosphere():
         run = compute(self, directory = directory, as_dict = as_dict)
         return run
 
-def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
+def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2, nradii = 60,fort_calc_mie = False):
     """
     Function that calculations new Mie database using PyMieScatt. 
-
     Parameters
     ----------
     gas_name : list, str
@@ -1380,11 +1496,11 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
         Directory where you want to store Mie parameter files. Will be stored as gas_name.Mieff. 
         BEWARE FILE OVERWRITES. 
     rmin : float , optional
-        (Default=1e-5) Units of cm. The minimum radius to compute Mie parameters for. 
+        (Default=1e-8) Units of cm. The minimum radius to compute Mie parameters for. 
         Usually 0.1 microns is small enough. However, if you notice your mean particle radius 
         is on the low end, you may compute your grid to even lower particle sizes. 
     nradii : int, optional
-        (Default=40) number of radii points to compute grid on. 40 grid points for exoplanets/BDs
+        (Default=60) number of radii points to compute grid on. 40 grid points for exoplanets/BDs
         is generally sufficient. 
 
     Returns 
@@ -1408,7 +1524,8 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
 
         if i==0:
             #all these files need to be on the same grid
-            radius, rup, dr = get_r_grid(r_min = rmin, n_radii = nradii)
+            #radius, rup, dr = get_r_grid(r_min = rmin, n_radii = nradii)
+            radius, rup, dr = get_r_grid_w_max(r_min=rmin, r_max=rmax, n_radii=nradii)
 
             qext_all=np.zeros(shape=(nwave,nradii,ngas))
             qscat_all = np.zeros(shape=(nwave,nradii,ngas))
@@ -1416,7 +1533,7 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
 
         #get extinction, scattering, and asymmetry
         #all of these are  [nwave by nradii]
-        qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False)
+        qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = fort_calc_mie)
 
         #add to master matrix that contains the per gas Mie stuff
         qext_all[:,:,i], qscat_all[:,:,i], cos_qscat_all[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas 
@@ -1426,7 +1543,7 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, nradii = 60):
         qscat = [nradii]  + sum([[np.nan]+list(iscat) for iscat in qscat_gas.T],[])
         qext = [np.nan]  + sum([[np.nan]+list(iext) for iext in qext_gas.T],[])
         cos_qscat = [np.nan]  + sum([[np.nan]+list(icos) for icos in cos_qscat_gas.T],[])
-
+        print(os.path.join(dir_out,gas_name[i]+".mieff"))
         pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(os.path.join(dir_out,gas_name[i]+".mieff"),
                                                                                    sep=' ',
                                                                                   index=False,header=None)
@@ -1436,7 +1553,7 @@ def get_mie(gas, directory):
     """
     Get Mie parameters from old ass formatted files
     """
-    df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], delim_whitespace=True)
+    df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], sep='\s+')
 
     nwave = int( df.iloc[0,0])
     nradii = int(df.iloc[0,1])
@@ -1448,6 +1565,21 @@ def get_mie(gas, directory):
 
     assert len(radii) == nradii , "Number of radii specified in header is not the same as number of radii."
     assert nwave*nradii == df.shape[0] , "Number of wavelength specified in header is not the same as number of waves in file"
+
+    # check if incoming wavegrid is in correct order
+    sub_array = df['wave'].values[:196]  # Extract the first 196 values
+    is_ascending = np.all(np.diff(sub_array) >= 0) # check if going from short to long wavelength
+
+    if is_ascending == False:
+        flipped_wave = np.flip(df['wave'].values.reshape(nradii, -1, nwave), axis=2).flatten()
+        flipped_qscat = np.flip(df['qscat'].values.reshape(nradii, -1, nwave), axis=2).flatten()
+        flipped_qext = np.flip(df['qext'].values.reshape(nradii, -1, nwave), axis=2).flatten()
+        flipped_cos_qscat = np.flip(df['cos_qscat'].values.reshape(nradii, -1, nwave), axis=2).flatten()
+
+        df['wave'] = flipped_wave
+        df['qscat'] = flipped_qscat
+        df['qext'] = flipped_qext
+        df['cos_qscat'] = flipped_cos_qscat
 
     wave = df['wave'].values.reshape((nradii,nwave)).T
     qscat = df['qscat'].values.reshape((nradii,nwave)).T
@@ -1468,12 +1600,22 @@ def get_refrind(igas,directory):
         Gas name 
     directory : str 
         Directory were reference files are located. 
+
+    Returns
+    -------
+    wavelength, real part, imaginary part 
     """
     filename = os.path.join(directory ,igas+".refrind")
     #put skiprows=1 in loadtxt to skip first line
-    idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
-
-    return wave_in,nn,kk
+    try:
+        idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
+        return wave_in,nn,kk
+    except: 
+        df = pd.read_csv(filename)
+        wave_in = df['micron'].values 
+        nn = df['real'].values
+        kk = df['imaginary'].values
+        return wave_in,nn,kk
 
 def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
     """
@@ -1523,15 +1665,49 @@ def get_r_grid(r_min=1e-8, n_radii=60):
     return radius, rup, dr
 
 
-def picaso_format(opd, w0, g0 ):
-    df = pd.DataFrame(index=[ i for i in range(opd.shape[0]*opd.shape[1])], columns=['lvl','w','opd','w0','g0'])
+def picaso_format(opd, w0, g0, pressure=None, wavenumber=None ):
+    """
+    Gets virga output to picaso format 
+
+    Parameters
+    ----------
+    opd : ndarray 
+        array from virga of extinction optical depths per layer 
+    w0 : ndarray 
+        array from virga of single scattering albedo 
+    g0 : ndarray
+        array from virga of asymmetry 
+    pressure : array 
+        pressure array in bars 
+    wavenumber: array 
+        wavenumber arry in cm^(-1)
+
+    """
+    df = pd.DataFrame(
+                dict(opd = opd.flatten(), 
+                     w0 = w0.flatten(), 
+                     g0 = g0.flatten()))
+                     
+    if not isinstance(pressure,type(None)):
+        df['pressure'] = np.concatenate([[i]*len(wavenumber) for i in pressure])
+    if  not isinstance(wavenumber,type(None)):
+        df['wavenumber'] = np.concatenate([wavenumber]*len(pressure))
+    return df
+
+def picaso_format_custom_wavenumber_grid(opd, w0, g0, wavenumber_grid ):
+    """
+    This is currently redundant with picaso_format now that picaso_format 
+    reads in wavenumber grid. 
+    Keeping for now, but will discontinue soon. 
+    """
+    df = pd.DataFrame(index=[ i for i in range(opd.shape[0]*opd.shape[1])], columns=['pressure','wavenumber','opd','w0','g0'])
     i = 0 
     LVL = []
     WV,OPD,WW0,GG0 =[],[],[],[]
     for j in range(opd.shape[0]):
            for w in range(opd.shape[1]):
-                LVL +=[j+1]
-                WV+=[w+1]
+                LVL+=[j+1]
+                WV+=[wavenumber_grid[w]]
                 OPD+=[opd[j,w]]
                 WW0+=[w0[j,w]]
                 GG0+=[g0[j,w]]
@@ -1542,6 +1718,81 @@ def picaso_format(opd, w0, g0 ):
     df.iloc[:,4 ] = GG0
     return df
 
+def picaso_format_slab(p_bottom,  opd, w0, g0, 
+    wavenumber_grid, pressure_grid ,p_top=None,p_decay=None):
+    """
+    Sets up a PICASO-readable dataframe that inserts a wavelength dependent aerosol layer at the user's 
+    given pressure bounds, i.e., a wavelength-dependent slab of clouds or haze.
+    
+    Parameters
+    ----------
+    p_bottom : float 
+        the cloud/haze base pressure
+        the upper bound of pressure (i.e., lower altitude bound) to set the aerosol layer. (Bars)
+    opd : ndarray
+        wavelength-dependent optical depth of the aerosol
+    w0 : ndarray
+        wavelength-dependent single scattering albedo of the aerosol
+    g0 : ndarray
+        asymmetry parameter = Q_scat wtd avg of <cos theta>
+    wavenumber_grid : ndarray
+        wavenumber grid in (cm^-1) 
+    pressure_grid : ndarray
+        bars, user-defined pressure grid for the model atmosphere
+    p_top : float
+         bars, the cloud/haze-top pressure
+         This cuts off the upper cloud region as a step function. 
+         You must specify either p_top or p_decay. 
+    p_decay : ndarray
+        noramlized to 1, unitless
+        array the same size as pressure_grid which specifies a 
+        height dependent optical depth. The usual format of p_decay is 
+        a fsed like exponential decay ~np.exp(-fsed*z/H)
+
+
+    Returns
+    -------
+    Dataframe of aerosol layer with pressure (in levels - non-physical units!), wavenumber, opd, w0, and g0 to be read by PICASO
+    """
+    if (isinstance(p_top, type(None)) & isinstance(p_decay, type(None))): 
+        raise Exception("Must specify cloud top pressure via p_top, or the vertical pressure decay via p_decay")
+    elif (isinstance(p_top, type(None)) & (~isinstance(p_decay, type(None)))): 
+        p_top = 1e-10#arbitarily small pressure to make sure float comparison doest break
+
+
+    df = pd.DataFrame(index=[ i for i in range(pressure_grid.shape[0]*opd.shape[0])], columns=['pressure','wavenumber','opd','w0','g0'])
+    i = 0 
+    LVL = []
+    WV,OPD,WW0,GG0 =[],[],[],[]
+    
+    # this loops the opd, w0, and g0 between p and dp bounds and put zeroes for them everywhere else
+    for j in range(pressure_grid.shape[0]):
+           for w in range(opd.shape[0]):
+                #stick in pressure bounds for the aerosol layer:
+                if p_top <= pressure_grid[j] <= p_bottom:
+                    LVL+=[j+1]
+                    WV+=[wavenumber_grid[w]]
+                    if isinstance(p_decay,type(None)):
+                        OPD+=[opd[w]]
+                    else: 
+                        OPD+=[p_decay[j]/np.max(p_decay)*opd[w]]
+                    WW0+=[w0[w]]
+                    GG0+=[g0[w]]
+                else:
+                    LVL+=[j+1]
+                    WV+=[wavenumber_grid[w]]
+                    OPD+=[opd[w]*0]
+                    WW0+=[w0[w]*0]
+                    GG0+=[g0[w]*0]       
+                    
+    df.iloc[:,0 ] = LVL
+    df.iloc[:,1 ] = WV
+    df.iloc[:,2 ] = OPD
+    df.iloc[:,3 ] = WW0
+    df.iloc[:,4 ] = GG0
+    return df
+
+
 def available():
     """
     Print all available gas condensates 
@@ -1550,8 +1801,7 @@ def available():
     gas_p = [i for i in dir(gas_properties) if i != 'np' and '_' not in i]
     return list(np.intersect1d(gas_p, pvs))
 
-def recommend_gas(pressure, temperature, mh, mmw, plot=False, return_plot=False,
-    legend='inside',**plot_kwargs):
+def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False, legend='inside', **plot_kwargs):
     """
     Recommends condensate species for a users calculation. 
 
@@ -1581,8 +1831,10 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, return_plot=False,
         from bokeh.models import Legend
         from bokeh.palettes import magma   
         plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-3])
-        plot_kwargs['height'] = plot_kwargs.get('height',400)
-        plot_kwargs['width'] = plot_kwargs.get('width',600)
+        plot_kwargs['height'] = plot_kwargs.get('plot_height',plot_kwargs.get('height',400))
+        plot_kwargs['width'] = plot_kwargs.get('plot_width', plot_kwargs.get('width',600))
+        if 'plot_width' in plot_kwargs.keys() : plot_kwargs.pop('plot_width')
+        if 'plot_height' in plot_kwargs.keys() : plot_kwargs.pop('plot_height')
         plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
         plot_kwargs['y_axis_label'] = plot_kwargs.get('y_axis_label','Pressure (bars)')
         plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')        
@@ -1628,17 +1880,19 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, return_plot=False,
             legend = Legend(items=legend_it, location=(0, 0))
             legend.click_policy="mute"
             fig.add_layout(legend, 'right')   
-        
+            
         plot_format(fig)
-        if return_plot: 
+        
+        if returnplot:
             return recommend, fig
-        else: 
-            show(fig) 
-            return recommend 
+        else:
+            show(fig)
+    
+    return recommend
 
     
 
-def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
+def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20), gas_mmr=None):
     """
     Find condensation curve for any planet given a pressure. These are computed 
     based on pressure vapor curves defined in pvaps.py. 
@@ -1663,13 +1917,14 @@ def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20)):
     ndarray, ndarray
         pressure (bars), condensation temperature (Kelvin)
     """
+
     if isinstance(pressure,(float,int)):
         pressure = [pressure]
     temps = []
     for p in pressure: 
         temp = optimize.root_scalar(find_cond_t, 
                         bracket=[10, 10000], method='brentq', 
-                        args=(p, mh, mmw, gas_name))
+                        args=(p, mh, mmw, gas_name, gas_mmr))
         temps += [temp.root]
     return np.array(pressure), np.array(temps)
 
@@ -1677,7 +1932,7 @@ def hot_jupiter():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "hj.pt")
 
-    df = pd.read_csv(directory,delim_whitespace=True, usecols=[1,2,3],
+    df = pd.read_csv(directory,sep='\s+', usecols=[1,2,3],
                   names = ['pressure','temperature','kz'],skiprows=1)
     df.loc[df['pressure']>12.8,'temperature'] = np.linspace(1822,2100,df.loc[df['pressure']>12.8].shape[0])
     return df
@@ -1686,8 +1941,20 @@ def brown_dwarf():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "t1000g100nc_m0.0.dat")
 
-    df  = pd.read_csv(directory,skiprows=1,delim_whitespace=True,
+    df  = pd.read_csv(directory,skiprows=1,sep='\s+',
                  header=None, usecols=[1,2,3],
                  names=['pressure','temperature','chf'])
+    return df
+
+def warm_neptune(): 
+    directory = os.path.join(os.path.dirname(__file__), "reference",
+                                   "wn.pt")
+def temperate_neptune(): 
+    directory = os.path.join(os.path.dirname(__file__), "reference",
+                                   "temperate_neptune.pt")
+
+    df  = pd.read_csv(directory,skiprows=0,sep='\s+',
+                 header=None,
+                 names=['pressure','temperature','kz'])
     return df
 
