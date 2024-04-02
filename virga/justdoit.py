@@ -1882,12 +1882,14 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
             fig.add_layout(legend, 'right')   
             
         plot_format(fig)
+        
         if returnplot:
             return recommend, fig
         else:
-            show(fig) 
+            show(fig)
+          return recommend
 
-    return recommend 
+    
 
 def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20), gas_mmr=None):
     """

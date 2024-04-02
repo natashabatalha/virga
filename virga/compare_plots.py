@@ -16,8 +16,8 @@ from . import justdoit as pyeddy
 
 def plot_pt(out, labels, lines, **kwargs):
 
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',600)
+    kwargs['height'] = kwargs.get('height',300)
+    kwargs['width'] = kwargs.get('width',600)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','Temperature (K)')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
@@ -42,8 +42,8 @@ def plot_pt(out, labels, lines, **kwargs):
 
 def plot_cumsum(out,labels,lines,**kwargs):
 
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',600)
+    kwargs['height'] = kwargs.get('height',300)
+    kwargs['width'] = kwargs.get('width',600)
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
@@ -66,8 +66,8 @@ def plot_output(out,attribute,attribute_label,gas,labels,lines,legend_on=True,
                     color_indx=0,**kwargs):
 
     condensibles = out[0]['condensibles']
-    kwargs['plot_height'] = kwargs.get('plot_height',400)
-    kwargs['plot_width'] = kwargs.get('plot_width',350)
+    kwargs['height'] = kwargs.get('height',400)
+    kwargs['width'] = kwargs.get('width',350)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label',attribute_label)
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')
@@ -108,8 +108,8 @@ def opd_by_gas(out,color = magma, **kwargs):
         Kwargs for bokeh.figure() 
     """
 
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',400)
+    kwargs['height'] = kwargs.get('height',300)
+    kwargs['width'] = kwargs.get('width',400)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','Column Optical Depth')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
@@ -146,8 +146,8 @@ def condensate_mmr(out,color = viridis, **kwargs):
         Kwargs for bokeh.figure() 
     """
 
-    kwargs['plot_height'] = kwargs.get('plot_height',300)
-    kwargs['plot_width'] = kwargs.get('plot_width',400)
+    kwargs['height'] = kwargs.get('height',300)
+    kwargs['width'] = kwargs.get('width',400)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','Condensate MMR')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')
@@ -206,7 +206,7 @@ def all_optics(out):
     f01a = figure(x_range=[0, yr], y_range=[0,xr],
                            x_axis_label=wavelength_label, y_axis_label=pressure_label,
                            title="Single Scattering Albedo",
-                          plot_width=300, plot_height=300)
+                          width=300, height=300)
 
 
     f01a.image(image=[scat01],  color_mapper=color_mapper, x=0,y=0,dh=xr,dw =yr )
@@ -228,7 +228,7 @@ def all_optics(out):
     f01 = figure(x_range=[0, yr], y_range=[0,xr],
                            x_axis_label=wavelength_label, y_axis_label=pressure_label,
                            title="Cloud Optical Depth Per Layer",
-                          plot_width=320, plot_height=300)
+                          width=320, height=300)
 
     f01.image(image=[scat01],  color_mapper=color_mapper, x=0,y=0,dh=xr,dw =yr )
 
@@ -247,7 +247,7 @@ def all_optics(out):
     f01b = figure(x_range=[0, yr], y_range=[0,xr],
                            x_axis_label=wavelength_label, y_axis_label=pressure_label,
                            title="Assymetry Parameter",
-                          plot_width=300, plot_height=300)
+                          width=300, height=300)
 
     f01b.image(image=[scat01],  color_mapper=color_mapper, x=0,y=0,dh=xr,dw =yr )
 
@@ -307,8 +307,8 @@ def plot_format(df):
 
 def plot_fsed(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,gas_indx=None,**kwargs):
 
-    kwargs['plot_height'] = kwargs.get('plot_height',400)
-    kwargs['plot_width'] = kwargs.get('plot_width',700)
+    kwargs['height'] = kwargs.get('height',400)
+    kwargs['width'] = kwargs.get('width',700)
     kwargs['x_axis_label'] = kwargs.get('x_axis_label','fsed')
     kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
     kwargs['x_axis_type'] = kwargs.get('x_axis_type','log')

@@ -510,7 +510,6 @@ def all_optics_1d(out, wave_range, return_output = False,legend=None,
     **kwargs : keyword arguments
         Key word arguments will be supplied to each bokeh figure function
     """
-
     kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',300))
     kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',300))
     if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
