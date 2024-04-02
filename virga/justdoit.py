@@ -1887,7 +1887,8 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
             return recommend, fig
         else:
             show(fig)
-          return recommend
+    
+    return recommend
 
     
 
