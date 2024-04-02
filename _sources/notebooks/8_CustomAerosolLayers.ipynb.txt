@@ -1,0 +1,418 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "ecd5af06",
+   "metadata": {},
+   "source": [
+    "# Custom Radius and Wavelength-Dependent Aerosol Layers\n",
+    "\n",
+    "In this tutorial you will learn: \n",
+    "\n",
+    "1. How to generate your own Mie coefficients for a given radius grid\n",
+    "2. How to compute the optics of an aerosol for your custom radius grid\n",
+    "3. How to inject this aerosol as a custom layer into an atmospheric model for PICASO\n",
+    "\n",
+    "You need to have downloaded PICASO, Virga, and the particle size distribution file to run this tutorial."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c8bbfed5",
+   "metadata": {},
+   "source": [
+    "First, let's import all the necessary packages:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c264e8ce",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#standards\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "import astropy.units as u\n",
+    "\n",
+    "#main programs\n",
+    "\n",
+    "#radiative transfer and atmosphere code\n",
+    "from picaso import justdoit as pdi\n",
+    "\n",
+    "#cloud code\n",
+    "from virga import justdoit as vdi\n",
+    "\n",
+    "\n",
+    "#plotting tools\n",
+    "from picaso import justplotit as ppi\n",
+    "from virga import justplotit as vpi\n",
+    "ppi.output_notebook() \n",
+    "\n",
+    "import matplotlib.pyplot as plt"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "024be42e",
+   "metadata": {},
+   "source": [
+    "Now, let's load in a sample particle size distribution. \n",
+    "This one comes from [He et al., 2018](https://iopscience.iop.org/article/10.3847/2041-8213/aab42b), on the sizes of hazes produced in a laboratory setting. Notice that these are given in particle diameter, so we have to convert them to radii."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fc595c87",
+   "metadata": {},
+   "source": [
+    "## Load Custom Particle Radius Distribution "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "0736e204",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from inspect import getsourcefile\n",
+    "import os  \n",
+    "#if you haven't installed virga from github this file will exist in your libary package here\n",
+    "particle_distribution_file = os.path.join(\n",
+    "    str(os.path.abspath(getsourcefile(vpi)).replace('justplotit.py','')),'reference','particle_sizes.csv')\n",
+    "#all this does is grab the code directory to get the reference data location of the code  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1a7058c4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "particle_distribution = pd.read_csv(particle_distribution_file)\n",
+    "\n",
+    "n_400K, n_300K, size = particle_distribution['400 K'], particle_distribution['300 K'], particle_distribution['size (nm)'] \n",
+    "\n",
+    "#cut the range of sizes where there aren't any data points\n",
+    "non_nans_400 = np.where(np.isfinite(n_400K))\n",
+    "non_nans_300 = np.where(np.isfinite(n_300K))\n",
+    "\n",
+    "n4 = n_400K.iloc[non_nans_400]\n",
+    "r4 = size.iloc[non_nans_400]\n",
+    "\n",
+    "n3 = n_300K.iloc[non_nans_300]\n",
+    "r3 = size.iloc[non_nans_300]\n",
+    "\n",
+    "#turn them into arrays for handy plotting and convert the particle diameters into radii\n",
+    "r4=np.array(r4/2)\n",
+    "n4=np.array(n4)\n",
+    "r3=np.array(r3/2)\n",
+    "n3=np.array(n3)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "13b2b5de",
+   "metadata": {},
+   "source": [
+    "Let's plot up the distribution so we can see what it looks like"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "766ef06a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "plt.plot(r4,n4,color='red',label='400 K haze')\n",
+    "plt.plot(r3,n3,color='blue',label = '300 K haze')\n",
+    "plt.xlim(5,60)\n",
+    "\n",
+    "plt.xlabel('particle radius (nm)',fontsize=15)\n",
+    "plt.ylabel('Distribution (percent total)',fontsize=15)\n",
+    "plt.minorticks_on()\n",
+    "plt.tick_params(axis='y',which='major',length =10, width=2,direction='out',labelsize=15)\n",
+    "plt.tick_params(axis='x',which='major',length =10, width=2,direction='out',labelsize=15)\n",
+    "plt.legend()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "86574233",
+   "metadata": {},
+   "source": [
+    "Okay, looks good! Now we have to compute a custom set of Mie coefficients that correspond to these particle radii. Make sure you **stick these new Mie databases in a new folder so you don't overwrite your existing Virga databases!** We're going to use the refractive indices of Titan-like tholins from [Khare et al., 1984](https://www.sciencedirect.com/science/article/abs/pii/0019103584901428?via%3Dihub) just for example purposes. Make sure you have this set of Refractive Indices in your version of Virga."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ec552d1b",
+   "metadata": {},
+   "source": [
+    "## Compute Mie Parameters for Custom Radius Grid"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2d8ce9db",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Remember to change these paths to where your refractive indices and Mie databases live\n",
+    "mieff_dir = '/data/virga/'\n",
+    "# here I am assuming the refractive indices are stored in the same place as I want the output\n",
+    "refrind_dir = output_dir = mieff_dir \n",
+    "\n",
+    "#First, let's just assume our hazes follow the distribution of the 300 K haze above.\n",
+    "\n",
+    "#Note that this function wants the radii in centimeters, so we have to convert it from nanometers\n",
+    "newmies=vdi.calc_mie_db('khare_tholins', refrind_dir, output_dir, \n",
+    "                        rmin = np.min(r3/1e7), rmax=np.max(r3/1e7), nradii = len(r3))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f61a3074",
+   "metadata": {},
+   "source": [
+    "Okay, now let's grab those Mieff coefficients we just calculated."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "15478225",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "qext, qscat, cos_qscat, nwave, radius, wave_in = vdi.get_mie('khare_tholins',directory=mieff_dir)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "255bad1c",
+   "metadata": {},
+   "source": [
+    "Next, we calculate our optical properties. Remember that **r3** here is your grid of radii bins and **n3** is the distribution of particles per radius bin.\n",
+    "\n",
+    "**ndz** is the total number of particles that make up our aerosol layer. Since we're setting our own slab, it's not really physical in this implementation because we're setting the particle number over many atmospheric layers. So we're going to set it fairly high."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "caa16cfe",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ndz = 5e9 #that's particles/cm^2 but over the entire region of atmosphere where we're sticking aerosol\n",
+    "\n",
+    "opd,w0,g0,wavenumber_grid=vdi.calc_optics_user_r_dist(wave_in, ndz ,r3, u.nm, n3/100, \n",
+    "                                                      qext, qscat, cos_qscat, )"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9e11ac2c",
+   "metadata": {},
+   "source": [
+    "Now, we need to turn the above variables into something that PICASO can read. Choose where to set your aerosol layer pressure limits. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8ac93062",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nlayer = 30\n",
+    "base_pressure = 1e-1 # let's start by setting the haze layer base at 0.1 bars\n",
+    "haze_top_pressure = 1e-7 #and set the top of the haze layer at 0.1 microbar. Not unreasonble for a haze that forms fairly high!\n",
+    "\n",
+    "#just set an arbitrary pressure grid from 1000 bars to a nanobar\n",
+    "pressure =  np.logspace(-9,3,nlayer)\n",
+    "\n",
+    "#here's where we shove all the variables into a dataframe PICASO can read\n",
+    "df_haze = vdi.picaso_format_slab(base_pressure,opd, w0, g0, wavenumber_grid, pressure,p_top=haze_top_pressure)\n",
+    "\n",
+    "\n",
+    "nwno = len(wavenumber_grid) #this will depend on the refractive indices you have. Khare's tholin have wide coverage but low resolution\n",
+    "ppi.show(ppi.plot_cld_input(nwno, nlayer,df=df_haze))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "92464e9a",
+   "metadata": {},
+   "source": [
+    "We can see that lovely slab of haze and how it's changing according to wavelength! The above plots aren't in physical units though. Let's change the axes to be real numbers and not gridpoints. The wavelength grid covers a lot, so you'll probably have to zoom in to see the wavelength units."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "62bef42a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ppi.show(ppi.plot_cld_input(nwno, nlayer,df=df_haze,pressure=pressure, wavelength=1e4/wavenumber_grid))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "eb8730f4",
+   "metadata": {},
+   "source": [
+    "Now let's see how that would look in a spectrum. First, let's load a couple basic planet parameters."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b9a3b03a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "nlevel = nlayer+1\n",
+    "opa = pdi.opannection(wave_range=[0.3,14])\n",
+    "case1 = pdi.inputs()\n",
+    "\n",
+    "case1.phase_angle(0)\n",
+    "\n",
+    "\n",
+    "#here we are going to have to specify gravity through R and M since we need it in the Flux calc\n",
+    "case1.gravity(mass=1, mass_unit=pdi.u.Unit('M_jup'),\n",
+    "              radius=1.2, radius_unit=pdi.u.Unit('R_jup'))\n",
+    "\n",
+    "#here we are going to have to specify R as well\n",
+    "case1.star(opa, 4000,0.0122,4.437,radius=0.7, radius_unit = pdi.u.Unit('R_sun') )\n",
+    "\n",
+    "#atmo -- make sure your pressure grid matches the one you computed your haze on!\n",
+    "case1.atmosphere( df = pdi.pd.DataFrame({'pressure':np.logspace(-9,3,nlevel),\n",
+    "                                                 'temperature':np.logspace(-9,3,nlevel)*0+600, #just an isothermal one for simplicity\n",
+    "                                                 \"H2\":np.logspace(-9,3,nlevel)*0+0.837,\n",
+    "                                                 \"He\":np.logspace(-9,3,nlevel)*0+0.163,\n",
+    "                                                 \"H2O\":np.logspace(-9,3,nlevel)*0+0.00034,\n",
+    "                                                 \"CH4\":np.logspace(-9,3,nlevel)*0+0.000466}))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "414674fd",
+   "metadata": {},
+   "source": [
+    "And compute and plot our clear transmission spectrum, without our haze:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "01f59184",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "df= case1.spectrum(opa, full_output=True,calculation='transmission')\n",
+    "\n",
+    "wno, rprs2  = df['wavenumber'] , df['transit_depth']\n",
+    "wno, rprs2 = pdi.mean_regrid(wno, rprs2, R=300)\n",
+    "full_output = df['full_output']\n",
+    "\n",
+    "ppi.show(ppi.spectrum(wno,rprs2*1e6,plot_width=500))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "25c50292",
+   "metadata": {},
+   "source": [
+    "Now, let's add in that hazy information. We need to make sure the pressure grids match (by reducing the layers by one because of PICASO's idiosyncrasies)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8b8381fa",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "case1.clouds(df=df_haze.astype(float))\n",
+    "hazy= case1.spectrum(opa, full_output=True,calculation='transmission')\n",
+    "hazyx,hazyy =hazy['wavenumber'] , hazy['transit_depth']\n",
+    "hazyx,hazyy = pdi.mean_regrid(hazyx,hazyy, R=300)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b09f7a85",
+   "metadata": {},
+   "source": [
+    "Let's compare our hazy spectrum to our clear spectrum!"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "22253f07",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "ppi.show(ppi.spectrum([wno,hazyx],[(rprs2*1e6),(hazyy*1e6)],\n",
+    "                  legend=['clear','hazy'],plot_width=900,plot_height=300))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f2010c3b",
+   "metadata": {},
+   "source": [
+    "This is a very hazy run, wow! In the visibile and NIR, the haze creates a bigger scattering slope and mutes the water features at Hubble WFC3/IR wavelengths.\n",
+    "\n",
+    "With this amount of haze, we can actually see IR features in the spectrum that are due to the haze itself. At 4.6 microns, we see absorption due to nitrile functional groups (C=N bonds) and from 2.8 to almost 4 microns we see a large, broad amine (N-H) feature. "
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.5"
+  },
+  "toc": {
+   "base_numbering": 1,
+   "nav_menu": {},
+   "number_sections": true,
+   "sideBar": true,
+   "skip_h1_title": false,
+   "title_cell": "Table of Contents",
+   "title_sidebar": "Contents",
+   "toc_cell": true,
+   "toc_position": {},
+   "toc_section_display": true,
+   "toc_window_display": false
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
