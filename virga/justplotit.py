@@ -568,16 +568,16 @@ def find_nearest_1d(array,value):
         idx = iar[idx]
     return idx
 
-def pressure_fig(**plot_kwargs):
-    plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-6])
+def pressure_fig(**kwargs):
+    kwargs['y_range'] = kwargs.get('y_range',[1e2,1e-6])
     kwargs['height'] = kwargs.get('plot_height',kwargs.get('height',400))
     kwargs['width'] = kwargs.get('plot_width', kwargs.get('width',600))
     if 'plot_width' in kwargs.keys() : kwargs.pop('plot_width')
     if 'plot_height' in kwargs.keys() : kwargs.pop('plot_height')
-    plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
-    plot_kwargs['y_axis_label'] = plot_kwargs.get('y_axis_label','Pressure (bars)')
-    plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')        
-    fig = figure(**plot_kwargs)
+    kwargs['x_axis_label'] = kwargs.get('x_axis_label','Temperature (K)')
+    kwargs['y_axis_label'] = kwargs.get('y_axis_label','Pressure (bars)')
+    kwargs['y_axis_type'] = kwargs.get('y_axis_type','log')        
+    fig = figure(**kwargs)
     return fig
 
 def plot_format(df):
