@@ -1,6 +1,6 @@
 import numpy as np
 pi=np.pi
-import PyMieScatt as ps
+import miepython
 import os 
 
 def fort_mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
@@ -428,13 +428,13 @@ def calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False):
             #if no fortran crappy code, use PyMieScatt which does a much faster 
             #more robust computation of the Mie parameters
             else:
-                wave=wave_in*1e3  ## converting to nm 
+                wave=wave_in*1e3  ## converting to nm
                 ## averaging over 6 radial bins to avoid fluctuations
                 for isub in range(sub_radii):
-                    #arr = qext, qsca, qabs, g, qpr, qback, qratio
-                    arr= ps.MieQCoreShell( corereal+(1j)*coreimag, 
-                                            nn[iwave]+(1j)*kk[iwave], 
-                                            wave[iwave],dCore=0,dShell=2.0*rr*1e7)
+                    #arr = qext, qsca, qback, g,
+                    m_eff = nn[iwave]-(1j)*kk[iwave]  # miepython uses negative k convention
+                    x_fac = 2 * np.pi * rr*1e7 / wave[iwave]  # both wave and rr are in nm here
+                    arr = miepython.mie(m_eff, x_fac)
 
                     qext[iwave,irad]+= arr[0]
                     qscat[iwave,irad]+= arr[1]

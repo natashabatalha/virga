@@ -3,8 +3,7 @@ import astropy.units as u
 import pandas as pd
 import numpy as np
 import os
-from scipy import optimize 
-import PyMieScatt as ps
+from scipy import optimize
 
 from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t, solve_force_balance
 from .calc_mie import fort_mie_calc, calc_new_mieff
