@@ -1769,7 +1769,7 @@ def picaso_format_slab(p_bottom,  opd, w0, g0,
            for w in range(opd.shape[0]):
                 #stick in pressure bounds for the aerosol layer:
                 if p_top <= pressure_grid[j] <= p_bottom:
-                    LVL+=[j+1]
+                    LVL+=[pressure_grid[j]]
                     WV+=[wavenumber_grid[w]]
                     if isinstance(p_decay,type(None)):
                         OPD+=[opd[w]]
@@ -1778,7 +1778,7 @@ def picaso_format_slab(p_bottom,  opd, w0, g0,
                     WW0+=[w0[w]]
                     GG0+=[g0[w]]
                 else:
-                    LVL+=[j+1]
+                    LVL+=[pressure_grid[j]]
                     WV+=[wavenumber_grid[w]]
                     OPD+=[opd[w]*0]
                     WW0+=[w0[w]*0]
