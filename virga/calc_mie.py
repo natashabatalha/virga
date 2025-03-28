@@ -1,6 +1,6 @@
 import numpy as np
 pi=np.pi
-import miepython
+import miepython as mie
 import os 
 
 def fort_mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
@@ -434,7 +434,7 @@ def calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False):
                     #arr = qext, qsca, qback, g,
                     m_eff = nn[iwave]-(1j)*kk[iwave]  # miepython uses negative k convention
                     x_fac = 2 * np.pi * rr*1e7 / wave[iwave]  # both wave and rr are in nm here
-                    arr = miepython.mie(m_eff, x_fac)
+                    arr = mie.efficiencies_mx(m_eff, x_fac)
 
                     qext[iwave,irad]+= arr[0]
                     qscat[iwave,irad]+= arr[1]
