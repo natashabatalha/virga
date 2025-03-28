@@ -68,7 +68,7 @@ setup(
           'photutils',
           'astropy',
           'scipy',
-          'PyMieScatt'
+          'miepython'
           ], 
     zip_safe = False,
 )
