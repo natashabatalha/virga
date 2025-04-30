@@ -95,19 +95,19 @@ def NH3(temp, mh = 1 ):
 
     if isinstance(temp,float):
         temp = np.array([temp])
-        pvap_nh3 = np.array([0])
-        convert_arr = True
-    else:
-        pvap_nh3 = np.zeros(len(temp))
-        convert_arr = False
+        # pvap_nh3 = np.array([0])
+        # convert_arr = True
+    # else:
+    pvap_nh3 = np.zeros(len(temp))
+        # convert_arr = False
     tlow = np.where(temp<195.4)[0]
     thigh = np.where(temp>=195.4)[0]
     if len(tlow) > 0: pvap_nh3[tlow] = 10**(6.900 - 1588/temp[tlow])
     if len(thigh) > 0: pvap_nh3[thigh] = 10**(5.201 - 1248/temp[thigh])
     # convert from bars to dyne/cm^2
     pvap_nh3 = pvap_nh3*1e6   
-    if convert_arr: 
-        pvap_nh3 = pvap_nh3[0]
+    # if convert_arr: 
+    pvap_nh3 = pvap_nh3[0]
     return pvap_nh3
 
 def Na2S(temp,mh = 1 ):
@@ -237,7 +237,7 @@ def KCl(temp, mh = 1 ):
     .. [1] Morley, C.~V., Fortney, J.~J., Marley, M.~S., Visscher, C., Saumon, D., Leggett, S.~K.\ 2012.\ Neglected Clouds in T and Y Dwarf Atmospheres.\ The Astrophysical Journal 756. doi:10.1088/0004-637X/756/2/172
     .. [2] Lodders, K.\ 1999.\ Alkali Element Chemistry in Cool Dwarf Atmospheres.\ The Astrophysical Journal 519, 793–801. doi:10.1086/307387
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for KCl")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for KCl")
     mh = np.log10(mh)
     pvap_kcl_bars = 10.0**(7.6106 - 11382./temp)
     #Then convert from bars to dynes/cm^2    
@@ -267,7 +267,7 @@ def H2O(temp,do_buck = True,mh = 1 ):
     .. [2] Buck, Arden L. "New equations for computing vapor pressure and enhancement factor." Journal of Applied Meteorology and Climatology 20.12 (1981): 1527-1532.
     .. [3] Flatau, Piotr J., Robert L. Walko, and William R. Cotton. "Polynomial fits to saturation vapor pressure." Journal of Applied Meteorology 31.12 (1992): 1507-1513.
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for H2O")
+    # if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for H2O")
     mh = np.log10(mh)
     if isinstance(temp, float): temp=np.array([temp]) 
     pvap_h2o = np.zeros(len(temp))
