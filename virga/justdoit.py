@@ -1107,9 +1107,12 @@ class Atmosphere():
             Prints out warning statements throughout
     
         """
+        if isinstance(condensibles, str):
+            self.condensibles = [condensibles]
+        else:
+            self.condensibles = condensibles
         self.mh = mh
         self.mmw = mmw
-        self.condensibles = condensibles
         self.fsed = fsed
         self.b = b
         self.sig = sig
@@ -1120,7 +1123,7 @@ class Atmosphere():
         self.constants()
         self.supsat = supsat
         if isinstance(gas_mmr, type(None)):
-            self.gas_mmr = {igas:None for igas in condensibles}
+            self.gas_mmr = {igas:None for igas in self.condensibles}
         else: 
             self.gas_mmr = gas_mmr
 
