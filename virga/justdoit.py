@@ -87,8 +87,19 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         if i==0: 
             nradii = len(radius)
             rmin = np.min(radius)
+            rmax = np.max(radius) # find the max radius
 
-            radius, rup, dr = get_r_grid(rmin, n_radii=nradii)
+            # work out if the radii in the .mieff file were created on a log-spaced grid (the default) or linearly-spaced grid
+            if (((radius[2]-radius[1]) - (radius[1]-radius[0])) < 0.0000000001): # if the spacing of the mean radii for bins 0, 1 and 2 are constant...
+                logspace=False # ...the grid was created with linear spacing
+                log_radii=0 # save as a scalar variable for dict
+            else: # if the spacing is not constant...
+                logspace=True # ...the grid was created with log spacing
+                log_radii=1 # save as a scalar variable for dict
+
+            # use the get_r_grid() function to recreate the same grid that was used to create the .mieff file -- this allows us to find the bin widths (dr) for use in calc_optics() function
+            radius, bin_min, bin_max, dr = get_r_grid(rmin, rmax, nradii, logspace)
+            
             qext = np.zeros((nwave,nradii,ngas))
             qscat = np.zeros((nwave,nradii,ngas))
             cos_qscat = np.zeros((nwave,nradii,ngas))
@@ -117,7 +128,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                              atmo.g, atmo.kz, atmo.mixl, 
                                              fsed_in,
                                              atmo.b, atmo.eps, atmo.scale_h, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
-                                             mh, atmo.sig, rmin, nradii,
+                                             mh, atmo.sig, rmin, nradii, radius,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              og_vfall, supsat=atmo.supsat,verbose=atmo.verbose,do_virtual=do_virtual)
         pres_out = atmo.p_layer
@@ -131,7 +142,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         z_cld = None #temporary fix 
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(atmo.t_layer, atmo.p_layer,
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, rmin, nradii, 
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, radius, 
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              direct_tol, refine_TP, og_vfall, analytical_rg)
 
@@ -148,13 +159,13 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
             fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
-                           mh,mmw, fsed_out, atmo.sig, nradii,rmin, z_out, atmo.dz_layer, 
+                           mh,mmw, fsed_out, atmo.sig, nradii,rmin, rmax, log_radii, z_out, atmo.dz_layer, 
                            mixl, atmo.kz, atmo.scale_h, z_cld) 
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,z, dz_layer, mixl, kz, scale_h, z_cld):
+    mh,mmw,fsed,sig,nrad,rmin,rmax,log_radii,z, dz_layer, mixl, kz, scale_h, z_cld):
     return {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -175,7 +186,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "opd_by_gas": opd_gas,
         "condensibles":gas_names,
         #"scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
-        "scalar_inputs": {'mh':mh, 'mmw':mmw,'sig':sig,'nrad':nrad,'rmin':rmin},
+        "scalar_inputs": {'mh':mh, 'mmw':mmw,'sig':sig,'nrad':nrad,'rmin':rmin,'rmax':rmax,'log_radii':log_radii},
         "fsed": fsed,
         "altitude":z,
         "layer_thickness":dz_layer,
@@ -435,7 +446,7 @@ def calc_optics_user_r_dist(wave_in, ndz,
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
     fsed, b, eps, scale_h, z_top, z_alpha, z_min, param,
-    mh,sig, rmin, nrad,d_molecule,eps_k,c_p_factor,
+    mh,sig, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
     og_vfall=True,do_virtual=True, supsat=0, verbose=False):
     """
     Given an atmosphere and condensates, calculate size and concentration
@@ -485,6 +496,12 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
+    rmin : float 
+        Minium radius on grid (cm)
+    nrad : int 
+        Number of radii on Mie grid
+    radius : ndarray
+        Particle radius bin centers from the grid (cm)
     d_molecule : float 
         diameter of atmospheric molecule (cm) (Rosner, 2000)
         (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
@@ -605,7 +622,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                         t_layer_virtual, p_layer_virtual, t_bot,t_base, p_bot, p_base,
                         kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
                         supsat, fsed, b, eps, z_bot, z_base, z_alpha, z_min, param,
-                        sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalaers
+                        sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor, #all scalars
                         og_vfall, z_cld
                     )
 
@@ -617,7 +634,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                 t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz], p_top[iz+1],
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
                 supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
-                sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor, #all scalars
+                sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor, #all scalars
                 og_vfall, z_cld
             )
 
@@ -630,7 +647,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
     supsat, fsed, b, eps, z_top, z_bot, z_alpha, z_min, param,
-    sig,mh, rmin, nrad, d_molecule,eps_k,c_p_factor,
+    sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
     og_vfall, z_cld):
     """
     Calculate layer condensate properties by iterating on optical depth
@@ -689,6 +706,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         Minium radius on grid (cm)
     nrad : int 
         Number of radii on Mie grid
+    radius : ndarray
+        Particle radius bin centers from the grid (cm)
     d_molecule : float 
         diameter of atmospheric molecule (cm) (Rosner, 2000)
         (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
@@ -784,7 +803,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         p_bot_sub = p_bot
         z_bot_sub = z_bot
 
-        #SUBALYER 
+        #SUBLAYER 
         dp_sub = dp_layer / nsub
 
         for isub in range(nsub): 
@@ -801,7 +820,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
                         rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_alpha, z_min,
-                        sig,mh, rmin, nrad, og_vfall,z_cld)
+                        sig,mh, rmin, nrad, radius, og_vfall,z_cld)
 
 
             #   vertical sums
@@ -854,7 +873,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
     ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha, z_min,
-    sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
+    sig, mh, rmin, nrad, radius, og_vfall=True, z_cld=None):
     """
     Calculate condensate number density and effective radius for a layer,
     assuming geometric scatterers. 
@@ -912,6 +931,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         Minium radius on grid (cm)
     nrad : int 
         Number of radii on Mie grid
+    radius : ndarray
+        Particle radius bin centers from the grid (cm)
 
     Returns
     -------
@@ -1038,24 +1059,23 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         def pow_law(r, alpha):
             return np.log(w_convect) + alpha * np.log (r / rw_layer) 
 
-        r_, rup, dr = get_r_grid(r_min = rmin, n_radii = nrad)
         vfall_temp = []
-        for j in range(len(r_)):
+        for j in range(len(radius)):
             if og_vfall:
-                vfall_temp.append(vfall(r_[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p))
+                vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p))
             else:
                 vlo = 1e0; vhi = 1e6
                 find_root = True
                 while find_root:
                     try:
-                        vfall_temp.append(solve_force_balance("vfall", r_[j], gravity, mw_atmos, 
+                        vfall_temp.append(solve_force_balance("vfall", radius[j], gravity, mw_atmos, 
                             mfp, visc, t_layer, p_layer, rho_p, vlo, vhi))
                         find_root = False
                     except ValueError:
                         vlo = vlo/10
                         vhi = vhi*10
 
-        pars, cov = optimize.curve_fit(f=pow_law, xdata=r_, ydata=np.log(vfall_temp), p0=[0], 
+        pars, cov = optimize.curve_fit(f=pow_law, xdata=radius, ydata=np.log(vfall_temp), p0=[0], 
                             bounds=(-np.inf, np.inf))
         alpha = pars[0]
 
@@ -1483,7 +1503,7 @@ class Atmosphere():
         run = compute(self, directory = directory, as_dict = as_dict)
         return run
 
-def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2, nradii = 60,fort_calc_mie = False):
+def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2, nradii = 60, logspace=True, fort_calc_mie = False):
     """
     Function that calculations new Mie database using PyMieScatt. 
     Parameters
@@ -1498,11 +1518,19 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2
         BEWARE FILE OVERWRITES. 
     rmin : float , optional
         (Default=1e-8) Units of cm. The minimum radius to compute Mie parameters for. 
-        Usually 0.1 microns is small enough. However, if you notice your mean particle radius 
+        Usually 0.01 microns is small enough. However, if you notice your mean particle radius 
         is on the low end, you may compute your grid to even lower particle sizes. 
+    rmax : float
+        (Default=5.4239131e-2) Units of cm. The maximum radius to compute Mie parameters for. 
+        If your .mieff files take a long time to create, reduce this number. If you get a warning 
+        that your particles are "off the grid" (larger than your maximum grid value), increase this number.
     nradii : int, optional
         (Default=60) number of radii points to compute grid on. 40 grid points for exoplanets/BDs
         is generally sufficient. 
+    logspace : boolean, optional
+        (Default = True)
+        Spaces the radii logarithmically (which they generally tend to be in the clouds) if True. Spaces them linearly if False.
+    
 
     Returns 
     -------
@@ -1522,11 +1550,17 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2
         # obtaining refractive index data for each gas
         wave_in,nn,kk = get_refrind(gas_name[i],dir_refrind)
         nwave = len(wave_in)
+        print(f'\n{nwave} wavelengths of refractive index data found for {gas_name[i]}. Grid of mean radii (in bins) to calculate extinction and scattering efficiencies for (in cm):')
 
         if i==0:
             #all these files need to be on the same grid
-            #radius, rup, dr = get_r_grid(r_min = rmin, n_radii = nradii)
-            radius, rup, dr = get_r_grid_w_max(r_min=rmin, r_max=rmax, n_radii=nradii)
+            # create the grid of mean radii (in bins) that we want to find the optical properties for
+            radius, bin_min, bin_max, dr = get_r_grid(rmin, rmax, nradii, logspace)
+
+            print('\n\t       min             mean             max          bin width (dr) ')
+            for j in range (len(radius)):
+                print(f'\t  {bin_min[j]:13.6e}   {radius[j]:13.6e}   {bin_max[j]:13.6e}      {dr[j]:13.6e}') # bins 1 -> n-1
+            print('\nAverages from 6 sub-bins will be used to calculate the properties that represent the mean radius in each bin above.')
 
             qext_all=np.zeros(shape=(nwave,nradii,ngas))
             qscat_all = np.zeros(shape=(nwave,nradii,ngas))
@@ -1534,7 +1568,7 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2
 
         #get extinction, scattering, and asymmetry
         #all of these are  [nwave by nradii]
-        qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = fort_calc_mie)
+        qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, bin_min, bin_max, fort_calc_mie = fort_calc_mie)
 
         #add to master matrix that contains the per gas Mie stuff
         qext_all[:,:,i], qscat_all[:,:,i], cos_qscat_all[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas 
@@ -1544,7 +1578,7 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2
         qscat = [nradii]  + sum([[np.nan]+list(iscat) for iscat in qscat_gas.T],[])
         qext = [np.nan]  + sum([[np.nan]+list(iext) for iext in qext_gas.T],[])
         cos_qscat = [np.nan]  + sum([[np.nan]+list(icos) for icos in cos_qscat_gas.T],[])
-        print(os.path.join(dir_out,gas_name[i]+".mieff"))
+        print(f'Optical properties for {gas_name[i]} have been calculated and saved as {dir_out}/{gas_name[i]}.mieff')
         pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(os.path.join(dir_out,gas_name[i]+".mieff"),
                                                                                    sep=' ',
                                                                                   index=False,header=None)
@@ -1618,8 +1652,75 @@ def get_refrind(igas,directory):
         kk = df['imaginary'].values
         return wave_in,nn,kk
 
+def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
+    """
+    New version of grid generator - creates lin-spaced or log-spaced radii grids. Updated by MGL 07/01/25.
+
+    ARGUMENTS:
+
+        r_min: minimum radius in grid (in cm). Default is 10^-8 cm (0.0001 um) to match databases in v0.0.
+        r_max: maximum radius in grid (in cm). Default is 5.4239131 x 10^-2 cm (542 um), to match databases in v0.0.
+        n_radii: number of increments (note that each of these increments will be divided into 6 further sub-bins to smooth out any resonance features that occur due to specific particle sizes). Default is 60 to match databases in v0.0.
+        logspace: spaces the radii logarithmically if True (which they tend to be in the clouds, so this is the default). Spaces them linearly if False.
+        
+    RETURNS (all of these are arrays):
+
+        radius = the mean radii for each set of 6 sub-bins
+        bin_min = minimum value of bin
+        bin_max = maximum value of bin
+        dr = the difference between the start and end of the bins (width of the radius bin)
+
+    ALGORITHM DESCRIPTION
+
+    First, VIRGA makes grid of particle sizes and calculates the optical properties for them. Then, when we find the average particle
+    size in a particular layer of cloud, it creates a lognormal distribution of particles (one that has the calculated mean radius),
+    and then finds how many particles fall into each of the 'bins' of the radius 'grid' that we have created. Finally, it weights the
+    contribution from each bin by the number of particles to calculate the total opacity of that layer. Therefore, the same grid needs
+    to be used for making the .mieff files (optical properties) and running VIRGA.
+
+    This new version simplifies the arrays to represent the mean, minimum and maximum values of radius in each bin. It also uses a consistent
+    function to calculate the radius values and bin widths, as well as correcting an error for the first bin mean.
+
+    """
+
+    # calculate mean radii of bins
+    if log_space==True:
+        radius = np.logspace(start=np.log10(r_min), stop=np.log10(r_max), num=n_radii) # log-spaced radii is the default. The arguments for np.logspace are the exponents (in base-10) of our r_min and r_max.
+    else:
+        radius = np.linspace(r_min, r_max, n_radii) # linearly-spaced option (not recommended)
+
+    # calculate dr values
+    # this formula can be derived from the following conditions:
+    #    1) Bins are linearly centered about the mean radii calculated above
+    #    2) Bin widths (dr) are logarithmically spaced, such that the ratio dr[1]/dr[0] = dr[2]/dr[1] = dr[n]/dr[n-1] = constant
+    dr = np.zeros(n_radii)
+    for i in range(1,n_radii-1):
+        dr[i] = 2*(radius[i+1]-radius[i])*(radius[i]-radius[i-1])/(radius[i+1]-radius[i-1]) # bins 1 -> n-1
+    dr[0]= 2*(radius[1]-radius[0])-dr[1] # bin 0
+    dr[-1]= 2*(radius[-1]-radius[-2])-dr[-2] # bin n
+
+    # calculate the minimum for each radii bin
+    bin_min = np.zeros(n_radii)
+    for i in range(n_radii):
+        bin_min[i] = radius[i] - dr[i]/2 # bin min = mean radius - bin width/2
+
+    # calculate the maximum for each radii bin
+    bin_max = np.zeros(n_radii)
+    for i in range(n_radii):
+        bin_max[i] = radius[i] + dr[i]/2 # bin max = mean radius + bin width/2
+    
+    return radius, bin_min, bin_max, dr
+
 def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
     """
+    Discontinued function. See 'get_r_grid()'.
+
+    ------------------------------------------
+    Warning: This function will not work "out of the box" as a substitute for get_r_grid(), because it calculated the bins
+    in a different way (rups represents bin boundaries, and the first bin is half the size of the others. This is one
+    of the reasons it was discontinued.)
+    ------------------------------------------
+
     Get spacing of radii to run Mie code
 
     r_min : float 
@@ -1639,12 +1740,16 @@ def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
 
     return radius, rup, dr
 
-def get_r_grid(r_min=1e-8, n_radii=60):
+def get_r_grid_legacy(r_min=1e-8, n_radii=60):
     """
-    Warning
-    -------
     Original code from A&M code. 
-    Discontinued function. See 'get_r_grid'.
+    Discontinued function. See 'get_r_grid()'.
+
+    ------------------------------------------
+    Warning: This function will not work "out of the box" as a substitute for get_r_grid(), because it calculated the bins
+    in a different way (rups represents bin boundaries, and the first bin is half the size of the others. This is one
+    of the reasons it was discontinued.)
+    ------------------------------------------
 
     Get spacing of radii to run Mie code
 
