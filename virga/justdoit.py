@@ -634,7 +634,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     og_vfall, z_cld):
     """
     Calculate layer condensate properties by iterating on optical depth
-    in one model layer (convering on optical depth over sublayers)
+    in one model layer (converging on optical depth over sublayers)
 
     gas_name : str 
         Name of condenstante 
@@ -856,7 +856,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
     ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha, z_min,
     sig, mh, rmin, nrad, og_vfall=True, z_cld=None):
     """
-    Calculate condensate optical depth and effective radius for a layer,
+    Calculate condensate number density and effective radius for a layer,
     assuming geometric scatterers. 
 
     gas_name : str 
@@ -1059,7 +1059,6 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
                             bounds=(-np.inf, np.inf))
         alpha = pars[0]
 
-
         #   fsed at middle of layer 
         if param == 'exp':
             fsed_mid = fs * np.exp(z_layer / b) + eps
@@ -1147,7 +1146,7 @@ class Atmosphere():
     def ptk(self, df = None, filename=None,
         kz_min=1e5, constant_kz=None, latent_heat=False, convective_overshoot=None,
         Teff=None, alpha_pressure=None, **pd_kwargs):
-        """
+        r"""
         Read in file or define dataframe. 
     
         Parameters
@@ -1186,7 +1185,7 @@ class Atmosphere():
         pd_kwargs : kwargs
             Pandas key words for file read in. 
             If reading old style eddysed files, you would need: 
-            skiprows=3, sep='\s+', header=None, names=["ind","pressure","temperature","kz"]
+            skiprows=3, sep=r'\s+', header=None, names=["ind","pressure","temperature","kz"]
         """
         #first read in dataframe, dict or file and sort by pressure
         if not isinstance(df, type(None)):
@@ -1552,7 +1551,7 @@ def get_mie(gas, directory):
     """
     Get Mie parameters from old ass formatted files
     """
-    df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], sep='\s+')
+    df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], sep=r'\s+')
 
     nwave = int( df.iloc[0,0])
     nradii = int(df.iloc[0,1])
@@ -1931,7 +1930,7 @@ def hot_jupiter():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "hj.pt")
 
-    df = pd.read_csv(directory,sep='\s+', usecols=[1,2,3],
+    df = pd.read_csv(directory,sep=r'\s+', usecols=[1,2,3],
                   names = ['pressure','temperature','kz'],skiprows=1)
     df.loc[df['pressure']>12.8,'temperature'] = np.linspace(1822,2100,df.loc[df['pressure']>12.8].shape[0])
     return df
@@ -1940,7 +1939,7 @@ def brown_dwarf():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "t1000g100nc_m0.0.dat")
 
-    df  = pd.read_csv(directory,skiprows=1,sep='\s+',
+    df  = pd.read_csv(directory,skiprows=1,sep=r'\s+',
                  header=None, usecols=[1,2,3],
                  names=['pressure','temperature','chf'])
     return df
@@ -1952,7 +1951,7 @@ def temperate_neptune():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "temperate_neptune.pt")
 
-    df  = pd.read_csv(directory,skiprows=0,sep='\s+',
+    df  = pd.read_csv(directory,skiprows=0,sep=r'\s+',
                  header=None,
                  names=['pressure','temperature','kz'])
     return df

@@ -86,7 +86,7 @@ def NH3(temp, mh = 1 ):
 
     Notes 
     -----
-    .. [1] Lodders, K. \& Fegley, B.\ 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
+    .. [1] Lodders, K. & Fegley, B. 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
     """
     if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for NH3")
     mh = np.log10(mh)
@@ -234,8 +234,8 @@ def KCl(temp, mh = 1 ):
 
     Notes 
     -----
-    .. [1] Morley, C.~V., Fortney, J.~J., Marley, M.~S., Visscher, C., Saumon, D., Leggett, S.~K.\ 2012.\ Neglected Clouds in T and Y Dwarf Atmospheres.\ The Astrophysical Journal 756. doi:10.1088/0004-637X/756/2/172
-    .. [2] Lodders, K.\ 1999.\ Alkali Element Chemistry in Cool Dwarf Atmospheres.\ The Astrophysical Journal 519, 793–801. doi:10.1086/307387
+    .. [1] Morley, C.~V., Fortney, J.~J., Marley, M.~S., Visscher, C., Saumon, D., Leggett, S.~K. 2012. Neglected Clouds in T and Y Dwarf Atmospheres. The Astrophysical Journal 756. doi:10.1088/0004-637X/756/2/172
+    .. [2] Lodders, K. 1999. Alkali Element Chemistry in Cool Dwarf Atmospheres. The Astrophysical Journal 519, 793–801. doi:10.1086/307387
     """
     #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for KCl")
     mh = np.log10(mh)
@@ -263,7 +263,7 @@ def H2O(temp,do_buck = True,mh = 1 ):
 
     Notes 
     -----
-    .. [1] Lodders, K. \& Fegley, B.\ 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
+    .. [1] Lodders, K. & Fegley, B. 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
     .. [2] Buck, Arden L. "New equations for computing vapor pressure and enhancement factor." Journal of Applied Meteorology and Climatology 20.12 (1981): 1527-1532.
     .. [3] Flatau, Piotr J., Robert L. Walko, and William R. Cotton. "Polynomial fits to saturation vapor pressure." Journal of Applied Meteorology 31.12 (1992): 1507-1513.
     """
@@ -373,7 +373,7 @@ def CH4(temp,mh = 1 ):
 
     Notes 
     -----
-    .. [1] Lodders, K. \& Fegley, B.\ 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
+    .. [1] Lodders, K. & Fegley, B. 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
     """
     if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CH4")
     mh = np.log10(mh)
