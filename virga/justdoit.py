@@ -318,6 +318,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
             scat_gas[ibot+2,:,igas] = scat_gas[ibot,:,igas]*0.05
             ext_gas[ibot+2,:,igas] = ext_gas[ibot,:,igas]*0.05
             cqs_gas[ibot+2,:,igas] = cqs_gas[ibot,:,igas]*0.05
+            opd_layer[ibot+3,igas] = opd_layer[ibot,igas]*0.01
+            scat_gas[ibot+3,:,igas] = scat_gas[ibot,:,igas]*0.01
+            ext_gas[ibot+3,:,igas] = ext_gas[ibot,:,igas]*0.01
+            cqs_gas[ibot+3,:,igas] = cqs_gas[ibot,:,igas]*0.01
     #Sum over gases and compute spectral optical depth profile etc
     for iz in range(nz):
         for iwave in range(nwave): 
