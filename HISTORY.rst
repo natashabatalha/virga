@@ -2,10 +2,11 @@ History
 -------
 
 - v1.0.0 (2025-07-22)
-  * Switched to pyproject.toml for packaging
-  * Removed .travis.yml
-  * Added HISTORY.rst
-  * Initial release
+  * Official version consistent with official virga publication 
+  * Changes to pvaps to be consistent to diamondback (Al2O3, Fe, Mg2SiO4, MgSiO3)
+  * Changes to gas_mmrs to be consistent to diamondback (Al2O3, Fe, Mg2SiO4, MgSiO3)
+  * M/Hs are now all linearly scaled per Channon's recs and what is described in the paper 
+  * Added additional subcloud layer to be consistent with EGP 
 - v0.5.0 (2021-01-21)
   * Fifth release
 - v0.4.0 (2020-07-16)

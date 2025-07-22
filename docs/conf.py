@@ -23,8 +23,8 @@ project = 'virga'
 author = 'Batalha, Rooney, Marley'
 
 # The full version, including alpha/beta/rc tags
-version = '0.4'
-release = 'v0.4'
+version = '1.0'
+release = 'v1.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -38,6 +38,7 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'nbsphinx']
+
 nbsphinx_allow_errors = False
 nbsphinx_execute = 'always'
 # Add any paths that contain templates here, relative to this directory.

@@ -4,7 +4,7 @@ Installation
 Install with Pip
 ----------------
 
-NOTE THE NAME! 
+Note the name is virga-exo (with an **-exo** at the end).
 
 .. code-block:: bash 
 
