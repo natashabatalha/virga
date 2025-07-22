@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "virga-exo"
-version = "0.5"
+version = "1.0"
 authors = [
   { name="Natasha E. Batalha", email="natasha.e.batalha@gmail.com" },
 ]
-description = "exoplanet code for compute cloud structure"
+description = "substellar atmosphere code for computing clouds"
 readme = "README.rst"
-requires-python = ">=3.6"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License",
@@ -23,11 +23,10 @@ dependencies = [
     "numpy",
     "pandas",
     "bokeh",
-    "joblib",
-    "photutils",
     "astropy",
     "scipy",
-    "miepython"
+    "miepython",
+    "matplotlib"
 ]
 
 [project.urls]
