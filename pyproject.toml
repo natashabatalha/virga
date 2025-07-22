@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "virga-exo"
+version = "1.0"
+authors = [
+  { name="Natasha E. Batalha", email="natasha.e.batalha@gmail.com" },
+]
+description = "substellar atmosphere code for computing clouds"
+readme = "README.rst"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "bokeh",
+    "astropy",
+    "scipy",
+    "miepython",
+    "matplotlib"
+]
+
+[project.urls]
+"Homepage" = "https://natashabatalha.github.io/virga"
+"Download" = "https://github.com/natashabatalha/virga"
