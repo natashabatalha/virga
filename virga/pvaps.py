@@ -13,10 +13,15 @@ def TiO2(temp, mh = 1 ):
     Returns
     -------
     vapor pressure in dyne/cm^2
-    """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for TiO2")
 
-    return 1e6 * 10. ** (9.5489 - 32456.8678/temp)
+    Notes
+    -----
+    .. [1] Marley M.~S., Saumon D., Visscher C., Lupu R., Freedman R., Morley C., Fortney J.~J., et al., 2021, ApJ, 920, 85. doi:10.3847/1538-4357/ac141d
+    """
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for TiO2")
+    mh = np.log10(mh)
+    #return 1e6 * 10. ** (9.5489 - 32456.8678/temp) #Gao 2020 
+    return 1e6 * 10. ** (13.95 - 38266/temp - mh) #Marley et al. 2021
 
 def Cr(temp, mh = 1 ):
     """Computes vapor pressure curve
@@ -36,7 +41,7 @@ def Cr(temp, mh = 1 ):
     -----
     .. [1] Morley, Caroline V., et al. "Neglected clouds in T and Y dwarf atmospheres." The Astrophysical Journal 756.2 (2012): 172.
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for Cr")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for Cr")
     mh = np.log10(mh)
     #Cr vapor pressure above cloud 
     pvap_cr_bars = 10.0**(7.49-20592./temp)
@@ -88,7 +93,7 @@ def NH3(temp, mh = 1 ):
     -----
     .. [1] Lodders, K. & Fegley, B. 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for NH3")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for NH3")
     mh = np.log10(mh)
     #NH3 vapor pressure above cloud
     #pvap_nh3 = np.exp(-86596./temp**2 - 2161./temp + 10.53)
@@ -432,12 +437,12 @@ def Al2O3(temp,mh = 1 ):
     -----
     .. [1] Wakeford, Hannah R., et al. "High temperature condensate clouds in super-hot Jupiter atmospheres." Monthly Notices of the Royal Astronomical Society (2016): stw2639.
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for Al2O3")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for Al2O3")
     mh = np.log10(mh)
-    #Kozasa et al. Ap J. 344 325
-    #return np.exp(-73503./temp + 22.01)*1e6
+    #return np.exp(-73503./temp + 22.01)*1e6 #Kozasa et al. Ap J. 344 325
     #calculated from wakeford 2017
-    pvap_al2o3 = 1e6 * 10.0 ** (17.7 - 45892.6/temp - 1.66*mh)
+    #pvap_al2o3 = 1e6 * 10.0 ** (17.7 - 45892.6/temp - 1.66*mh) #wakeford et al 2017
+    pvap_al2o3 = 1e6 * 10.0 ** (15.24 - 41481/temp - 1.66*mh) #diamondback
     return pvap_al2o3
 
 def CaTiO3(temp,p,mh = 1 ):
