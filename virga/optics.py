@@ -45,6 +45,14 @@ def init_optics(condensibles, nrad=40, rmin=1e-10, read_mie=True):
 	rup = f1*radius
 	dr = f2*radius
 
+	
+	
+	
+	# MGL 04/06/25 -- I HAVE NOT EDITED THIS SECTION FOR v1.0 AS THIS CODE DOES NOT SEEM TO BE USED IN VIRGA. HOWEVER IF IT IS DEVELOPED,
+	#				  THE METHOD OF FINDING THE RADIUS BINS ABOVE SHOULD BE CHANGED TO THE UPDATED METHOD IN THE "get_r_grid()" FUNCTION
+
+
+
 	if read_mie: 
 		#Read extinction and scattering coefficients 
 		#for each condensing vapor
@@ -106,7 +114,7 @@ def get_refrind(condensible, directory='~/Documents/eddysed/input/optics'):
 	micron_wave, nn, kk as ndarrays
 	"""
 	df = pd.read_csv(os.path.join(directory,condensible+'.refrind'),
-		skiprows=2, header=None,sep='\s+',
+		skiprows=2, header=None,sep=r'\s+',
                 names=['i', 'wavelength', 'nn', 'kk'])
 	micron_wave=df['wavelength'].values
 	nn = df['nn'].values

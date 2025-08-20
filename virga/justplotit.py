@@ -115,7 +115,13 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         nl = find_nearest_1d(pressure,at_pressure)
 
         rmin = out[j]['scalar_inputs']['rmin']
+        rmax = out[j]['scalar_inputs']['rmax']
         nrad = out[j]['scalar_inputs']['nrad']
+        log_radii = out[j]['scalar_inputs']['log_radii']
+        if(log_radii>0):
+            logspace=True # convert scalar variable into boolean for get_r_grid
+        else:
+            logspace=False # convert scalar variable into boolean for get_r_grid
         sig = out[j]['scalar_inputs']['sig']
         ndz = out[j]['column_density']
         #determine which condensed
@@ -144,7 +150,7 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         N = ndz[:, which_condensed]
         r_g = r_g[:,which_condensed]
         gas_name = list(np.array(out[j]['condensibles'])[which_condensed])
-        r, rup, dr = pyeddy.get_r_grid(r_min = rmin, n_radii = nrad)
+        r, bin_min, bin_max, dr = pyeddy.get_r_grid(r_min = rmin, r_max=rmax, n_radii = nrad, log_space=logspace)
 
         # different colours for different dicts
         if (gas is not None) or compare:

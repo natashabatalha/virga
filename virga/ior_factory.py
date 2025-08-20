@@ -4,25 +4,27 @@ import numpy as np
 import glob
 from . import justdoit as jdi
 from . import justplotit as jpi
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt 
 
 
 def configure_ior_choices():
     return {
     "Al2O3":{
         "inhouse_file":"Al2O3_LXMIE.dat",
-        "reference":"\\cite{Koike1995Al2O3,Begemann1997Al2O3}",
-        "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/Al2O3.dat", 
-        "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}",
+        "reference":r"\\cite{Koike1995Al2O3,Begemann1997Al2O3}",
+        "url":r"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/Al2O3.dat", 
+        "usr_note":r"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
         },  
     "CH4":{
         "inhouse_file":"CH4(l)_Martonchik.csv",
-        "reference":"\\cite{Martonchik1994CH4}",
+        "reference":r"\\cite{Martonchik1994CH4}",
         "url":"https://www.osapublishing.org/ao/abstract.cfm?uri=ao-33-36-8306", 
         "usr_note":"Data stripped from table. Temperature used=90 K. Do not use micron column as PDF version of paper did not go to high enough decimal precision.",
         "pandas_kwargs":
@@ -33,71 +35,71 @@ def configure_ior_choices():
         }, 
     "CaTiO3":{
         "inhouse_file":"CaTiO3_LXMIE.dat",
-        "reference":"\\cite{Posch2003TiOs,ueda1998CaTiO3}",
+        "reference":r"\\cite{Posch2003TiOs,ueda1998CaTiO3}",
         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/CaTiO3.dat", 
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}.",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
         },
     "Cr":{
         "inhouse_file":"Cr_LXMIE.dat",
-        "reference":"\\cite{palik1991Vol2,Rakic1998Optical}",
+        "reference":r"\\cite{palik1991Vol2,Rakic1998Optical}",
         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/Cr.dat", 
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. Original Palik Vol 2 (1991) data can be found in Part 2, subpart 1",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
         },
     "Fe":{
         "inhouse_file":"Fe_Palik.dat",
-        "reference":"\\cite{palik1991Vol2}",
+        "reference":r"\\cite{palik1991Vol2}",
         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/Fe.dat", 
         "usr_note":"Data stripped from Palik Vol 2 (1991). Data can be found in Part 2, subpart 1",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
         },
     "H2O":{
         "inhouse_file":"H2O_warren.dat",
-        "reference":"\\cite{warren2008H2O}",
+        "reference":r"\\cite{warren2008H2O}",
         "hitran2020":"ascii/single_files/warren_ice.dat",
         "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/single_files/warren_ice.dat",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":12, 
                 "names":['cm-1','um','n','k']
             }        
     },
     "KCl":{
         "inhouse_file":"KCl_Querry.dat",
-        "reference":"\\cite{querry1987optical}",
+        "reference":r"\\cite{querry1987optical}",
         "hitran2020":"ascii/exoplanets/querry_kcl.dat",
         "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/querry_kcl.dat",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":12, 
                 "names":['cm-1','um','n','k','nerr','kerr']
             },
         "extra":{
             "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/KCl.dat", 
-            "usr_note":"0.1-0.2 micron data used to anchor edge interpolation of Querry 1987 data. Therefore the data doesn't actually show up in Virga. Data source from LX-MIE, Kitzmann & Heng (2018) \cite{Kitzmann2018optical}. Original Palik Vol 1 (1985).",
+            "usr_note":r"0.1-0.2 micron data used to anchor edge interpolation of Querry 1987 data. Therefore the data doesn't actually show up in Virga. Data source from LX-MIE, Kitzmann & Heng (2018) \cite{Kitzmann2018optical}. Original Palik Vol 1 (1985).",
             "pandas_kwargs":
                 {
-                    "sep":"\s+", 
+                    "sep":r"\s+", 
                     "skiprows":3, 
                     "names":['um','n','k']
                 }            
@@ -105,61 +107,61 @@ def configure_ior_choices():
     },
     "Mg2SiO4":{
         "inhouse_file":"Mg2SiO4_Jager.dat",
-        "reference":"\\cite{jager2003mg2sio4}",
+        "reference":r"\\cite{jager2003mg2sio4}",
         "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
         "hitran2020":"ascii/exoplanets/jager_mg2sio4.dat",
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/jager_mg2sio4.dat",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":13, 
                 "names":['cm-1','um','n','k']
             }        
     },    
     "MgSiO3":{
         "inhouse_file":"MgSiO3_LXMIE.dat",
-        "reference":"\\cite{jager2003mg2sio4}",
+        "reference":r"\\cite{jager2003mg2sio4}",
         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/MgSiO3_amorph_sol-gel.dat", 
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}.",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
     }, 
     "MnS":{
         "inhouse_file":"MnS_LXMIE.dat",
-        "reference":"\\cite{Huffman1967MnS,Montaner1979Sulfur}",
+        "reference":r"\\cite{Huffman1967MnS,Montaner1979Sulfur}",
         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/MnS.dat", 
-        "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}.",
+        "usr_note":r"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}.",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
         },    
     "NH3":{
         "inhouse_file":"NH3_Martonchik.dat",
-        "reference":"\\cite{Martonchik1984NH3}",
+        "reference":r"\\cite{Martonchik1984NH3}",
         "url":"https://opg.optica.org/ao/fulltext.cfm?uri=ao-23-4-541&id=27288#articleTables", 
         "usr_note":"Data stripped from table.",
         "pandas_kwargs":
             {
                 "skiprows":8, 
-                "sep":"\s+",
+                "sep":r"\s+",
                 "names":['cm-1','n','k']
             }
         },
     "Na2S":{
         "inhouse_file":"Na2S_LXMIE.dat",
-        "reference":"\\cite{Khachai2009Na2S,Montaner1979Sulfur}",
+        "reference":r"\\cite{Khachai2009Na2S,Montaner1979Sulfur}",
         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/Na2S.dat", 
-        "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. ",
+        "usr_note":r"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. ",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -168,35 +170,35 @@ def configure_ior_choices():
         "inhouse_file":"TiO2_anatase_LXMIE.dat",
         "reference":"\\cite{Zeidler2011TiO2,Posch2003TiOs,Siefke2016TiO2}",
         "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/TiO2_anatase.dat", 
-        "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. ",
+        "usr_note":r"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}. ",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
         }, 
     "ZnS":{
         "inhouse_file":"ZnS_Querry.dat",
-        "reference":"\\cite{querry1987optical}",
+        "reference":r"\\cite{querry1987optical}",
         "hitran2020":"ascii/exoplanets/querry_zns.dat",
         "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/exoplanets/querry_zns.dat",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":12, 
                 "names":['cm-1','um','n','k','nerr','kerr']
             }
         }, 
     "SiO2":{
         "inhouse_file":"SiO2_alpha.dat",
-        "reference":"\\cite{Zeidler2013SiO2,Philipp1985}",
+        "reference":r"\\cite{Zeidler2013SiO2,Philipp1985}",
          "url":"https://raw.githubusercontent.com/exoclime/LX-MIE/master/compilation/SiO2_alpha.dat", 
         "usr_note":"Data source from LX-MIE, Kitzmann & Heng (2018) \\cite{Kitzmann2018optical}",
         "pandas_kwargs":
             {
-                "sep":"\s+", 
+                "sep":r"\s+", 
                 "skiprows":3, 
                 "names":['um','n','k']
             }
@@ -204,7 +206,7 @@ def configure_ior_choices():
 
     "H2SO4":{
         "inhouse_file":"h2so4T293.biermann",
-        "reference":"\\cite{querry1987optical}",
+        "reference":r"\\cite{querry1987optical}",
         "hitran2020":"ascii/biermann_h2so4/h2so4T293.biermann",
         "url":"https://hitran.org/data/Aerosols/Aerosols-2020/", 
         "usr_note":"Taken from HITRAN 2020, see folder: ascii/biermann_h2so4/h2so4T293.biermann",
@@ -214,7 +216,7 @@ def configure_ior_choices():
                 "header":None, 
                 "names":['cm-1','um','00%',   '10%',   '20%',   '30%',   '40%',   '45%',   '50%',
                           '57%',   '60%',   '64%',   '75%'  , '80%'],
-                "sep":"\s+",
+                "sep":r"\s+",
                 "stacked":[8191, 8194,'00%']
             }
         }
@@ -269,13 +271,34 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
         files_lxmie = glob.glob(os.path.join(lxmie_dir,"*.dat"))
     else: 
         files_lxmie = None
+    x_labels = [None]*len(avail)
+    x_labels[-1] ='Wavelength [micron]'
 
-    fn = [jpi.figure(width=200,height=200, x_axis_type='log', 
-                     y_axis_type='linear',x_range=[0.3,150],y_range=[0,7],
-                     title=avail[i]) for i in range(len(avail))]
-    fk = [jpi.figure(width=200,height=200, x_axis_type='log', 
-                     y_axis_type='log',x_range=[0.3,150],y_range=[1e-4,1e2],
-                     title=avail[i]) for i in range(len(avail))]
+
+    fig = plt.figure(figsize=(15, 20)) 
+
+    gs = gridspec.GridSpec(len(avail), 2, figure=fig)
+
+    
+
+    # fn = [jpi.figure(width=200,height=200, x_axis_type='log', 
+    #                  y_axis_type='linear',x_range=[0.3,150],y_range=[0,7],
+    #                  title=avail[i],x_axis_label=x_labels[i],
+    #                  y_axis_label='n'
+    #                  )
+    #                    for i in range(len(avail))]
+    # fk = [jpi.figure(width=220,height=200, x_axis_type='log', 
+    #                  y_axis_type='log',x_range=[0.3,150],y_range=[1e-4,1e2],
+    #                  title=avail[i],x_axis_label=x_labels[i],
+    #                  y_axis_label='k'
+    #                  ) 
+    #                  for i in range(len(avail))]
+
+    fn = [fig.add_subplot(gs[i, 0])
+                       for i in range(len(avail))]
+    fk = [fig.add_subplot(gs[i, 1])
+                       for i in range(len(avail))]
+    
 
     colors = jpi.colpals.turbo(len(avail)+10)[9:]#jpi.colpals.Set3[12] + [jpi.colpals.Set2[7][-1] ]
     bo_h   =True
@@ -307,8 +330,8 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                 readin['cm-1'] = 1e4/readin['um']
             readin = readin.sort_values(by='cm-1')
             datasets = {'n':readin,'k':readin}
-            fn[i].line(readin['um'], readin['n'], color='grey',line_width=6)
-            fk[i].line(readin['um'], readin['k'], color='grey',line_width=6)
+            fn[i].loglog(readin['um'].values, readin['n'].values, color='grey',linewidth=6)
+            fk[i].loglog(readin['um'].values, readin['k'].values, color='grey',linewidth=6)
 
             #grab the hitran data, if it exists 
             hitfile =[ihit for ihit in files_hitran if imol.lower() in ihit]
@@ -324,11 +347,11 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                 while tryread: 
                     try: 
                         
-                        read_hit = pd.read_csv(os.path.join(hitfile[0]), sep='\s+', skiprows=skiprows)
-                        x,y=1e4/read_hit['cm-1'], read_hit['real']
-                        fn[i].circle(x,y, color='black',size=9)
-                        x,y =1e4/read_hit['cm-1'], read_hit['imaginary']
-                        fk[i].circle(x,y, color='black',size=9) 
+                        read_hit = pd.read_csv(os.path.join(hitfile[0]), sep=r'\s+', skiprows=skiprows)
+                        x,y=1e4/read_hit['cm-1'].values, read_hit['real'].values
+                        fn[i].loglog(x,y, color='black',marker='o')
+                        x,y =1e4/read_hit['cm-1'].values, read_hit['imaginary'].values
+                        fk[i].loglog(x,y, color='black',marker='o') 
                         tryread=False
                     except: 
                         skiprows+=1
@@ -339,9 +362,10 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                 if imol=='Fe':kitz = [ikit for ikit in files_lxmie if imol+'.' in ikit ]
                 if imol=='MgSiO3':kitz = [ikit for ikit in files_lxmie if 'MgSiO3_amorph_sol-gel' in ikit ]
                 for ikit in kitz: 
-                    readin_LX=pd.read_csv(ikit,sep='\s+', skiprows=3, names=['um','n','k'])
-                    fn[i].line(readin_LX['um'], readin_LX['n'], color='grey',line_width=6)
-                    fk[i].line(readin_LX['um'], readin_LX['k'], color='grey',line_width=6) 
+                    readin_LX=pd.read_csv(ikit,sep=r'\s+', skiprows=3, names=['um','n','k'])
+                    print('loglog-369')
+                    fn[i].loglog(readin_LX['um'].values, readin_LX['n'].values, color='grey',linewidth=6)
+                    fk[i].loglog(readin_LX['um'].values, readin_LX['k'].values, color='grey',linewidth=6) 
 
 
                     
@@ -397,16 +421,15 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
                     datasets[idf]['cm-1'] = 1e4/datasets[idf]['um']
 
                 datasets[idf] = datasets[idf].sort_values(by='cm-1')
-
-            fn[i].circle(datasets['n']['um'], datasets['n']['n'], color='black',size=9)
-            fk[i].circle(datasets['k']['um'], datasets['k']['k'], color='black',size=9)
+            fn[i].loglog(datasets['n']['um'].values, datasets['n']['n'].values, color='black', marker='o')
+            fk[i].loglog(datasets['k']['um'].values, datasets['k']['k'].values, color='black', marker='o')
             
         
         #plot old data if the user asks for it
         if not isinstance(virga_dir,type(None)):
-            fn[i].line(w, n, color=colors[i],line_width=3, line_dash='dashed')
+            fn[i].loglog(w, n, color=colors[i],linewidth=3, linedash='dashed')
         if not isinstance(virga_dir,type(None)):
-            fk[i].line(w, k, color=colors[i],line_width=3, line_dash='dashed')
+            fk[i].loglog(w, k, color=colors[i],linewidth=3, linedash='dashed')
         
         #new interpolated 
         old_cm_n = datasets['n']['cm-1'].values
@@ -437,16 +460,22 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
         #finally interpolate    
         int_n = np.interp(new_cm, old_cm_n,old_n)
         int_k = np.interp(new_cm, old_cm_k,old_k)
-        fn[i].line(w,int_n, color=colors[i],line_width=3)
-        fk[i].line(w, int_k, color=colors[i],line_width=3)    
+        fn[i].loglog(w,int_n, color=colors[i],linewidth=3)
+        fk[i].loglog(w, int_k, color=colors[i],linewidth=3)    
         
         
         
-        
-        for ip in [fn[i], fk[i]]:
-            ip.xgrid.grid_line_alpha=0
-            ip.ygrid.grid_line_alpha=0
-            ip.outline_line_alpha=0
+        fn[-1].set_xlabel(r'Wavelength [$\mu$m]')
+        fk[-1].set_xlabel(r'Wavelength [$\mu$m]')
+        for i in fn: i.set_ylabel('n')
+        for i in fk: i.set_ylabel('k')
+        fig.tight_layout()
+        for ii, ip,ij in zip(avail,fn, fk):
+            ip.set_title(ii)
+            ij.set_title(ii)
+        #     ip.xgrid.grid_line_alpha=0
+        #     ip.ygrid.grid_line_alpha=0
+        #     ip.outline_line_alpha=0
 
         if not isinstance(output_dir ,type(None)):
             print("Saving", os.path.join(output_dir,imol+'.refrind'))
@@ -456,5 +485,5 @@ def create_ior_db(hitran_dir, output_dir=None,virga_dir=None, lxmie_dir=None,
             df.index.name='index'
             df.to_csv(os.path.join(output_dir,imol+'.refrind'),index=False)        
             
-    return jpi.gridplot([[ifn,ifk] for ifn, ifk in zip(fn,fk)])
+    return fig , fn, fk#jpi.gridplot([[ifn,ifk] for ifn, ifk in zip(fn,fk)]), fn, fk
 

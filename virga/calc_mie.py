@@ -376,7 +376,7 @@ def fort_mie_calc(RO, RFR, RFI, THET, JX, R, RE2, TMAG2, WVNO ):
     return QEXT,QSCAT,CTBRQS,istatus
 
 
-def calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False):
+def calc_new_mieff(wave_in, nn,kk, radius, bin_min, bin_max, fort_calc_mie = False):
     ## Calculates optics by reading refrind files
     thetd=0.0   # incident wave angle
     n_thetd=1
@@ -393,12 +393,11 @@ def calc_new_mieff(wave_in, nn,kk, radius, rup, fort_calc_mie = False):
     #compute individual parameters for each gas
     for iwave in range(nwave):
         for irad in range(nradii):
-            if irad== 0 :
-                dr5= (( rup[0] - radius[0] ) / 5.)
-                rr= radius[0]
-            else:
-                dr5 = ( rup[irad] - rup[irad-1] ) / 5.
-                rr  = rup[irad-1]
+
+            #create the 6 sub bins 
+            dr5 = (bin_max[irad]-bin_min[irad])/(sub_radii-1) # calculate the spacing in between sub-bins. These will be evenly spread about the mean radius of each bin.        
+            rr= bin_min[irad] # initial particle radius to test (smallest value in bin, in cm)
+
             corerad = 0.
             corereal = 1.
             coreimag = 0.
@@ -466,24 +465,3 @@ def get_refrind(igas,directory):
     idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
     return wave_in,nn,kk
 
-
-def get_r_grid(r_min=1e-5, n_radii=40):
-    """
-    Get spacing of radii to run Mie code
-
-    r_min : float 
-        Minimum radius to compute (cm)
-
-    n_radii : int
-        Number of radii to compute 
-    """
-    vrat = 2.2 
-    pw = 1. / 3.
-    f1 = ( 2.0*vrat / ( 1.0 + vrat) )**pw
-    f2 = (( 2.0 / ( 1.0 + vrat ) )**pw) * (vrat**(pw-1.0))
-
-    radius = r_min * vrat**(np.linspace(0,n_radii-1,n_radii)/3.)
-    rup = f1*radius
-    dr = f2*radius
-
-    return radius, rup, dr

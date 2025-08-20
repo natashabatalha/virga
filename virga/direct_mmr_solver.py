@@ -9,7 +9,7 @@ import time
 from . import justdoit as jdi
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
-                        gravity, kzz, fsed, mh, sig, rmin, nrad, d_molecule,eps_k,c_p_factor,
+                        gravity, kzz, fsed, mh, sig, radius, d_molecule,eps_k,c_p_factor,
                         tol = 1e-15, refine_TP = True,og_vfall=True, analytical_rg = True):
     """
     Given an atmosphere and condensates, calculate size and concentration
@@ -42,6 +42,8 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
         Width of the log normal particle distribution
+    radius : ndarray
+        Radius bin centers (cm) (just used to provide a sample of radii for calculation of alpha)
     d_molecule : float 
         diameter of atmospheric molecule (cm) (Rosner, 2000)
         (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
@@ -107,7 +109,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     for i, igas in zip(range(ngas), condensibles):
         gas_name = igas
         qc, qt, rg, reff, ndz, dz, qc_path[i], mixl = calc_qc(z, P_z, T_z, T_P, kz,
-            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, rmin, nrad, 
+            gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, radius, 
             d_molecule,eps_k,c_p_factor,
             tol,og_vfall, analytical_rg)
 
@@ -125,7 +127,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     return (qc_out, qt_out, rg_out, reff_out, ndz_out, qc_path, pres_out, temp_out, z_out,mixl_out)
 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
-                    mh, fsed, sig, rmin, nrad, d_molecule,eps_k,c_p_factor,
+                    mh, fsed, sig, radius, d_molecule,eps_k,c_p_factor,
                     tol, og_vfall=True, analytical_rg=True, supsat=0):
     """
     Calculate condensate optical depth and effective radius for atmosphere,
@@ -159,6 +161,8 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         Sedimentation efficiency (unitless)
     sig : float 
         Width of the log normal particle distrubtion 
+    radius : ndarray
+        Radius bin centers (cm) (just used to provide a sample of radii for calculation of alpha)
     d_molecule : float 
         diameter of atmospheric molecule (cm) (Rosner, 2000)
         (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
@@ -333,24 +337,24 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             def pow_law(r, alpha):
                 return np.log(w_convect(T, P, k)) + alpha * np.log (r / rw[i]) 
 
-            r_, rup, dr = jdi.get_r_grid(r_min = rmin, n_radii = nrad)
+            
             vfall_temp = []
-            for j in range(len(r_)):
+            for j in range(len(radius)):
                 if og_vfall:
-                    vfall_temp.append(vfall(r_[j], gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p))
+                    vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p))
                 else:
                     vlo = 1e0; vhi = 1e6
                     find_root = True
                     while find_root:
                         try:
-                            vfall_temp.append(solve_force_balance("vfall", r_[j], gravity, mw_atmos, 
+                            vfall_temp.append(solve_force_balance("vfall", radius[j], gravity, mw_atmos, 
                                 mfp(T, P), visc(T), T, P, rho_p, vlo, vhi))
                             find_root = False
                         except ValueError:
                             vlo = vlo/10
                             vhi = vhi*10
 
-            pars, cov = optimize.curve_fit(f=pow_law, xdata=r_, ydata=np.log(vfall_temp), p0=[0], 
+            pars, cov = optimize.curve_fit(f=pow_law, xdata=radius, ydata=np.log(vfall_temp), p0=[0], 
                                 bounds=(-np.inf, np.inf))
             alpha = pars[0]
 
