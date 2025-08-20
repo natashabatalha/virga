@@ -28,6 +28,16 @@ Changing out Index of Refraction
 
    How we build the Mie databases  </notebooks/5_IndexofRefractionFactory.ipynb>
 
+Custom Flex Cloud Layers
+------------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   Custom Aerosols  </notebooks/8_CustomAerosolLayers.ipynb>
+   Custom Clouds  </notebooks/9_CustomCloudLayer.ipynb>
+
+
 
 Adding Cloud Complexity
 -----------------------

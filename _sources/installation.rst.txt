@@ -4,7 +4,7 @@ Installation
 Install with Pip
 ----------------
 
-NOTE THE NAME! 
+Note the name is virga-exo (with an **-exo** at the end).
 
 .. code-block:: bash 
 
@@ -23,7 +23,7 @@ Install with Git
 Download the Refractive Index Files
 -----------------------------------
 
-`Download and read about these <https://zenodo.org/record/3758538#.Xp4w-1NKjOQ>`_. 
+`Download and read about these https://zenodo.org/records/15886530`_. 
 
 No need to add an environment variable. We will just ask for the path to where they are located. 
 

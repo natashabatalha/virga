@@ -33,7 +33,9 @@
     "import astropy.units as u\n",
     "\n",
     "#cloud code\n",
-    "import virga.justdoit as jdi"
+    "import virga.justdoit as jdi\n",
+    "#directory where mieff files are \n",
+    "mieff_directory = '/Users/nbatalh1/Documents/data/virga'"
    ]
   },
   {
@@ -158,8 +160,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "#directory where mieff files are \n",
-    "mieff_directory = '/data/virga/'\n",
+    "\n",
     "sum_planet.ptk(filename='test.csv',usecols = [1,2,3])\n",
     "#start with the simplest output \n",
     "#get total opacity, single scattering, asymmetry, and individual optical depths \n",

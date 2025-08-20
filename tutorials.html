@@ -1,22 +1,24 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="./">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tutorials &mdash; virga v0.4 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b76e3c8a" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+  <title>Tutorials &mdash; virga v1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="_static/documentation_options.js?v=6cc4e9c0"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=e160b93e"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -35,9 +37,6 @@
           <a href="index.html" class="icon icon-home">
             virga
           </a>
-              <div class="version">
-                0.4
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -65,6 +64,11 @@
 <li class="toctree-l3"><a class="reference internal" href="notebooks/5_IndexofRefractionFactory.html">How to see what optical properties are being used</a></li>
 <li class="toctree-l3"><a class="reference internal" href="notebooks/5_IndexofRefractionFactory.html#Creating-aggregated-Index-of-Refraction-(IOR)-Files">Creating aggregated Index of Refraction (IOR) Files</a></li>
 <li class="toctree-l3"><a class="reference internal" href="notebooks/5_IndexofRefractionFactory.html#Now-follow-through-with-new-Mie-parameters">Now follow through with new Mie parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-flex-cloud-layers">Custom Flex Cloud Layers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="notebooks/8_CustomAerosolLayers.html">Custom Aerosols</a></li>
+<li class="toctree-l3"><a class="reference internal" href="notebooks/9_CustomCloudLayer.html">Custom Clouds</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#adding-cloud-complexity">Adding Cloud Complexity</a><ul>
@@ -112,9 +116,9 @@
            <div itemprop="articleBody">
              
   <section id="tutorials">
-<h1>Tutorials<a class="headerlink" href="#tutorials" title="Link to this heading">¶</a></h1>
+<h1>Tutorials<a class="headerlink" href="#tutorials" title="Link to this heading"></a></h1>
 <section id="basics">
-<h2>Basics<a class="headerlink" href="#basics" title="Link to this heading">¶</a></h2>
+<h2>Basics<a class="headerlink" href="#basics" title="Link to this heading"></a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="notebooks/1_GettingStarted.html">Before you run the code</a><ul>
@@ -149,7 +153,7 @@
 </div>
 </section>
 <section id="pairing-cloud-models-to-spectroscopy">
-<h2>Pairing Cloud Models to Spectroscopy<a class="headerlink" href="#pairing-cloud-models-to-spectroscopy" title="Link to this heading">¶</a></h2>
+<h2>Pairing Cloud Models to Spectroscopy<a class="headerlink" href="#pairing-cloud-models-to-spectroscopy" title="Link to this heading"></a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="notebooks/4_PairingOutputToPICASO.html">Understanding how cloud models effect spectroscopy</a><ul>
@@ -164,7 +168,7 @@
 </div>
 </section>
 <section id="changing-out-index-of-refraction">
-<h2>Changing out Index of Refraction<a class="headerlink" href="#changing-out-index-of-refraction" title="Link to this heading">¶</a></h2>
+<h2>Changing out Index of Refraction<a class="headerlink" href="#changing-out-index-of-refraction" title="Link to this heading"></a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="notebooks/5_IndexofRefractionFactory.html">How to see what optical properties are being used</a></li>
@@ -173,8 +177,17 @@
 </ul>
 </div>
 </section>
+<section id="custom-flex-cloud-layers">
+<h2>Custom Flex Cloud Layers<a class="headerlink" href="#custom-flex-cloud-layers" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/8_CustomAerosolLayers.html">Custom Aerosols</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/9_CustomCloudLayer.html">Custom Clouds</a></li>
+</ul>
+</div>
+</section>
 <section id="adding-cloud-complexity">
-<h2>Adding Cloud Complexity<a class="headerlink" href="#adding-cloud-complexity" title="Link to this heading">¶</a></h2>
+<h2>Adding Cloud Complexity<a class="headerlink" href="#adding-cloud-complexity" title="Link to this heading"></a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="notebooks/6_Variable_fsed.html">Adding a Variable <span class="math notranslate nohighlight">\(f_\text{sed}\)</span></a><ul>
@@ -187,7 +200,7 @@
 </div>
 </section>
 <section id="switch-to-direct-solver">
-<h2>Switch to Direct Solver<a class="headerlink" href="#switch-to-direct-solver" title="Link to this heading">¶</a></h2>
+<h2>Switch to Direct Solver<a class="headerlink" href="#switch-to-direct-solver" title="Link to this heading"></a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="notebooks/7_SwitchingSolver.html">Direct solver</a><ul>
@@ -202,7 +215,7 @@
 </div>
 </section>
 <section id="flexible-cloud-layers">
-<h2>Flexible Cloud Layers<a class="headerlink" href="#flexible-cloud-layers" title="Link to this heading">¶</a></h2>
+<h2>Flexible Cloud Layers<a class="headerlink" href="#flexible-cloud-layers" title="Link to this heading"></a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="notebooks/8_CustomAerosolLayers.html">Custom Aerosol Layer</a><ul>

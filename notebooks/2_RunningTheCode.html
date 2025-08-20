@@ -1,25 +1,25 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" data-content_root="../">
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Running the Code &mdash; virga v0.4 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b76e3c8a" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+  <title>Running the Code &mdash; virga v1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../_static/documentation_options.js?v=6cc4e9c0"></script>
-        <script src="../_static/doctools.js?v=888ff710"></script>
-        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=e160b93e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -38,9 +38,6 @@
           <a href="../index.html" class="icon icon-home">
             virga
           </a>
-              <div class="version">
-                0.4
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
@@ -66,6 +63,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#pairing-cloud-models-to-spectroscopy">Pairing Cloud Models to Spectroscopy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#changing-out-index-of-refraction">Changing out Index of Refraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#custom-flex-cloud-layers">Custom Flex Cloud Layers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#adding-cloud-complexity">Adding Cloud Complexity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#switch-to-direct-solver">Switch to Direct Solver</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#flexible-cloud-layers">Flexible Cloud Layers</a></li>
@@ -105,7 +103,7 @@
 <p><a class="reference external" href="https://github.com/natashabatalha/virga/tree/master/docs/notebooks/2_RunningTheCode.ipynb">Download full notebook here</a></p>
 </div>
 <section id="Running-the-Code">
-<h1>Running the Code<a class="headerlink" href="#Running-the-Code" title="Link to this heading">¶</a></h1>
+<h1>Running the Code<a class="headerlink" href="#Running-the-Code" title="Link to this heading"></a></h1>
 <p>In this tutorial you will learn:</p>
 <ol class="arabic simple">
 <li><p>How to run the code!</p></li>
@@ -121,16 +119,18 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bokeh.io</span> <span class="kn">import</span> <span class="n">output_notebook</span>
-<span class="kn">from</span> <span class="nn">bokeh.plotting</span> <span class="kn">import</span> <span class="n">show</span><span class="p">,</span> <span class="n">figure</span>
-<span class="kn">from</span> <span class="nn">bokeh.palettes</span> <span class="kn">import</span> <span class="n">Colorblind</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">bokeh.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">output_notebook</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bokeh.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">show</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bokeh.palettes</span><span class="w"> </span><span class="kn">import</span> <span class="n">Colorblind</span>
 <span class="n">output_notebook</span><span class="p">()</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">astropy.units</span> <span class="k">as</span> <span class="nn">u</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">astropy.units</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">u</span>
 
 <span class="c1">#cloud code</span>
-<span class="kn">import</span> <span class="nn">virga.justdoit</span> <span class="k">as</span> <span class="nn">jdi</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">virga.justdoit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jdi</span>
+<span class="c1">#directory where mieff files are</span>
+<span class="n">mieff_directory</span> <span class="o">=</span> <span class="s1">&#39;/Users/nbatalh1/Documents/data/virga&#39;</span>
 </pre></div>
 </div>
 </div>
@@ -139,17 +139,17 @@
 </div>
 <div class="output_area rendered_html docutils container">
 <style>
-        .bk-notebook-logo {
-            display: block;
-            width: 20px;
-            height: 20px;
-            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABx0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzIENTNui8sowAAAOkSURBVDiNjZRtaJVlGMd/1/08zzln5zjP1LWcU9N0NkN8m2CYjpgQYQXqSs0I84OLIC0hkEKoPtiH3gmKoiJDU7QpLgoLjLIQCpEsNJ1vqUOdO7ppbuec5+V+rj4ctwzd8IIbbi6u+8f1539dt3A78eXC7QizUF7gyV1fD1Yqg4JWz84yffhm0qkFqBogB9rM8tZdtwVsPUhWhGcFJngGeWrPzHm5oaMmkfEg1usvLFyc8jLRqDOMru7AyC8saQr7GG7f5fvDeH7Ej8CM66nIF+8yngt6HWaKh7k49Soy9nXurCi1o3qUbS3zWfrYeQDTB/Qj6kX6Ybhw4B+bOYoLKCC9H3Nu/leUTZ1JdRWkkn2ldcCamzrcf47KKXdAJllSlxAOkRgyHsGC/zRday5Qld9DyoM4/q/rUoy/CXh3jzOu3bHUVZeU+DEn8FInkPBFlu3+nW3Nw0mk6vCDiWg8CeJaxEwuHS3+z5RgY+YBR6V1Z1nxSOfoaPa4LASWxxdNp+VWTk7+4vzaou8v8PN+xo+KY2xsw6une2frhw05CTYOmQvsEhjhWjn0bmXPjpE1+kplmmkP3suftwTubK9Vq22qKmrBhpY4jvd5afdRA3wGjFAgcnTK2s4hY0/GPNIb0nErGMCRxWOOX64Z8RAC4oCXdklmEvcL8o0BfkNK4lUg9HTl+oPlQxdNo3Mg4Nv175e/1LDGzZen30MEjRUtmXSfiTVu1kK8W4txyV6BMKlbgk3lMwYCiusNy9fVfvvwMxv8Ynl6vxoByANLTWplvuj/nF9m2+PDtt1eiHPBr1oIfhCChQMBw6Aw0UulqTKZdfVvfG7VcfIqLG9bcldL/+pdWTLxLUy8Qq38heUIjh4XlzZxzQm19lLFlr8vdQ97rjZVOLf8nclzckbcD4wxXMidpX30sFd37Fv/GtwwhzhxGVAprjbg0gCAEeIgwCZyTV2Z1REEW8O4py0wsjeloKoMr6iCY6dP92H6Vw/oTyICIthibxjm/DfN9lVz8IqtqKYLUXfoKVMVQVVJOElGjrnnUt9T9wbgp8AyYKaGlqingHZU/uG2NTZSVqwHQTWkx9hxjkpWDaCg6Ckj5qebgBVbT3V3NNXMSiWSDdGV3hrtzla7J+duwPOToIg42ChPQOQjspnSlp1V+Gjdged7+8UN5CRAV7a5EdFNwCjEaBR27b3W890TE7g24NAP/mMDXRWrGoFPQI9ls/MWO2dWFAar/xcOIImbbpA3zgAAAABJRU5ErkJggg==);
-        }
-    </style>
-    <div>
-        <a href="https://bokeh.org" target="_blank" class="bk-notebook-logo"></a>
-        <span id="p1001">Loading BokehJS ...</span>
-    </div></div>
+    .bk-notebook-logo {
+        display: block;
+        width: 20px;
+        height: 20px;
+        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABx0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzIENTNui8sowAAAOkSURBVDiNjZRtaJVlGMd/1/08zzln5zjP1LWcU9N0NkN8m2CYjpgQYQXqSs0I84OLIC0hkEKoPtiH3gmKoiJDU7QpLgoLjLIQCpEsNJ1vqUOdO7ppbuec5+V+rj4ctwzd8IIbbi6u+8f1539dt3A78eXC7QizUF7gyV1fD1Yqg4JWz84yffhm0qkFqBogB9rM8tZdtwVsPUhWhGcFJngGeWrPzHm5oaMmkfEg1usvLFyc8jLRqDOMru7AyC8saQr7GG7f5fvDeH7Ej8CM66nIF+8yngt6HWaKh7k49Soy9nXurCi1o3qUbS3zWfrYeQDTB/Qj6kX6Ybhw4B+bOYoLKCC9H3Nu/leUTZ1JdRWkkn2ldcCamzrcf47KKXdAJllSlxAOkRgyHsGC/zRday5Qld9DyoM4/q/rUoy/CXh3jzOu3bHUVZeU+DEn8FInkPBFlu3+nW3Nw0mk6vCDiWg8CeJaxEwuHS3+z5RgY+YBR6V1Z1nxSOfoaPa4LASWxxdNp+VWTk7+4vzaou8v8PN+xo+KY2xsw6une2frhw05CTYOmQvsEhjhWjn0bmXPjpE1+kplmmkP3suftwTubK9Vq22qKmrBhpY4jvd5afdRA3wGjFAgcnTK2s4hY0/GPNIb0nErGMCRxWOOX64Z8RAC4oCXdklmEvcL8o0BfkNK4lUg9HTl+oPlQxdNo3Mg4Nv175e/1LDGzZen30MEjRUtmXSfiTVu1kK8W4txyV6BMKlbgk3lMwYCiusNy9fVfvvwMxv8Ynl6vxoByANLTWplvuj/nF9m2+PDtt1eiHPBr1oIfhCChQMBw6Aw0UulqTKZdfVvfG7VcfIqLG9bcldL/+pdWTLxLUy8Qq38heUIjh4XlzZxzQm19lLFlr8vdQ97rjZVOLf8nclzckbcD4wxXMidpX30sFd37Fv/GtwwhzhxGVAprjbg0gCAEeIgwCZyTV2Z1REEW8O4py0wsjeloKoMr6iCY6dP92H6Vw/oTyICIthibxjm/DfN9lVz8IqtqKYLUXfoKVMVQVVJOElGjrnnUt9T9wbgp8AyYKaGlqingHZU/uG2NTZSVqwHQTWkx9hxjkpWDaCg6Ckj5qebgBVbT3V3NNXMSiWSDdGV3hrtzla7J+duwPOToIg42ChPQOQjspnSlp1V+Gjdged7+8UN5CRAV7a5EdFNwCjEaBR27b3W890TE7g24NAP/mMDXRWrGoFPQI9ls/MWO2dWFAar/xcOIImbbpA3zgAAAABJRU5ErkJggg==);
+    }
+</style>
+<div>
+    <a href="https://bokeh.org" target="_blank" class="bk-notebook-logo"></a>
+    <span id="b147dca4-0802-4d87-a266-b83845b65b4a">Loading BokehJS ...</span>
+</div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
@@ -158,6 +158,7 @@
 <div class="output_javascript"></div>
 <script type="text/javascript">
 var element = document.currentScript.previousSibling.previousSibling;
+'use strict';
 (function(root) {
   function now() {
     return new Date();
@@ -187,14 +188,22 @@ const JS_MIME_TYPE = 'application/javascript';
    * Handle when an output is cleared or removed
    */
   function handleClearOutput(event, handle) {
+    function drop(id) {
+      const view = Bokeh.index.get_by_id(id)
+      if (view != null) {
+        view.model.document.clear()
+        Bokeh.index.delete(view)
+      }
+    }
+
     const cell = handle.cell;
 
     const id = cell.output_area._bokeh_element_id;
     const server_id = cell.output_area._bokeh_server_id;
+
     // Clean up Bokeh references
-    if (id != null && id in Bokeh.index) {
-      Bokeh.index[id].model.document.clear();
-      delete Bokeh.index[id];
+    if (id != null) {
+      drop(id)
     }
 
     if (server_id !== undefined) {
@@ -203,11 +212,8 @@ const JS_MIME_TYPE = 'application/javascript';
       cell.notebook.kernel.execute(cmd_clean, {
         iopub: {
           output: function(msg) {
-            const id = msg.content.text.trim();
-            if (id in Bokeh.index) {
-              Bokeh.index[id].model.document.clear();
-              delete Bokeh.index[id];
-            }
+            const id = msg.content.text.trim()
+            drop(id)
           }
         }
       });
@@ -314,17 +320,42 @@ const JS_MIME_TYPE = 'application/javascript';
      "</code>\n"+
      "</div>"}};
 
-  function display_loaded() {
-    const el = document.getElementById("p1001");
+  function display_loaded(error = null) {
+    const el = document.getElementById("b147dca4-0802-4d87-a266-b83845b65b4a");
     if (el != null) {
-      el.textContent = "BokehJS is loading...";
-    }
-    if (root.Bokeh !== undefined) {
-      if (el != null) {
-        el.textContent = "BokehJS " + root.Bokeh.version + " successfully loaded.";
+      const html = (() => {
+        if (typeof root.Bokeh === "undefined") {
+          if (error == null) {
+            return "BokehJS is loading ...";
+          } else {
+            return "BokehJS failed to load.";
+          }
+        } else {
+          const prefix = `BokehJS ${root.Bokeh.version}`;
+          if (error == null) {
+            return `${prefix} successfully loaded.`;
+          } else {
+            return `${prefix} <b>encountered errors</b> while loading and may not function as expected.`;
+          }
+        }
+      })();
+      el.innerHTML = html;
+
+      if (error != null) {
+        const wrapper = document.createElement("div");
+        wrapper.style.overflow = "auto";
+        wrapper.style.height = "5em";
+        wrapper.style.resize = "vertical";
+        const content = document.createElement("div");
+        content.style.fontFamily = "monospace";
+        content.style.whiteSpace = "pre-wrap";
+        content.style.backgroundColor = "rgb(255, 221, 221)";
+        content.textContent = error.stack ?? error.toString();
+        wrapper.append(content);
+        el.append(wrapper);
       }
     } else if (Date.now() < root._bokeh_timeout) {
-      setTimeout(display_loaded, 100)
+      setTimeout(() => display_loaded(error), 100);
     }
   }
 
@@ -398,7 +429,7 @@ const JS_MIME_TYPE = 'application/javascript';
     document.body.appendChild(element);
   }
 
-  const js_urls = ["https://cdn.bokeh.org/bokeh/release/bokeh-3.0.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-gl-3.0.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.0.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-tables-3.0.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-mathjax-3.0.2.min.js"];
+  const js_urls = ["https://cdn.bokeh.org/bokeh/release/bokeh-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-gl-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-tables-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-mathjax-3.4.3.min.js"];
   const css_urls = [];
 
   const inline_js = [    function(Bokeh) {
@@ -410,10 +441,13 @@ function(Bokeh) {
 
   function run_inline_js() {
     if (root.Bokeh !== undefined || force === true) {
-          for (let i = 0; i < inline_js.length; i++) {
+      try {
+            for (let i = 0; i < inline_js.length; i++) {
       inline_js[i].call(root, root.Bokeh);
     }
-if (force === true) {
+
+      } catch (error) {display_loaded(error);throw error;
+      }if (force === true) {
         display_loaded();
       }} else if (Date.now() < root._bokeh_timeout) {
       setTimeout(run_inline_js, 100);
@@ -421,7 +455,7 @@ if (force === true) {
       console.log("Bokeh: BokehJS failed to load within specified timeout.");
       root._bokeh_failed_load = true;
     } else if (force !== true) {
-      const cell = $(document.getElementById("p1001")).parents('.cell').data().cell;
+      const cell = $(document.getElementById("b147dca4-0802-4d87-a266-b83845b65b4a")).parents('.cell').data().cell;
       cell.output_area.append_execute_result(NB_LOAD_WARNING)
     }
   }
@@ -439,7 +473,7 @@ if (force === true) {
 </script></div>
 </div>
 <section id="Simple-Isothermal/Constant-K_{z}-Example">
-<h2>Simple Isothermal/Constant <span class="math notranslate nohighlight">\(K_{z}\)</span> Example<a class="headerlink" href="#Simple-Isothermal/Constant-K_{z}-Example" title="Link to this heading">¶</a></h2>
+<h2>Simple Isothermal/Constant <span class="math notranslate nohighlight">\(K_{z}\)</span> Example<a class="headerlink" href="#Simple-Isothermal/Constant-K_{z}-Example" title="Link to this heading"></a></h2>
 <p>Let’s take the isothermal example from the first tutorial to begin gaining intuition for using the code</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
@@ -465,11 +499,11 @@ if (force === true) {
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-[&#39;CaAl12O19&#39;, &#39;CaTiO3&#39;, &#39;Cr&#39;, &#39;Fe&#39;, &#39;Mg2SiO4&#39;, &#39;MgSiO3&#39;, &#39;SiO2&#39;, &#39;TiO2&#39;]
+[np.str_(&#39;CaAl12O19&#39;), np.str_(&#39;CaTiO3&#39;), np.str_(&#39;Cr&#39;), np.str_(&#39;Fe&#39;), np.str_(&#39;Mg2SiO4&#39;), np.str_(&#39;MgSiO3&#39;), np.str_(&#39;SiO2&#39;), np.str_(&#39;TiO2&#39;)]
 </pre></div></div>
 </div>
 <section id="Define-the-Atmosphere-Class">
-<h3>Define the <code class="docutils literal notranslate"><span class="pre">Atmosphere</span> <span class="pre">Class</span></code><a class="headerlink" href="#Define-the-Atmosphere-Class" title="Link to this heading">¶</a></h3>
+<h3>Define the <code class="docutils literal notranslate"><span class="pre">Atmosphere</span> <span class="pre">Class</span></code><a class="headerlink" href="#Define-the-Atmosphere-Class" title="Link to this heading"></a></h3>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -483,7 +517,7 @@ if (force === true) {
 </div>
 </section>
 <section id="Set-gravity-and-the-P/T/Kz-profile">
-<h3>Set gravity and the P/T/Kz profile<a class="headerlink" href="#Set-gravity-and-the-P/T/Kz-profile" title="Link to this heading">¶</a></h3>
+<h3>Set gravity and the P/T/Kz profile<a class="headerlink" href="#Set-gravity-and-the-P/T/Kz-profile" title="Link to this heading"></a></h3>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -509,7 +543,7 @@ if (force === true) {
 </div>
 </div>
 <section id="The-minimum-values-for-kz">
-<h4>The minimum values for <code class="docutils literal notranslate"><span class="pre">kz</span></code><a class="headerlink" href="#The-minimum-values-for-kz" title="Link to this heading">¶</a></h4>
+<h4>The minimum values for <code class="docutils literal notranslate"><span class="pre">kz</span></code><a class="headerlink" href="#The-minimum-values-for-kz" title="Link to this heading"></a></h4>
 <p>There is a parameter called <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> in the ptk function. The default value is <code class="docutils literal notranslate"><span class="pre">kz_min=1e5</span></code>. This number isn’t necessarily a hard and fast rule, but it does avoid numerical instabilities. Another thing to note is that <strong>this excludes negative kz values</strong>. The code will alert you if you are tripping the <code class="docutils literal notranslate"><span class="pre">kz_min</span></code> reset.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -527,14 +561,12 @@ if (force === true) {
 </section>
 </section>
 <section id="Run-the-code">
-<h3>Run the code<a class="headerlink" href="#Run-the-code" title="Link to this heading">¶</a></h3>
+<h3>Run the code<a class="headerlink" href="#Run-the-code" title="Link to this heading"></a></h3>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#directory where mieff files are</span>
-<span class="n">mieff_directory</span> <span class="o">=</span> <span class="s1">&#39;/data/virga/&#39;</span>
-<span class="n">sum_planet</span><span class="o">.</span><span class="n">ptk</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test.csv&#39;</span><span class="p">,</span><span class="n">usecols</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><span></span><span class="n">sum_planet</span><span class="o">.</span><span class="n">ptk</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test.csv&#39;</span><span class="p">,</span><span class="n">usecols</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
 <span class="c1">#start with the simplest output</span>
 <span class="c1">#get total opacity, single scattering, asymmetry, and individual optical depths</span>
 <span class="n">df_out</span> <span class="o">=</span> <span class="n">sum_planet</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">mieff_directory</span><span class="p">)</span>
@@ -569,7 +601,7 @@ Not doing sublayer as cloud deck at the bottom of pressure grid
 </section>
 </section>
 <section id="Exploring-dict-Output">
-<h2>Exploring <code class="docutils literal notranslate"><span class="pre">dict</span></code> Output<a class="headerlink" href="#Exploring-dict-Output" title="Link to this heading">¶</a></h2>
+<h2>Exploring <code class="docutils literal notranslate"><span class="pre">dict</span></code> Output<a class="headerlink" href="#Exploring-dict-Output" title="Link to this heading"></a></h2>
 <p>There are many things to explore in the <code class="docutils literal notranslate"><span class="pre">dict</span></code> output. In the next tutorial, we will reproduce some of the most common plots used in papers to analyze cloud runs.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
@@ -616,7 +648,13 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;mh&#39;: 1, &#39;mmw&#39;: 2.2, &#39;sig&#39;: 2.0, &#39;nrad&#39;: 60, &#39;rmin&#39;: 1e-08}
+{&#39;mh&#39;: 1,
+ &#39;mmw&#39;: 2.2,
+ &#39;sig&#39;: 2.0,
+ &#39;nrad&#39;: 60,
+ &#39;rmin&#39;: np.float64(1e-08),
+ &#39;rmax&#39;: np.float64(0.0542391310041432),
+ &#39;log_radii&#39;: 1}
 </pre></div></div>
 </div>
 <div class="nbinput nblast docutils container">

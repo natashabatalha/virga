@@ -118,7 +118,7 @@
    "source": [
     "metallicity = 1 #atmospheric metallicity relative to Solar\n",
     "mean_molecular_weight = 2.2 # atmospheric mean molecular weight\n",
-    "directory ='/data/virga/'\n",
+    "directory = '/Users/nbatalh1/Documents/data/virga'\n",
     "\n",
     "#we can get the same full output from the virga run\n",
     "cld_out = sum_planet.virga(['H2O'],directory, fsed=1,mh=metallicity,\n",

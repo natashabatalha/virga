@@ -72,7 +72,7 @@
    "outputs": [],
    "source": [
     "#point to untarred file\n",
-    "hitran_directory = '/data/virga/hitran_ri/'\n",
+    "hitran_directory = '/Users/nbatalh1/Documents/data/hitran_ri/'\n",
     "zns = pd.read_csv(os.path.join(hitran_directory,ior_configs['ZnS']['hitran2020'])\n",
     "                  , **ior_configs['ZnS']['pandas_kwargs'])\n",
     "zns.head()"
@@ -102,15 +102,28 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "hitran_directory = '/data/virga/hitran_ri/'\n",
+    "hitran_directory = '/Users/nbatalh1/Documents/data/hitran_ri/'\n",
     "#virga_dir = '/Users/nbatalh1/Documents/data/virga/' #only if you want to compare to old data\n",
     "#lxmie_dir = '/Users/nbatalh1/Documents/codes/LX-MIE/compilation/' #optional: only if you want to compare to all lxmie data\n",
-    "output_dir = '/data/virga_new'#optional to save all new data\n",
+    "output_dir = '/Users/nbatalh1/Documents/data/virga_new'#optional to save all new data\n",
     "\n",
-    "fig = ior.create_ior_db(hitran_directory, \n",
+    "fig,ax_fn,ax_fk = ior.create_ior_db(hitran_directory, \n",
     "                        output_dir = output_dir)#, \n",
-    "                        #lxmie_dir=lxmie_dir)\n",
-    "jpi.show(fig)"
+    "                        #lxmie_dir=lxmie_dir)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "for i in [0,1,5,7,15]: ax_fn[i].set_yscale('linear')\n",
+    "for i in ax_fn: i.set_ylabel('n',fontsize=14)\n",
+    "for i in ax_fk: i.set_ylabel('k',fontsize=14)\n",
+    "ax_fn[-1].set_xlabel(r'Wavelength [$\\mu$m]',fontsize=14)\n",
+    "ax_fk[-1].set_xlabel(r'Wavelength [$\\mu$m]',fontsize=14)\n",
+    "fig.savefig('/Users/nbatalh1/Documents/research/virga_paper/IOR.png')"
    ]
   },
   {
@@ -119,6 +132,13 @@
    "source": [
     "## Now follow through with new Mie parameters"
    ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
   },
   {
    "cell_type": "code",
@@ -134,7 +154,7 @@
  ],
  "metadata": {
   "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
+   "display_name": "pic312",
    "language": "python",
    "name": "python3"
   },
@@ -148,7 +168,7 @@
    "name": "python",
    "nbconvert_exporter": "python",
    "pygments_lexer": "ipython3",
-   "version": "3.11.5"
+   "version": "3.12.2"
   },
   "toc": {
    "base_numbering": 1,
