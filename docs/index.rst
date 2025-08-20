@@ -20,7 +20,7 @@ Content
    :maxdepth: 1
 
    Installation <installation>
-   Refractive Indices <https://zenodo.org/record/3758538#.Xp4w-1NKjOQ>
+   Refractive Indices <https://zenodo.org/records/15886530>
    The Tutorials <tutorials>
    Github <https://github.com/natashabatalha/virga>
    The Code <virga>
@@ -41,6 +41,7 @@ Condensate Species Currently Included
 - Na2S
 - NH3
 - TiO2
+- SiO2
 
 Don't see what you are looking for? Contact us. 
 

@@ -9,4 +9,4 @@ except ImportError:
 from . import justdoit 
 from . import justplotit
 
-__version__ = '0.3.2'
+__version__ = '1.0.0'
