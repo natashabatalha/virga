@@ -3,10 +3,11 @@ import astropy.units as u
 import pandas as pd
 import numpy as np
 import os
-from scipy import optimize
+from scipy import optimize 
+from pathlib import Path
 
 from .root_functions import advdiff, vfall,vfall_find_root,qvs_below_model, find_cond_t, solve_force_balance
-from .calc_mie import fort_mie_calc, calc_new_mieff
+from .calc_mie import fort_mie_calc, calc_new_mieff, calc_new_mieff_optool
 from . import gas_properties
 from . import pvaps
 from .justplotit import plot_format, find_nearest_1d
@@ -15,7 +16,7 @@ from .direct_mmr_solver import direct_solver
 
 
 def compute(atmo, directory = None, as_dict = True, og_solver = True, 
-    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True, do_virtual=True):
+    direct_tol=1e-15, refine_TP = True, og_vfall=True, analytical_rg = True, do_virtual=True, aggregates=False, Df=None, N_mon=None, r_mon=None, k0=0):
 
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
@@ -48,6 +49,26 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     do_virtual : bool 
         If the user adds an upper bound pressure that is too low. There are cases where a cloud wants to 
         form off the grid towards higher pressures. This enables that. 
+    aggregates : bool, optional
+        set to 'True' if you want fractal aggregates, keep at default 'False' for spherical cloud particles
+    Df : float, optional
+        only used if aggregate = True.
+        The fractal dimension of an aggregate particle. 
+        Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.
+    N_mon : float, optional
+        only used if aggregate = True. 
+        The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).
+    r_mon : float, optional (units: cm)
+        only used if aggregate = True. 
+        The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be 
+        provided (but not both).
+    k0 : float, optional (units: None)
+        only used if aggregate = True. 
+        Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user, 
+        but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary 
+        when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).
+
+
 
     Returns 
     -------
@@ -57,6 +78,18 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
     dict 
         Dictionary output that contains full output. See tutorials for explanation of all output.
     """
+    
+    # if k0 is not left as default parameter and r_mon is prescribed, print warning
+    if ((k0>0) or (k0<0)) and (r_mon is not None):
+        print(f"""WARNING: You have prescribed the value k0 when calling VIRGA (k0 = {k0}). If r_mon is prescribed instead of N_mon,
+         this means the vfall function may have weird transitions around r=r_mon. Proceed with caution, or to avoid this, leave
+         k0 blank and it will be calculated by VIRGA.""")
+
+    # warn user if they try to use anything other than default og_vfall with aggregates, and terminate code (this is still under development)
+    if((aggregates==True) and (og_vfall==False)):
+        print("WARNING: If using aggregates, you need to set og_vfall=True (the default - the other method is still under development).")
+        exit(1)
+
     mmw = atmo.mmw
     mh = atmo.mh
     condensibles = atmo.condensibles
@@ -79,14 +112,14 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         run_gas = getattr(gas_properties, igas)
         gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh, gas_mmr=atmo.gas_mmr[igas])
 
-        #Get mie files that are already saved in 
-        #directory
+        #Get mie files that are already saved in directory
         #eventually we will replace this with nice database 
-        qext_gas, qscat_gas, cos_qscat_gas, nwave, radius,wave_in = get_mie(igas,directory)
+
+        qext_gas, qscat_gas, cos_qscat_gas, nwave, radius,wave_in = get_mie(igas,directory, aggregates, Df)
 
         if i==0: 
-            nradii = len(radius)
-            rmin = np.min(radius)
+            nradii = len(radius) # work our how many radii were in the .mieff file
+            rmin = np.min(radius) # find the min radius
             rmax = np.max(radius) # find the max radius
 
             # work out if the radii in the .mieff file were created on a log-spaced grid (the default) or linearly-spaced grid
@@ -130,6 +163,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                              atmo.b, atmo.eps, atmo.scale_h, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param,
                                              mh, atmo.sig, rmin, nradii, radius,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
+                                             aggregates, Df, N_mon, r_mon, k0,
                                              og_vfall, supsat=atmo.supsat,verbose=atmo.verbose,do_virtual=do_virtual)
         pres_out = atmo.p_layer
         temp_out = atmo.t_layer
@@ -144,13 +178,13 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, radius, 
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
-                                             direct_tol, refine_TP, og_vfall, analytical_rg)
+                                             aggregates,Df,N_mon,r_mon,k0, direct_tol, refine_TP, og_vfall, analytical_rg)
 
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     #albedo, and asymmetry parameter.    
     opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
-                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, nradii,verbose=atmo.verbose)
+                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, rmax, verbose=atmo.verbose)
 
     if as_dict:
         if atmo.param == 'exp':
@@ -199,7 +233,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         'cloud_deck':z_cld
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, nrad,verbose=False):
+def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, rmax, verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -219,7 +253,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     ndz : ndarray
         Column density of particle concentration in layer (#/cm^2)
     radius : ndarray
-        Radius bin centers (cm)
+        Particle radius bin centers from the grid (cm)
     dr : ndarray
         Width of radius bins (cm)
     qscat : ndarray
@@ -230,6 +264,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
         qscat-weighted <cos (scattering angle)>
     sig : float 
         Width of the log normal particle distribution
+    rmin: float
+        Minimum particle radius bin center from the grid (cm)
+    rmax: float
+        Maximum particle radius bin center from the grid (cm)
     verbose: bool 
         print out warnings or not
 
@@ -264,10 +302,15 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
         for igas in range(ngas):
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
+                
+                # precise warning for when particles are either above or below the grid defined by the .mieff files
+                if rg[iz,igas] < rmin: # if the radius of the particle found by VIRGA is smaller than rmin it is "off the grid". We assume this because even if it was at the bottom of the smallest bin e.g. r_g = (r_min - dr/2), half the distribution would not be considered by the number density, so we need to make the grid bigger to account for this portion of smaller particles  
+                    warning0 = f'Take caution in analyzing results. Particle sizes were predicted by eddysed() that were smaller than the minimum radius in the .mieff file ({rmin} cm). The optics and number densities for these particles will therefore not be correct. This can be solved by recreating the .mieff grids with a smaller r_min. The errors occurred at the following pressure layers:'
+                    warning+='\nParticles of radius {0} cm were found (where rmin from the mieff file is {1} cm) for gas {2} in the {3}th altitude layer'.format(str(rg[iz,igas]),str(rmin),str(igas),str(iz))
 
-                if np.log10(rg[iz,igas]) < np.log10(rmin)+0.75*sig:
-                    warning0 = f'Take caution in analyzing results. There have been a calculated particle radii off the Mie grid, which has a min radius of {rmin}cm and distribution of {sig}. The following errors:'
-                    warning+='{0}cm for the {1}th gas at the {2}th grid point; '.format(str(rg[iz,igas]),str(igas),str(iz))
+                if rg[iz,igas] > rmax: # if the radius of the particle found by VIRGA is larger than rmax it is "off the grid". We assume this because even if it was at the top of the largest bin e.g. r_g = (r_max + dr/2), half the distribution would not be considered by the number density, so we need to make the grid bigger to account for this portion of larger particles
+                    warning0 = f'Take caution in analyzing results. Particle sizes were predicted by eddysed() that were larger than the maximum radius in the .mieff file ({rmax} cm). The optics and number densities for these particles will therefore not be correct. This can be solved by recreating the .mieff grids with a larger r_max. The errors occurred at the following pressure layers:'
+                    warning+='\nParticles of radius {0} cm were found (where rmax from the mieff file is {1} cm) for gas {2} in the {3}th altitude layer'.format(str(rg[iz,igas]),str(rmax),str(igas),str(iz))
 
                 r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
                 opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
@@ -451,7 +494,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
     fsed, b, eps, scale_h, z_top, z_alpha, z_min, param,
     mh,sig, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
-    og_vfall=True,do_virtual=True, supsat=0, verbose=False):
+    aggregates, Df, N_mon, r_mon, k0, og_vfall=True,do_virtual=True, supsat=0, verbose=False):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -517,6 +560,24 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
         specific heat of atmosphere (erg/K/g) . Usually 7/2 for ideal gas
         diatomic molecules (e.g. H2, N2). Technically does slowly rise with 
         increasing temperature
+    aggregates : bool, optional
+        set to 'True' if you want fractal aggregates, keep at default 'False' for spherical cloud particles
+    Df : float, optional
+        only used if aggregate = True.
+        The fractal dimension of an aggregate particle. 
+        Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.
+    N_mon : float, optional
+        only used if aggregate = True. 
+        The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).
+    r_mon : float, optional (units: cm)
+        only used if aggregate = True. 
+        The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be 
+        provided (but not both).
+    k0 : float, optional (units: None)
+        only used if aggregate = True. 
+        Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user, 
+        but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary 
+        when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).
     og_vfall : bool , optional
         optional, default = True. True does the original fall velocity calculation. 
         False does the updated one which runs a tad slower but is more consistent.
@@ -627,7 +688,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                         kz[-1], mixl[-1], gravity, mw_atmos, gas_mw[i], q_below,
                         supsat, fsed, b, eps, z_bot, z_base, z_alpha, z_min, param,
                         sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor, #all scalars
-                        og_vfall, z_cld
+                        og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0
                     )
 
         z_cld=None
@@ -639,7 +700,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
                 kz[iz], mixl[iz], gravity, mw_atmos, gas_mw[i], q_below,  
                 supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
                 sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor, #all scalars
-                og_vfall, z_cld
+                og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0
             )
 
             qc_path[i] = (qc_path[i] + qc[iz,i]*
@@ -652,7 +713,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     kz, mixl, gravity, mw_atmos, gas_mw, q_below,
     supsat, fsed, b, eps, z_top, z_bot, z_alpha, z_min, param,
     sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
-    og_vfall, z_cld):
+    og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (converging on optical depth over sublayers)
@@ -725,6 +786,24 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
         increasing temperature
     og_vfall : bool 
         Use original or new vfall calculation
+    aggregates : bool, optional
+        set to 'True' if you want fractal aggregates, keep at default 'False' for spherical cloud particles
+    Df : float, optional
+        only used if aggregate = True.
+        The fractal dimension of an aggregate particle. 
+        Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.
+    N_mon : float, optional
+        only used if aggregate = True. 
+        The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).
+    k0 : float, optional (units: None)
+        only used if aggregate = True. 
+        Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user, 
+        but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary 
+        when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).
+    r_mon : float, optional (units: cm)
+        only used if aggregate = True. 
+        The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be 
+        provided (but not both).
 
     Returns
     -------
@@ -824,7 +903,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
                     gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud,
                         qt_below, mixl, dz_sub, gravity,mw_atmos,mfp,visc,
                         rho_p,w_convect, fsed, b, eps, param, z_bot_sub, z_sub, z_alpha, z_min,
-                        sig,mh, rmin, nrad, radius, og_vfall,z_cld)
+                        sig,mh, rmin, nrad, radius, aggregates, Df, N_mon, r_mon, k0, og_vfall, z_cld)
 
 
             #   vertical sums
@@ -877,7 +956,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 def calc_qc(gas_name, supsat, t_layer, p_layer
     ,r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos
     ,mfp,visc,rho_p,w_convect, fsed, b, eps, param, z_bot, z_layer, z_alpha, z_min,
-    sig, mh, rmin, nrad, radius, og_vfall=True, z_cld=None):
+    sig, mh, rmin, nrad, radius, aggregates, Df, N_mon, r_mon, k0, og_vfall=True,z_cld=None):
     """
     Calculate condensate number density and effective radius for a layer,
     assuming geometric scatterers. 
@@ -937,6 +1016,29 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
         Number of radii on Mie grid
     radius : ndarray
         Particle radius bin centers from the grid (cm)
+    aggregates : bool, optional
+        set to 'True' if you want fractal aggregates, keep at default 'False' for spherical cloud particles
+    Df : float, optional
+        only used if aggregate = True.
+        The fractal dimension of an aggregate particle. 
+        Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.
+    N_mon : float, optional
+        only used if aggregate = True. 
+        The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).
+    r_mon : float, optional (units: cm)
+        only used if aggregate = True. 
+        The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be 
+        provided (but not both).
+    k0 : float, optional (units: None)
+        only used if aggregate = True. 
+        Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user, 
+        but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary 
+        when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).
+    og_vfall : bool , optional
+        optional, default = True. True does the original fall velocity calculation. 
+        False does the updated one which runs a tad slower but is more consistent.
+        The main effect of turning on False is particle sizes in the upper atmosphere 
+        that are slightly bigger.
 
     Returns
     -------
@@ -1030,10 +1132,28 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
 
         #   --------------------------------------------------------------------
         #   Find <rw> corresponding to <w_convect> using function vfall()
+        #   NOTE FROM MGL: For aggregates, this finds the COMPACT <rw> (the radius of a sphere of equivalent mass to the aggregate). The vfall
+        #   function receives a compact radius as an input as well as a shape type (e.g. d_f = 1.7), and converts the compact radius into
+        #   the radius of gyration, finds vfall, and then returns the COMPACT radius that had a radius of gyration that achieved the
+        #   desired vfall. This is so that the compact radii still line up with the .mieff grid, which is also stored by COMPACT radius,
+        #   and because it's easier to compare aggregates if they all have the same mass (because aggregates with the same compact radius
+        #   have the same mass, whatever shape they have) at the same grid points (rather than having to convert backwards from R_gyr). The 
+        #   equivalent radii of gyration can be found using the "convert_rg_to_R_gyr" function in the analysis tools, if required.
 
-        #   range of particle radii to search (cm)
-        rlo = 1.e-10
-        rhi = 10.
+        # Note: MGL and SEM have decreased the range of these limits to start the initial search much narrower to improve 
+        # stability of the iterative solver for aggregates. The initial search range will be increased if a solution is not found
+        # on the first attempt anyway (using rhi = rhi*10 in the 'try' loop below). Previously, spheres were allowed
+        # to be smaller than gas atoms, but we have set this as a lower limit and printed a warning if VIRGA can't find a solution
+        # for spheres -- see 3rd 'Exception' below)
+        
+        #   range of particle radii to search (in cm)
+        rlo = 1.e-8 # the minimum particle size to search is 0.1 nm for spheres 
+        if (aggregates==True):       
+            rhi = 1.e-7  # for aggregates, begin the search with a small initial maximum particle size and only make the search wider if no solution is found (to ensure that the lowest value is taken in cases with multiple roots/solutions -- see Moran & Lodge 2025)
+        else:
+            rhi = 1.0 # for spheres, we can begin the search with quite a wide range as multiple solutions are not expected. The initial maximum particle size to search is 1 cm (but this limit will be increased if no solution is found)
+
+        
         
         #   precision of vfall solution (cm/s)
         find_root = True
@@ -1041,32 +1161,83 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
             try:
                 if og_vfall:
                     rw_temp = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
-                            args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect))
+                            args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect, aggregates, Df, N_mon, r_mon, k0))
                 else:
                     rw_temp = solve_force_balance("rw", w_convect, gravity, mw_atmos, mfp,
                                                     visc, t_layer, p_layer, rho_p, rlo, rhi)
                 find_root = False
             except ValueError:
-                rlo = rlo/10
+                #rlo = rlo/10 # MGL and SEM have commented this out, because you could never form particles smaller than atoms (10^-8 cm)
                 rhi = rhi*10
+                
+                # warning to user that the iterative solver has not found a solution (if you prescribe N_mon or r_mon, there are
+                # some situations where a solution is just not physically possible i.e. if fluffy aggregates are being lofted high
+                # up by a strong Kzz value, no matter how large they become in radius, they may not ever have a fall velocity that
+                # balances this against w_convect)
+
+
+                # if tested particle is larger than Jupiter (!), raise a warning that no solution could be found
+
+                if aggregates:
+                    if N_mon is not None:
+                        if rhi>1e10 : raise Exception(f"Warning: Could not find a solution that allows particles of this N_mon ({N_mon}) to balance w_convect for {Df}.\
+                                                      \nPlease try using a smaller value of N_mon, or decrease Kzz.")
+                    else:
+                        if rhi>1e10 : raise Exception(f"Warning: Could not find a solution that allows particles of this r_mon ({r_mon} cm) to balance w_convect for {Df}.\
+                                                      \nPlease try using a larger value of r_mon, or decrease Kzz.")
+                else:
+                    if rhi>1e10 : raise Exception(f"Warning: Could not find a physical solution that balances w_convect (Kzz is so low \
+                                                  \n that particles would need to be smaller than gas atoms to stay in the pressure layer). \
+                                                  \n Please try using a higher value Kzz.")
 
         #fall velocity particle radius 
         if og_vfall: rw_layer = rw_temp.root
         else: rw_layer = rw_temp
-        
-        #   geometric std dev of lognormal size distribution
+
+        # MGL NOTE: In this section, we try to link r_w (the radius where convective upwards velocity = downwards velocity, which is found above) to the r_g (geometric
+        # mean radius), which we will calculate the optical properties from. We assume the same constant 'alpha' links spheres and aggregates of any shape for fair comparison.
+        # The original A+M code suggests a narrow range of particle radii to determine alpha from, but because v_fall in VIRGA is more complex than vfall in the A+M model,
+        # the original version of VIRGA found an average alpha using the entire .mieff grid. MGL ran tests to see if the A+M method range would give better results for aggregates, 
+        # but there was little difference so the code is unchanged here. The method is as follows:
+        #
+        # 1) Find vfall values for each of the radii in the .mieff grid, using the vfall equation for spheres.
+        # 2) Calculate the constant of proportionality (alpha) that links this array of vfall values to the convective velocity x ratio of("grid radius" / "radius of particles with vfall equal to w_convect in this layer"), using the properties (pressure, temp, gravity) in this layer exclusively.
+        # Note: This is a way of seeing how particle sizes would scale if the conditions were the same everywhere. Alpha is a single value, and often simply = 1.
+        # 3) Use this alpha to find r_g (geometric mean radii) and droplet effective radius in the layer, assuming a lognormal distribution.
+        #  
+
+            #   geometric std dev of lognormal size distribution
         lnsig2 = 0.5*np.log( sig )**2
         #   sigma floor for the purpose of alpha calculation
         sig_alpha = np.max( [1.1, sig] )    
 
         #   find alpha for power law fit vf = w(r/rw)^alpha
         def pow_law(r, alpha):
-            return np.log(w_convect) + alpha * np.log (r / rw_layer) 
+            return np.log(w_convect) + alpha * np.log (r / rw_layer_spheres) # use spherical version of r_w, calculated below
 
+        # find value of r_w that would exist for spherical particles -- this is needed in the calculation of alpha, no matter what the particle shape is, because we calcualte alpha based on the spherical version
+
+        find_root = True
+        while find_root:
+            try:
+                rw_temp_spheres = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq', 
+                        args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p,w_convect, False, 0, 0, 0, 0)) # use aggregates = False so that we are just using the spherical version of v_fall
+                find_root = False
+            except ValueError:
+                #rlo = rlo/10 # MGL and SEM have commented this out, because you could never form particles smaller than atoms (10^-8 cm)
+                rhi = rhi*10
+
+                if rhi>1e10 : raise Exception(f"Warning: Could not find a physical solution for SPHERES (needed in the alpha calculation) \
+                                                \n that balances w_convect (Kzz is so low that particles would need to be smaller than gas \
+                                                \n atoms to stay in the pressure layer). Please try using a higher value Kzz.")
+        rw_layer_spheres = rw_temp_spheres.root
+
+
+        # calculate vfall for each radius in the .mieff file, assuming spherical particles
         vfall_temp = []
         for j in range(len(radius)):
             if og_vfall:
-                vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p))
+                vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p, aggregates=False, Df=0, N_mon=0, r_mon=0, k0=0)) # this calculates vfall for each of the radii in the .mieff grid for SPHERES. We then assume the same link between r_w and r_g holds for all shapes fractal dimensions as it does for spheres. This is to avoid issues with v_fall being much more complex than the original A+M model, and to make a fairer comparison between different shapes. 
             else:
                 vlo = 1e0; vhi = 1e6
                 find_root = True
@@ -1079,7 +1250,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
                         vlo = vlo/10
                         vhi = vhi*10
 
-        pars, cov = optimize.curve_fit(f=pow_law, xdata=radius, ydata=np.log(vfall_temp), p0=[0], 
+        # determine alpha, assuming spherical particles
+        pars, cov = optimize.curve_fit(f=pow_law, xdata=radius, ydata=np.log(vfall_temp), p0=[0], # this code finds alpha (a constant of proportionality) for each of the radius values in the .mieff grid, assuming that they scale with v_fall in a power law
                             bounds=(-np.inf, np.inf))
         alpha = pars[0]
 
@@ -1485,7 +1657,7 @@ class Atmosphere():
             self.kz = g_c_85
             self.chf = chf
 
-    def compute(self,directory = None, as_dict = True): 
+    def compute(self,directory = None, as_dict = True, aggregates=False, Df=None, N_mon=None, r_mon=None): 
         """
         Parameters
         ----------
@@ -1504,25 +1676,30 @@ class Atmosphere():
             Extinction per layer, single scattering abledo, asymmetry parameter, 
             All are ndarrays that are nlayer by nwave
         """
-        run = compute(self, directory = directory, as_dict = as_dict)
+        if aggregates:
+            run = compute(self, directory = directory, as_dict = as_dict,  aggregates=aggregates, Df=Df, N_mon=N_mon, r_mon=r_mon)
+        else:
+            run = compute(self, directory = directory, as_dict = as_dict)
         return run
 
-def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2, nradii = 60, logspace=True, fort_calc_mie = False):
+def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax = 5.4239131e-2, nradii = 60, logspace=True, aggregates=False, Df=None, N_mon=None, r_mon=None, k0=0, fort_calc_mie = False):
     """
-    Function that calculations new Mie database using PyMieScatt. 
+    Function that calculations new Mie database using MiePython (for spherical particles) or OPTOOL (for aggregates)
     Parameters
     ----------
     gas_name : list, str
         List of names of gasses. Or a single gas name. 
         See pyeddy.available() to see which ones are currently available. 
-    dir_refrind : str 
-        Directory where you store optical refractive index files that will be created. 
+    virga_dir: str 
+        Directory where you store the VIRGA refractive index files (.refind format).
     dir_out: str 
         Directory where you want to store Mie parameter files. Will be stored as gas_name.Mieff. 
         BEWARE FILE OVERWRITES. 
-    rmin : float , optional
+    optool_dir: str 
+        Directory where you store optool refractive index files (.lnk format).
+    rmin : float
         (Default=1e-8) Units of cm. The minimum radius to compute Mie parameters for. 
-        Usually 0.01 microns is small enough. However, if you notice your mean particle radius 
+        Usually 0.001 microns is small enough. However, if you notice your mean particle radius 
         is on the low end, you may compute your grid to even lower particle sizes. 
     rmax : float
         (Default=5.4239131e-2) Units of cm. The maximum radius to compute Mie parameters for. 
@@ -1530,34 +1707,64 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2
         that your particles are "off the grid" (larger than your maximum grid value), increase this number.
     nradii : int, optional
         (Default=60) number of radii points to compute grid on. 40 grid points for exoplanets/BDs
-        is generally sufficient. 
     logspace : boolean, optional
         (Default = True)
         Spaces the radii logarithmically (which they generally tend to be in the clouds) if True. Spaces them linearly if False.
+    aggregates : boolean, optional
+        (Default = True)
+        Sets whether particles are aggregates or spheres. If true, we will calculate optical properties using OPTOOL instead of MiePython.
+    Df : If aggregates = True, the fractal dimension of the aggegrate particle. a number between 1 and 3. (3 would be equal to solid spheres with radii of the outer effective radius)
+    N_mon : If aggregates = True, the number of monomers that make up an aggregate. Can set directly or calculate from r_mon.
+    r_mon : If aggregates = True, the monomer radius that makes up an aggregate particle (in cm). Can either set or calculate from N_mon.
+    k0 : only used if aggregate = True. 
+        Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user, 
+        but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary 
+        when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).
     
-
     Returns 
     -------
     Q extinction, Q scattering,  asymmetry * Q scattering, radius grid (cm), wavelength grid (um)
 
     The Q "efficiency factors" are = cross section / geometric cross section of particle
     """
+    
     if isinstance(gas_name,str):
         gas_name = [gas_name]
     ngas = len(gas_name)
 
+
     for i in range(len(gas_name)): 
-        print('Computing ' + gas_name[i])
+        
+        if aggregates==False:
+            print('\nComputing optical properties for ' + gas_name[i] + ' using MiePython...')
+            refrind_dir = virga_dir # use the VIRGA directory
+        else:
+            print('\nComputing optical properties for ' + gas_name[i] + ' using OPTOOL...')
+            refrind_dir = optool_dir # use the optool directory
+
+            # check whether r_mon is ever larger than the smallest particles in the grid, if it is prescribed by the user
+            if r_mon is not None:
+                if r_mon>rmin:
+
+                    print("\n\n-----------------------------------------------------------------------------------------------------------------")
+                    print("                                         WARNING!!!!                                         ")
+                    print(f"You have prescribed a monomer size that is larger than the smallest particles in the grid:\n\n \
+                            r_mon is {r_mon} cm   >   rmin is {rmin} cm) \n")
+                    print("This is impossible, so for these cases, single spheres will be used, with a radius equal to the bin mean.\nThis is not a problem, but just be aware that these particles are smaller than the r_mon that you have asked for.")
+                    print("------------------------------------------------------------------------------------------------------------------\n")
+
+        print('If this function seems to be running a really long time... Check that you gave your rmin (and r_mon if using aggregates) in centimeters and that you are not making tennis balls :)')             
+
+
         #Setup up a particle size grid on first run and calculate single-particle scattering
         
         #files will be saved in `directory`
         # obtaining refractive index data for each gas
-        wave_in,nn,kk = get_refrind(gas_name[i],dir_refrind)
+        wave_in,nn,kk = get_refrind(gas_name[i],refrind_dir, aggregates)
         nwave = len(wave_in)
         print(f'\n{nwave} wavelengths of refractive index data found for {gas_name[i]}. Grid of mean radii (in bins) to calculate extinction and scattering efficiencies for (in cm):')
 
         if i==0:
-            #all these files need to be on the same grid
             # create the grid of mean radii (in bins) that we want to find the optical properties for
             radius, bin_min, bin_max, dr = get_r_grid(rmin, rmax, nradii, logspace)
 
@@ -1572,7 +1779,26 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2
 
         #get extinction, scattering, and asymmetry
         #all of these are  [nwave by nradii]
-        qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, bin_min, bin_max, fort_calc_mie = fort_calc_mie)
+  
+        
+        gas = gas_name[i]
+
+        if aggregates==False: # Use MiePython to calculate the optical properties of spherical particles for each radius in the grid, using Mie theory
+            qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, bin_min, bin_max, fort_calc_mie = fort_calc_mie)
+
+        else: # use OPTOOL to calculate the optical properties of aggregates for each radius in the grid, using Modified Mean Field theory   
+
+            qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff_optool(wave_in, radius, bin_min, bin_max, gas, optool_dir, aggregates=True, Df=Df, N_mon=N_mon, r_mon=r_mon, k0=k0)
+            
+            # if using the OPTOOL .lnk file, the wavelengths were in reversed into ascending order (a pre-requisite of OPTOOL). Therefore, to get them back to
+            # descending order, we just need to flip all arrays. Doing this means it doesn't matter whether OPTOOL or MiePython is used -- the resulting .mieff files
+            # will be saved consistently in order of descending wavelength.
+
+            wave_in = np.flipud(wave_in) # remember to reverse the wavelength array into descending order too! (currently in ascending order, from the .lnk file)
+            qext_gas = np.flipud(qext_gas)
+            qscat_gas = np.flipud(qscat_gas)
+            cos_qscat_gas = np.flipud(cos_qscat_gas)
+
 
         #add to master matrix that contains the per gas Mie stuff
         qext_all[:,:,i], qscat_all[:,:,i], cos_qscat_all[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas 
@@ -1582,17 +1808,45 @@ def calc_mie_db(gas_name, dir_refrind, dir_out, rmin = 1e-8, rmax = 5.4239131e-2
         qscat = [nradii]  + sum([[np.nan]+list(iscat) for iscat in qscat_gas.T],[])
         qext = [np.nan]  + sum([[np.nan]+list(iext) for iext in qext_gas.T],[])
         cos_qscat = [np.nan]  + sum([[np.nan]+list(icos) for icos in cos_qscat_gas.T],[])
-        print(f'Optical properties for {gas_name[i]} have been calculated and saved as {dir_out}/{gas_name[i]}.mieff')
-        pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(os.path.join(dir_out,gas_name[i]+".mieff"),
-                                                                                   sep=' ',
-                                                                                  index=False,header=None)
+
+        if aggregates==False: # save dataframe as a standard .mieff file
+            pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(os.path.join(dir_out,gas_name[i]+".mieff"),
+                                                                                    sep=' ',
+                                                                                    index=False,header=None)
+            print(f'Optical properties for {gas_name[i]} have been calculated and saved as {dir_out}/{gas_name[i]}.mieff.\n')
+        else: # save dataframe with a unique filename (e.g SiO2_aggregates_Df_1.2.mieff) for aggregate versions of materials
+
+            aggregate_filename = f"{dir_out}/{gas_name[i]}_aggregates_Df_{Df:.6f}.mieff" # the name of the aggregate database file
+
+            pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(aggregate_filename,
+                                                                                    sep=' ',
+                                                                                    index=False,header=None)
+            print(f'Optical properties for {gas_name[i]} have been calculated and saved as {aggregate_filename}.\n')
+
     return qext_all, qscat_all, cos_qscat_all, radius,wave_in
 
-def get_mie(gas, directory):
+def get_mie(gas, directory, aggregates=False, Df=None):
     """
-    Get Mie parameters from old ass formatted files
+    Get pre-calculated radius-wavelength grid of optical properties, considering the particles as either spheres (gas_name.mieff) 
+    or aggregates (gas_name_aggregates_Df_XXXX.mieff), if aggregates=true and this aggregates file has been created using calc_mie_db function).
+    
     """
-    df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], sep=r'\s+')
+
+    if aggregates==False: # load regular .mieff file of optical properties
+        df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], sep='\s+')
+    else: # load aggregate version of optical properties (this file must be created using the calc_mie_db function with aggregates=True first!)
+        
+        aggregate_filename = f"{directory}/{gas}_aggregates_Df_{Df:.6f}.mieff" # the name of the database file
+
+        try: # check if database has been created for this particular set of MMF parameters and radii
+            test_path = Path(aggregate_filename).resolve(strict=True)
+        except FileNotFoundError: # aggregates database does not yet exist (for this particular gas and fractal dimension)
+            print(f'File not found: {aggregate_filename}.')
+            print(f'No optical database has been created for {gas} aggregates with d_f={Df} yet!')
+            print('You need to create a database using the calc_mie_db() function, with the argument aggregates=True (see "aggregates" tutorial for more details).')
+        else: # database file exists - load data
+            print(f'Optics file found. Reading data from: {aggregate_filename}.')
+            df = pd.read_csv(aggregate_filename, names=['wave','qscat','qext','cos_qscat'], sep='\s+')
 
     nwave = int( df.iloc[0,0])
     nradii = int(df.iloc[0,1])
@@ -1625,13 +1879,28 @@ def get_mie(gas, directory):
     qext = df['qext'].values.reshape((nradii,nwave)).T
     cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
 
+    # if scattering code returns Q_sca <0 (can happen for extreme examples, like very large particles with very low fractal dimensions), set Q_sca = 1e-16 (basically zero, 
+    # but slighty positive so that calc_optics still records opacity in the optical depth array (opd) for purely absorbing cases -- the statement here 
+    # checks for opd_sca>0, so it's important to keep it above 0
+
+    qscat[qscat < 0] = 1e-16 # search for any values that are negative, and set them equal to to a very small positive number (1e-16)
+
     return qext,qscat, cos_qscat, nwave, radii,wave
 
-def get_refrind(igas,directory): 
+def get_refrind(igas,directory,aggregates=False): 
     """
-    Reads reference files with wavelength, and refractory indecies. 
-    This function relies on input files being structured as a 4 column file with 
-    columns: index, wavelength (micron), nn, kk 
+    Reads reference files with wavelength, and refractory indicies. The file formats 
+    are different for VIRGA and OPTOOL. OPTOOL formats should be created by the user
+    and stored in /lnk_data using the "convert_refrind_to_lnk function before running
+    "calc_mie_db" function
+
+    VIRGA FILE FORMAT:
+    Input files are structured as a 4 column file with columns: 
+    index, wavelength (micron), nn, kk 
+
+    OPTOOL FILE FORMAT:
+    Input files are structured as a 3 column file with columns: 
+    wavelength (micron), nn, kk 
 
     Parameters
     ----------
@@ -1644,18 +1913,25 @@ def get_refrind(igas,directory):
     -------
     wavelength, real part, imaginary part 
     """
-    filename = os.path.join(directory ,igas+".refrind")
-    #put skiprows=1 in loadtxt to skip first line
-    try:
+    if aggregates==False:  # use the VIRGA refractive index database file structure
+        filename = os.path.join(directory ,igas+".refrind")
+         #put skiprows=1 in loadtxt to skip first line
         idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
-        return wave_in,nn,kk
-    except: 
-        df = pd.read_csv(filename)
-        wave_in = df['micron'].values 
-        nn = df['real'].values
-        kk = df['imaginary'].values
-        return wave_in,nn,kk
 
+        # if refractive index list is given in ascending order, flip it upside down so that it is descending here (so that it is consistent with the rest of VIRGA)
+        if (wave_in[0] < wave_in[-1]): # if first element is smaller than the last one (then it is in ascending order)
+            wave_in = np.flipud(wave_in)
+            nn = np.flipud(nn) # flip all three arrays to descending order
+            kk = np.flipud(kk)
+
+        return wave_in,nn,kk
+    
+    else: # use the OPTOOL refractive index database file structure
+        filename = os.path.join(directory+"/lnk_data",igas+"_VIRGA.lnk") # changed by SEM to .lnk extension for optool use
+         #put skiprows=1 in loadtxt to skip first line
+        wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), skiprows=1, unpack=True, usecols=[0,1,2])#[:-1]
+        return wave_in,nn,kk
+    
 def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
     """
     New version of grid generator - creates lin-spaced or log-spaced radii grids. Updated by MGL 07/01/25.
@@ -2068,3 +2344,34 @@ def temperate_neptune():
                  names=['pressure','temperature','kz'])
     return df
 
+def convert_refrind_to_lnk(aggregate_list, virga_dir, optool_dir):
+    '''
+    Convert VIRGA's .refrind files into OPTOOL .lnk files. The differences in file format are below:
+
+        VIRGA: [index,  wavelength,  n,  k]     No header, and in order of descending wavelength
+
+        OPTOOL: [wavelength,  n,  k]     Header (num wavelengths and density, can also include comments), and in order of ascending wavelength
+
+    This function converts the XX.refrind file and saves it in the OPTOOL folder as XX_VIRGA.lnk in the optool directory, ready for optool to 
+    use in MMF calculations (see "calc_mie_db").
+
+    '''
+
+    from virga import gas_properties
+
+    for i in range(len(aggregate_list)):
+
+        aggregate_species = aggregate_list[i]
+
+        # retrieve the density of this species
+        run_gas = getattr(gas_properties, aggregate_species) # find density from the gas_properties.py database
+        gas_mw, gas_mmr, density = run_gas(1,1,1) # run this function with throwaway values just to obtain the density. Ignore the molecular weight and mass mixing ratio obtained here
+        
+        # retrieve the refractive indices for this species from the virga database
+        refrind_data=pd.read_csv(f'{virga_dir}/{aggregate_species}.refrind', names=['index', 'wavelength', 'n', 'k'], header=None, sep='\s+') 
+        refrind_data = refrind_data.drop('index', axis=1) # delete the first column (index)
+        refrind_data = refrind_data.sort_values('wavelength') # re-order data so that they are in order of ascending wavelength
+
+        with open(f'{optool_dir}/lnk_data/{aggregate_species}_VIRGA.lnk', 'w') as file: # save the new file in the optool directory under the same filename but as a .lnk file
+            file.write(f' {len(refrind_data)} {density}\n') # write number of wavelengths and material density at top of file
+            refrind_data.to_string(file, col_space=10, index=False, header=None) # print the rest of the data underneath

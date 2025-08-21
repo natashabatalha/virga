@@ -2,7 +2,7 @@ import numpy as np
 from . import  pvaps
 from . import  gas_properties
 from scipy.stats import lognorm
-from scipy.integrate import quad
+from scipy.integrate import quad, simps
 from scipy import optimize
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
@@ -59,9 +59,142 @@ def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=No
     advdif = advdif - qt
     return advdif
 
+def vfall(r, grav, mw_atmos, mfp, visc, t, p, rhop, aggregates, Df, N_mon, r_mon, k0):
+    
+    '''
+    New vfall function written by SEM and MGL, based on the methods of:
 
+        - "Aggregate Cloud Particle Effects in Exoplanet Atmospheres", Vahidinia et al. (2024)
+        - "A Condensation–coalescence Cloud Model for Exoplanetary Atmospheres: Formulation and Test Applications to Terrestrial and Jovian Clouds", Ohno and Okuzumi (2017)
+        - "Theoretical modeling of mineral cloud formation on super-Earths", K. Ohno (2024)
+        
+    We adapt the above to include a broad range of aggregates and atmospheric conditions. The general outline of the code is:
+    
+        - Find the characteristic radius (R_c) of the particle:
 
-def vfall(r, grav,mw_atmos,mfp,visc,
+            - SPHERES: R_c = radius of the sphere
+
+            - AGGREGATES: R_c = radius of gyration
+        
+        - Determine the Knudsen number:
+        
+            - If Kn > 10 we are in the Free molecular regime (if the mean free path of the gas is large compared to the particle size).
+                
+                - Here, use equation 46 of Vahidinia et al. (2024) to adapt the fall velocity of spheres for aggregates of fractal dimension d_f
+
+            - If Kn < 10 we are in the Continuum regime (the gas can be treated a a continuous fluid)
+
+                - Here, use equation 23 of Ohno and Okuzumi (2017) to calculate vfall for aggregates of any type, with the addition of the Beta slip correction
+                  factor (Eq 3.11 of Ohno, 2024). This equation (Eq. 23) is valid for all three of the stokes, slip and turbulent regimes, so there is no need to calculate 
+                  Reynolds number. It is not strictly designed to work for really low fractal dimensions (e.g. DCLA aggregates with d_f = 1.2), so consider the effects 
+                  an upper bound for these if used (though aggregates in high atmospheres are not usually in the continuum regime anyway, they are in the Free molecular 
+                  regime. The use of mobility radius for linear DCLA aggregates was explored, but R_gyr was chosen to remain consistent and continuous as d_f changes.
+            
+    Parameters
+    ----------
+    r : float
+        particle radius (cm)
+    grav : float 
+        acceleration of gravity (cm/s^2)
+    mw_atmos : float 
+        atmospheric molecular weight (g/mol)
+    mfp : float 
+        atmospheric molecular mean free path (cm)
+    visc : float 
+        atmospheric dynamic viscosity (dyne s/cm^2) see Eqn. B2 in A&M
+    t : float 
+        atmospheric temperature (K)
+    p  : float
+        atmospheric pressure (dyne/cm^2)
+    rhop : float 
+        density of particle (g/cm^3)
+    aggregates : bool, optional
+        Turns on aggregate functionality. set to False for default spheres.
+    Df : float, optional
+        fractal dimension of aggregate particle.
+    N_mon: float, optional
+        number of monomers in aggregate
+    r_mon : float, optional
+        the monomer radius (i.e., the smaller sub-particles) for aggregate particles (cm).
+    '''
+
+    R_GAS = 8.3143e7 
+
+    # calculate the characteristic radius of the particle
+    if aggregates:
+
+        # if N_mon was prescribed by the user, calculate r_mon (or vice versa)
+        if N_mon is not None: 
+            N_mon_prescribed=1 # N_mon is a fixed value, prescribed by the user
+            original_N_mon = N_mon # record the original set value to send to the 'find_N_mon_and_r_mon' function below
+        else:
+            N_mon_prescribed=0 # N_mon needs to be calculated for each radius
+            original_N_mon = 0 # original number of monomers not set
+
+        # calculate N_mon and r_mon for this radius
+        N_mon, r_mon = find_N_mon_and_r_mon(N_mon_prescribed, r, original_N_mon, r_mon)
+
+        if r <= r_mon: # the aggregate radius can never be less than the monomer particle size, so if this is the case, just use spheres
+            # SPHERES
+            r_c = r # use the radius of the sphere as the characteristic radius of the particle
+            rho_c = rhop # use the bulk density of the monomers as the characteristic density
+
+        else:
+            # AGGREGATES
+            
+            if k0<=0: # if fractal prefractor k0 is left unprescribed by user, calculate it here (in the case of fixed r_mon, k0 can change as the number of monomers grows, so it needs to be calculated here, for each new radius)
+                k0 = calculate_k0(N_mon, Df)
+
+            R_gyr = (N_mon/k0)**(1/Df)*r_mon # calculate radius of gyration
+            r_c = R_gyr # use the radius of gyration as the characteristic radius of the particle
+            rho_c = rhop*N_mon*(r_mon/R_gyr)**3 # calculate characteristic aggregate density using R_gyr as the characteristic radius (derived from Ohno thesis)
+    else:
+        # SPHERES
+        r_c = r # use the radius of the sphere as the characteristic radius of the particle
+        rho_c = rhop # use the bulk density of the monomers as the characteristic density
+   
+    knudsen = mfp / r_c # calculate knudsen number; remember to use the CHARACTERISTIC radius here to determine the regime
+    rho_atmos = p / ( (R_GAS/mw_atmos) * t ) # calculate density of the atmosphere
+    
+    if knudsen > 10: # Free molecular regime 
+        N_A = 6.02e23 # avogadro's number
+        k_b = 1.38e-16 # Boltzmann constant (in cgs units)
+        sound_speed = np.sqrt(3*k_b*t/(mw_atmos/N_A)) # calculate thermal speed (speed of sound)
+        
+        vfall_r = ((2.0/3.0)*grav*rhop/(sound_speed*rho_atmos))*r # find vfall for solid spheres in the Free Molecular regime
+        
+        if aggregates and (r > r_mon):
+            vfall_r = vfall_r * (R_gyr/r_mon)**(((2*Df)-6)/3) # if finding vfall for aggregates, apply equation 46 of Vahidinia et al. (2024) (works in the Free Molecular regime only)
+
+    else: # Continuum regime: use Eq. 23 of Ohno and Okuzuki (2017), but with the added Beta slip correction factor as in (Eq. 3.11) of "Theoretical modeling of mineral cloud formation on super-Earths" (2024), K. Ohno
+        beta_slip = 1. + knudsen*(1.257 + 0.4*np.exp(-1.1/knudsen)) # calculate the Beta slip factor
+        vfall_r = (2.0*beta_slip*grav*(r_c**2)*rho_c/(9.0*visc)) * (1.0 + (0.45*grav*(r_c**3)*rho_atmos*rho_c/(54.0*visc**2))**(2.0/5.0) )**(-5.0/4.0)
+
+    # For aggregates (especially where d_f<2), check that the terminal velocity of the aggregate > terminal velocity of a single monomer.
+    # If this condition is not true, set the monomer terminal velocity as a lower limit for the aggregate's terminal velocity. 
+    # This is because the aggregate's cross section is probably being over-approximated, and even for the most linear fractals it should not
+    # exceed the sum of monomer cross sections -- see Tazaki (2021) Fig. 4
+
+    if aggregates:
+        if r>r_mon: # if the radius is at least as large as 1 monomer (otherwise we just consider small spheres, not aggregates, so the rule below does not apply)
+            knudsen = mfp / r_mon # # calculate knudsen number for the monomer; using the monomer radius here to determine the regime
+            
+            if knudsen > 10: # Free molecular regime 
+                N_A = 6.02e23 # avogadro's number
+                k_b = 1.38e-16 # Boltzmann constant (in cgs units)
+                sound_speed = np.sqrt(3*k_b*t/(mw_atmos/N_A)) # calculate thermal speed (speed of sound) (this may not have been done above, as aggregates may not have been in the Kn>10 regime)
+                vfall_monomer = ((2.0/3.0)*grav*rhop/(sound_speed*rho_atmos))*r_mon # find vfall for single monomers in the Free Molecular regime
+                
+            else: # Continuum regime: use Eq. 23 of Ohno and Okuzuki (2017), but with the added Beta slip correction factor as in (Eq. 3.11) of "Theoretical modeling of mineral cloud formation on super-Earths" (2024), K. Ohno
+                beta_slip = 1. + knudsen*(1.257 + 0.4*np.exp(-1.1/knudsen)) # calculate the Beta slip factor
+                vfall_monomer = (2.0*beta_slip*grav*(r_mon**2)*rhop/(9.0*visc)) * (1.0 + (0.45*grav*(r_mon**3)*rho_atmos*rhop/(54.0*visc**2))**(2.0/5.0) )**(-5.0/4.0)
+
+            if(vfall_r < vfall_monomer): # if aggregate vfall < monomer vfall
+                vfall_r = vfall_monomer # set monomer vfall as lower limit
+
+    return vfall_r
+
+def vfall_legacy(r, grav,mw_atmos,mfp,visc,
               t,p, rhop):
     """
     Calculate fallspeed for a spherical particle at one layer in an
@@ -172,8 +305,9 @@ def vfall(r, grav,mw_atmos,mfp,visc,
     return vfall_r 
 
 
-def vfall_aggregrates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=1):
+def vfall_aggregates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=None):
     """
+    DEPRECATED, SEE CURRENT IMPLEMENTATION IN 'VFALL' FUNCTION
     Calculate fallspeed for a particle at one layer in an
     atmosphere, assuming low Reynolds number and in the molecular regime (Epstein drag), 
     i.e., where Knudsen number (mfp/r) is high (>>1). 
@@ -198,23 +332,25 @@ def vfall_aggregrates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=1):
     grav : float 
         acceleration of gravity (cm/s^2)
     Ragg : float
-        aggregate particle effective radius (cm). (Defaults to 1 for spherical monomers).
+        aggregate particle effective radius (cm). (Defaults to being spherical monomers).
     D : float
         fractal number (Default is 2 because function reduces to monomers at this value).
     """
     R_GAS = 8.3143e7  #universial gas constant; cgs units cm3-bar/mole-K
     k = 1.38e-16  #boltzmann contant in cgs units -  cm2 g s-2 K-1 (ergs/K)
     
-    N_avo = 6.022e23
+    N_avo = 6.022e23 
     
     mass = mw_atmos/N_avo 
     
-    rho_atmos = (mw_atmos*p) / (R*t) #atmospheric density
+    rho_atmos = (mw_atmos*p) / (RGAS*t) #atmospheric density
     drho = rhop - rho_atmos
     v_thermal = np.sqrt((3*k*t)/mass) #root mean speed of the gas 
     
     #the stopping time of the particle
     t_stop_epstein_r = (2.0/3.0) * (r*drho) / (rho_atmos*v_thermal) 
+
+    if isinstance(Ragg, type(None)): Ragg = r
     
     vfall_epstein_agg_r = t_stop_epstein_r * grav * (Ragg/r)**(D-2)
 
@@ -239,7 +375,7 @@ def vfall_aggregrates_ohno(r, grav,mw_atmos,mfp, t, p, rhop, ad_qc, D=2):
     grav : float 
         acceleration of gravity (cm/s^2)
     rhop : float
-        density of aggregrate particle (g/cm^3)
+        density of monomer particle (g/cm^3)
     t : float 
         atmospheric temperature (K)
     p  : float
@@ -264,17 +400,24 @@ def vfall_aggregrates_ohno(r, grav,mw_atmos,mfp, t, p, rhop, ad_qc, D=2):
     N = ad_qc * N_avo/ gas_mw
 
     #calculate the aggregrate radius based on the fractal dimension, monomer radius, and number density of monomers
-    Ragg = r * N**(1/D) 
+    
+    k0 = 0.716 * (1-D) + np.sqrt(3)# from Tazaki 2021 
+    Ragg = r * (N/k0)**(1/D) 
 
     mass = mw_atmos/N_avo
-    rho_atmos = (mw_atmos*p) / (R*t) #atmospheric density
+    rho_atmos = (mw_atmos*p) / (RGAS*t) #atmospheric density
+
+    rho_agg = rhop *  N * (r/Ragg)**3
+    
     drho = rho_agg - rho_atmos
 
     kn = mfp / Ragg #Knudsen number
     beta = 1.0 + (1.26*kn) #Cunningham correction (slip factor for gas kinetic effects)
     v_thermal = np.sqrt((8*k*t)/(mass*np.pi)) #thermal speed of the gas 
 
-    #visc = (1.0/3.0)*rho_atmos*v_thermal*mfp #viscosity of the atmosphere, appropriate for large Kn (Esptein)
+    #if kn > 10:
+    #    visc = (1.0/3.0)*rho_atmos*v_thermal*mfp #viscosity of the atmosphere, appropriate for large Kn (Esptein)
+    #elif kn < :
     visc = 5.877e-6 * np.sqrt(t) #in dyne/cm^2 with t in K (via Woitke & Helling 2003)
 
     vfall_stokes = (2.0/9.0) * beta * grav * ((Ragg)**2) * (drho/visc) 
@@ -284,8 +427,8 @@ def vfall_aggregrates_ohno(r, grav,mw_atmos,mfp, t, p, rhop, ad_qc, D=2):
    
     return vfall_r_ohno
 
-def vfall_find_root(r, grav=None,mw_atmos=None,mfp=None,visc=None,
-              t=None,p=None, rhop=None,w_convect=None ):
+def vfall_find_root(r,grav=None,mw_atmos=None,mfp=None,visc=None,
+              t=None,p=None, rhop=None,w_convect=None,aggregates=False,Df=None,N_mon=None,r_mon=None,k0=None):
     """
     This is used to find F(X)-y=0 where F(X) is the fall speed for 
     a spherical particle and `y` is the convective velocity scale. 
@@ -295,9 +438,10 @@ def vfall_find_root(r, grav=None,mw_atmos=None,mfp=None,visc=None,
     Therefore, it is the same as the `vfall` function but with the 
     subtraction of the convective velocity scale (cm/s) w_convect. 
     """
-    vfall_r = vfall(r, grav,mw_atmos,mfp,visc,
-              t,p, rhop )
+    vfall_r = vfall(r, grav,mw_atmos,mfp,visc,t,p,rhop,aggregates,Df,N_mon,r_mon,k0)
 
+    #print(f" p = {p:10.5f}     r = {r:10.5e} cm      w_convect = {w_convect:10.5e}   v_fall = {vfall_r:10.5e}     Sum = {vfall_r - w_convect:10.5f}")
+    
     return vfall_r - w_convect
 
 def force_balance(vf, r, grav, mw_atmos, mfp, visc, t, p, rhop, gas_kinetics=True):
@@ -423,7 +567,7 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     
     #  Compute saturation mixing ratio
     get_pvap = getattr(pvaps, qv_gas_name)
-    if qv_gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
+    if qv_gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19','FakeHaze','H2SO4','KhareHaze','SteamHaze300K','SteamHaze400K']:
         pvap_test = get_pvap(t_test, p_test, mh=mh)
     else:
         pvap_test = get_pvap(t_test,mh=mh)
@@ -432,9 +576,9 @@ def qvs_below_model(p_test, qv_dtdlnp=None, qv_p=None,
     return np.log(fx) - np.log(q_below)
 
 
-def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None, gas_mmr=None):    
+def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None):    
     """
-    Root function used used to find condenstation temperature. E.g. 
+    Root function used used to find condensation temperature. E.g. 
     the temperature when  
 
     log p_vap = log partial pressure of gas 
@@ -455,9 +599,9 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None, gas_mmr
     pvap_fun = getattr(pvaps, gas_name)
     gas_p_fun = getattr(gas_properties, gas_name)
     #get gas mixing ratio 
-    gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh , gas_mmr=gas_mmr)
+    gas_mw, gas_mmr ,rho = gas_p_fun(mmw,mh=mh)
     #get vapor pressure and correct for masses of atmo and gas 
-    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19']:
+    if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19','FakeHaze','H2SO4','KhareHaze','SteamHaze300K','SteamHaze400K']:
         pv = gas_mw/mmw*pvap_fun(t_test,p_test, mh=mh)/1e6 #dynes to bars 
     else:
         pv = gas_mw/mmw*pvap_fun(t_test, mh=mh)/1e6 #dynes to bars 
@@ -539,3 +683,65 @@ def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
 
     return fsed - moment(3+alpha, s, loc, rg, dist) / rw**alpha / moment(3, s, loc, rg, dist)
 
+def calculate_k0(N_mon, Df):
+    """
+
+    Find fractal prefactor k0 using Eq 15 of Moran & Lodge (2025)
+    
+    Parameters
+    ----------
+    N_mon : int
+        Number of monomers in aggregate
+    Df : float 
+        Fractal dimension of aggregate
+    
+    """
+
+    if (N_mon<=100):   
+        # the Tazaki equation below is only valid for BCCA aggregates, and at low monomer numbers (e.g. N = 2 monomers) this is not true. 
+        # Therefore, for N<=100 monomers, we smoothly transition to k0 = 1 for all d_f value (see Moran et al. 2025 for derivation)
+        C1 = (1.448-0.716*Df)/99
+        C2 = 1.0 - C1
+        k0 = C1 * N_mon + C2
+
+    else:
+        # for monomer numbers > 100, find k0 using BCCA aggregate Eq. 2 of "Analytic expressions for geometric cross-sections of fractal dust aggregates", Tazaki (2021), MNRAS 504, 2811–2821
+        k0 = 0.716*(1.0 - Df) + np.sqrt(3)
+    
+    return k0
+
+def find_N_mon_and_r_mon(N_mon_prescribed, radius, original_N_mon, r_mon):
+    """
+
+    Find the following variables for a given radius. One value should be prescribed by the user, but both
+    can change according to the growth model in Figure 2 of Moran & Lodge (2025):
+
+        - N_mon: Number of monomers
+        - r_mon: monomer radius
+    
+    Parameters
+    ----------
+    N_mon_prescribed : int
+        Value of 1 if the user prescribed N_mon, 0 if they prescribed r_mon instead
+    radius : float
+        compact radius of aggregate (units:cm)
+    original_N_mon : int 
+        original number of monomers prescribed by user
+    r_mon : float
+        monomer radius (units:cm)
+    
+    """
+
+    if (N_mon_prescribed==1):
+        N_mon = original_N_mon # first, test the original N_mon value set by the user (this may have been changed on the last loop, so reset it here)
+        r_mon = radius / np.cbrt(N_mon) # if we have provided N_mon, calculate r_mon (through conservation of volume between an aggregate and a compact sphere)
+
+        # check whether this value of N and r would mean monomers are smaller than atoms (our absolute lowest physical limit for monomers)
+        if (r_mon<1e-8):
+            r_mon = 1e-8 # if so, set r_mon = atomic radius in cm (10^-10 m)...
+            N_mon = (radius / r_mon)**3 # ...and decrease N_mon from the prescribed value -- calculate how many of these tiny monomers would be needed to achieve the desired compact particle radius
+    
+    else:
+        N_mon = (radius / r_mon)**3 # alternatively, if we have provided r_mon, calculate N_mon (through conservation of volume between aggregate and compact sphere)
+    
+    return N_mon, r_mon
