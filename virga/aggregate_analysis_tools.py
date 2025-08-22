@@ -53,9 +53,9 @@ def plot_spectra(spectra_path, d_f_list, width=2, filtered=False):
 
     if(filtered==True):
         smoothed_y_axis = savgol_filter(spectra_data[1], 25, 5) # smooth the y-axis to make it look nicer for the plot
-        ax.plot(spectra_data[0].values, smoothed_y_axis, label= r'No condensate', linewidth=width)
+        ax.plot(spectra_data[0].values, smoothed_y_axis, color = 'k', label= r'No condensate', linewidth=width)
     else:
-        ax.plot(spectra_data[0].values, spectra_data[1].values, label= r'No condensate', linewidth=width)
+        ax.plot(spectra_data[0].values, spectra_data[1].values, color = 'k', label= r'No condensate', linewidth=width)
 
     # plot spheres
     spectra_data= pd.read_csv(f"{spectra_path}/spheres.txt", header=None) # load data
@@ -124,9 +124,9 @@ def plot_emission_spectra(spectra_path, d_f_list, width=2, filtered=False):
 
     if(filtered==True):
         smoothed_y_axis = savgol_filter(spectra_data[1], 25, 5) # smooth the y-axis to make it look nicer for the plot
-        ax.plot(spectra_data[0].values, smoothed_y_axis, label= r'No condensate', linewidth=width)
+        ax.plot(spectra_data[0].values, smoothed_y_axis, color='k', label= r'No condensate', linewidth=width)
     else:
-        ax.plot(spectra_data[0].values, spectra_data[1].values, label= r'No condensate', linewidth=width)
+        ax.plot(spectra_data[0].values, spectra_data[1].values, color='k', label= r'No condensate', linewidth=width)
 
     # plot spheres
     spectra_data= pd.read_csv(f"{spectra_path}/spheres.txt", header=None) # load data
@@ -554,7 +554,7 @@ def plot_pressure_vs_number_density(radii_path, d_f_list, min_pressure=None, max
     for i in range(len(d_f_list)):
         this_min_r = radius_data_list[i]['radius'][(radius_data_list[i]['radius'] >= 0.0000001)].min() # finds the minimum radius for each fractal dimension (but as long as it is larger than 0)
         this_max_r = radius_data_list[i]['radius'].max() # finds the maximum radius for each fractal dimension
-        print(f'For {d_f_list[i]:.1f}: Min = {this_min_r}, Max = {this_max_r}')
+        #print(f'For {d_f_list[i]:.1f}: Min = {this_min_r}, Max = {this_max_r}')
 
         if(this_min_r<global_min_r):
             global_min_r = this_min_r # if the new lowest, set new min record
@@ -572,7 +572,7 @@ def plot_pressure_vs_number_density(radii_path, d_f_list, min_pressure=None, max
     # calculate the minimum and maximum radius. Record only the global min/max if less/more than for any of the fractal dimension values
     this_min_r = radius_data_spheres['radius'][(radius_data_spheres['radius'] >= 0.0000001)].min() # finds the minimum radius for spheres (but as long as it is larger than 0)
     this_max_r = radius_data_spheres['radius'].max() # finds the maximum radius for spheres
-    print(f'For spheres: Min = {this_min_r}, Max = {this_max_r}')
+    #print(f'For spheres: Min = {this_min_r}, Max = {this_max_r}')
     if(this_min_r<global_min_r):
         global_min_r = this_min_r # if the new lowest, set new min record
 
@@ -580,7 +580,7 @@ def plot_pressure_vs_number_density(radii_path, d_f_list, min_pressure=None, max
         global_max_r = this_max_r # if the new highest, set new max record
 
 
-    print(f'\nFINAL RESULTS: Min = {global_min_r}, Max = {global_max_r}')
+    #print(f'\nFINAL RESULTS: Min = {global_min_r}, Max = {global_max_r}')
 
     # calculate min and max r2 values because these relate linearly to the marker sizes, which are areas
     min_r_squared = global_min_r**2
