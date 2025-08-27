@@ -9,7 +9,7 @@ import time
 from . import justdoit as jdi
 
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
-                        gravity, kzz, fsed, mh, sig, radius, d_molecule,eps_k,c_p_factor,
+                        gravity, kzz, fsed, mh, sig, radius, d_molecule,eps_k,c_p_factor,aggregates,Df,N_mon,r_mon,k0,
                         tol = 1e-15, refine_TP = True,og_vfall=True, analytical_rg = True):
     """
     Given an atmosphere and condensates, calculate size and concentration
@@ -110,7 +110,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
         gas_name = igas
         qc, qt, rg, reff, ndz, dz, qc_path[i], mixl = calc_qc(z, P_z, T_z, T_P, kz,
             gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, radius, 
-            d_molecule,eps_k,c_p_factor,
+            d_molecule,eps_k,c_p_factor,aggregates,Df,N_mon,r_mon,k0,
             tol,og_vfall, analytical_rg)
 
         # generate qc values for original pressure data
@@ -128,6 +128,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
                     mh, fsed, sig, radius, d_molecule,eps_k,c_p_factor,
+                    aggregates,Df,N_mon,r_mon,k0,
                     tol, og_vfall=True, analytical_rg=True, supsat=0):
     """
     Calculate condensate optical depth and effective radius for atmosphere,
@@ -341,7 +342,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             vfall_temp = []
             for j in range(len(radius)):
                 if og_vfall:
-                    vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p))
+                    vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp(T, P), visc(T), T, P, rho_p,aggregates,Df,N_mon,r_mon,k0))
                 else:
                     vlo = 1e0; vhi = 1e6
                     find_root = True

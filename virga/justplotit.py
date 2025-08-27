@@ -127,7 +127,7 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
         #determine which condensed
         which_condensed = [False]*ndz.shape[1]
 
-        # only conisider specified gas
+        # only consider specified gas
         if gas is not None:
             indx = out[j]['condensibles'].index(gas)
             ndz_gas = np.unique(ndz[:,indx])
