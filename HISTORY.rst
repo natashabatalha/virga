@@ -1,6 +1,9 @@
 History
 -------
 
+- v2.0.0 (2025-09-2)
+  * Adds fractal aggregates to Virga 
+  * Corrects extraneous raise excepts to CH4, Fe, CaTiO3
 - v1.0.0 (2025-07-22)
   * Official version consistent with official virga publication 
   * Changes to pvaps to be consistent to diamondback (Al2O3, Fe, Mg2SiO4, MgSiO3)

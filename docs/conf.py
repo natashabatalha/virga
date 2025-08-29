@@ -13,6 +13,7 @@
 import os
 import sys
 import sphinx_rtd_theme
+import virga
 sys.path.insert(0, os.path.abspath('/home/nbatalh1/codes/virga'))
 #/Users/nbatalh1/Documents/codes/VIRGA/virga/'))
 
@@ -23,8 +24,8 @@ project = 'virga'
 author = 'Batalha, Rooney, Marley'
 
 # The full version, including alpha/beta/rc tags
-version = '1.0'
-release = 'v1.0'
+version = virga.__version__
+release = 'v'+virga.__version__
 
 
 # -- General configuration ---------------------------------------------------

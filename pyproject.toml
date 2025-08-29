@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "virga-exo"
-version = "1.0"
+version = "2.0"
 authors = [
   { name="Natasha E. Batalha", email="natasha.e.batalha@gmail.com" },
 ]
