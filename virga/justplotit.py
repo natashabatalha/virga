@@ -742,7 +742,7 @@ def aggregates_optical_properties(aggregate, mieff_dir, d_f_list, min_wavelength
 
     # read in the dataset for spherical particles
     mieff_col_names= ['A', 'B', 'C', 'D'] # assign arbitrary column names for reading in the data (all the columns have different numbers of rows)
-    mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}.mieff", names=mieff_col_names, header=None, sep='\s+')
+    mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}.mieff", names=mieff_col_names, header=None, sep=r'\s+')
 
     num_wavelengths = int(mieff_data['A'][0]) # extract number of wavelengths from header
     num_radii = int(mieff_data['B'][0]) # extract number of radii from header
@@ -780,7 +780,7 @@ def aggregates_optical_properties(aggregate, mieff_dir, d_f_list, min_wavelength
     for j in range(len(d_f_list)):
 
         # read in each dataset for aggregate particles one fractal dimension at a time
-        mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}_aggregates_Df_{d_f_list[j]:.6f}.mieff", names=mieff_col_names, header=None, sep='\s+')
+        mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}_aggregates_Df_{d_f_list[j]:.6f}.mieff", names=mieff_col_names, header=None, sep=r'\s+')
 
         # reset lists each fractal dimension
         wavelength_list=[]
@@ -872,7 +872,7 @@ def aggregates_wavelength_radius_grid(clouds_from_virga_spheres, clouds_from_vir
 
     # read in the dataset for spherical particles
     mieff_col_names= ['A', 'B', 'C', 'D'] # assign arbitrary column names for reading in the data (all the columns have different numbers of rows)
-    mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}.mieff", names=mieff_col_names, header=None, sep='\s+')
+    mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}.mieff", names=mieff_col_names, header=None, sep=r'\s+')
 
     num_wavelengths = int(mieff_data['A'][0]) # extract number of wavelengths from header
     num_radii = int(mieff_data['B'][0]) # extract number of radii from header
@@ -911,7 +911,7 @@ def aggregates_wavelength_radius_grid(clouds_from_virga_spheres, clouds_from_vir
         # ---- SAFETY CHECK -----
 
         # first, check that we used the same wavelength-radius grid as the spherical model for each fractal dimension (we don't need to use the data from these .mieff files again otherwise -- this is just a safety check)
-        mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}_aggregates_Df_{d_f_list[j]:.6f}.mieff", names=mieff_col_names, header=None, sep='\s+') # load data
+        mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}_aggregates_Df_{d_f_list[j]:.6f}.mieff", names=mieff_col_names, header=None, sep=r'\s+') # load data
 
         # extract number of wavelenths and radii used in the grid
         num_wavelengths_aggregate = int(mieff_data['A'][0]) # extract number of wavelengths from header
@@ -965,7 +965,7 @@ def aggregates_wavelength_radius_grid(clouds_from_virga_spheres, clouds_from_vir
     for j in range(len(radius_data_aggregates_list)):
         for i in range(len(radius_data_aggregates_list[j])):
             if (radius_data_aggregates_list[j][i] < list_of_sphere_radii[0]) or (radius_data_aggregates_list[j][i] > list_of_sphere_radii[num_radii-1]): # if the radius for one of the fractal dimensions is less than the minimum radius or larger than the maximum for the grid (which we have already checked is the same as the one in the spherical version)...
-                print(f"WARNING: {d_f_list[j]} has a radius off the grid ({radius_data_aggregates_list[j][i]:.6f} um, at pressure {reduced_pressure_data[j][i]:.6f} bar).\n") #...print a warning and highlight which fractal dimension and radius caused it
+                print(f"WARNING: {d_f_list[j]} has a radius off the grid ({radius_data_aggregates_list[j][i]:.6f} um, at pressure {reduced_pressure_data[i]:.6f} bar).\n") #...print a warning and highlight which fractal dimension and radius caused it
                 warning_flag=1
     
     if(warning_flag==0):
@@ -1120,7 +1120,7 @@ def aggregates_pressure_vs_number_density(clouds_from_virga_spheres, clouds_from
         
     # produce nice equal marker sizes in the legend
     handles, labels = ax.get_legend_handles_labels()
-    ax.legend(reversed(handles), reversed(labels), title='$d_f$', title_fontsize=12, fontsize=12, loc='lower right')
+    ax.legend(list(reversed(handles)), list(reversed(labels)), title='$d_f$', title_fontsize=12, fontsize=12, loc='lower right')
     marker_size = 36
     def update_prop(handle, orig):
         handle.update_from(orig)
