@@ -1231,7 +1231,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer
                         vhi = vhi*10
 
         # determine alpha, assuming spherical particles
-        pars, cov = optimize.curve_fit(f=pow_law, xdata=radius, ydata=np.log(vfall_temp), p0=[0], # this code finds alpha (a constant of proportionality) for each of the radius values in the .mieff grid, assuming that they scale with v_fall in a power law
+        pars, cov = optimize.curve_fit(f=pow_law, xdata=radius, ydata=np.log(vfall_temp).ravel(), p0=[0], # this code finds alpha (a constant of proportionality) for each of the radius values in the .mieff grid, assuming that they scale with v_fall in a power law
                             bounds=(-np.inf, np.inf))
         alpha = pars[0]
 
