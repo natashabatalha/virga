@@ -355,7 +355,7 @@ def Fe(temp,mh = 1 ):
     -----
     .. [1] Visscher, Channon, Katharina Lodders, and Bruce Fegley Jr. "Atmospheric chemistry in giant planets, brown dwarfs, and low-mass dwarf stars. III. Iron, magnesium, and silicon." The Astrophysical Journal 716.2 (2010): 1060.
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for Fe")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for Fe")
     mh = np.log10(mh)
     #EXPRESSION from Channon Visscher, correspondance on 6/3/11, added 7/27/11 (cvm)
     pvap_fe = 10.0**(7.09-20995./temp)
@@ -380,7 +380,7 @@ def CH4(temp,mh = 1 ):
     -----
     .. [1] Lodders, K. & Fegley, B. 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CH4")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CH4")
     mh = np.log10(mh)
 
     #     AMR   -- molecular weight / ideal gas constant
@@ -464,7 +464,7 @@ def CaTiO3(temp,p,mh = 1 ):
     -----
     .. [1] Wakeford, Hannah R., et al. "High temperature condensate clouds in super-hot Jupiter atmospheres." Monthly Notices of the Royal Astronomical Society (2016): stw2639.
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CaTiO3")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CaTiO3")
     mh = np.log10(mh)
     #calculated from wakeford 2017
     pvap_catio3 = 1e6 * 10.0 ** (-72160./temp + 30.24 - 1*np.log10(p/1e6) - 2*mh) 
@@ -489,7 +489,7 @@ def CaAl12O19(temp,p,mh = 1 ):
     -----
     .. [1] Wakeford, Hannah R., et al. "High temperature condensate clouds in super-hot Jupiter atmospheres." Monthly Notices of the Royal Astronomical Society (2016): stw2639.
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CaAl12O19")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CaAl12O19")
     mh = np.log10(mh)
     #calculated from wakeford 2017
     pvap_caal12o19 = 1e6 * 10.0 ** (16.46 -44021./temp  - 0.083*np.log10(p/1e6) - 1.67*mh)
