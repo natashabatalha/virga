@@ -453,21 +453,42 @@ def calc_new_mieff(wave_in, nn,kk, radius, bin_min, bin_max, fort_calc_mie = Fal
 
 def calc_new_mieff_optool(wave,radius,bin_min,bin_max,gas,optool_dir,aggregates=False,Df=None,N_mon=None,r_mon=None,k0=0):
     """
-    wave: wavelength grid, in microns
-    radius: effective (mean) particle radius, in centimeters 
-        -- if aggregates = False, this is the spherical particle radius
-        -- if aggregates = True, this is the radius of a sphere of equivalent volume to the fractal aggregate
-    bin_min: minimum radius in each particle bin
-    bin_max: maximum radius in each particle bin
-    gas: particle species to condense
-    optool_dir: folder where OPTOOL is. Assumes that .lnk files (the optool equivalent to .refrind) are stored in
+    Parameters
+    ----------
+    wave : array
+        wavelength grid, in microns
+    radius : array
+        effective (mean) particle radius, in centimeters 
+            -- if aggregates = False, this is the spherical particle radius
+            -- if aggregates = True, this is the radius of a sphere of equivalent volume to the fractal aggregate
+    bin_min : array
+        minimum radius in each particle bin
+    bin_max : array
+        maximum radius in each particle bin
+    gas : string
+        particle species to condense
+    optool_dir : string
+        directory location of compiled OPTOOL code. Assumes that .lnk files (the optool equivalent to .refrind) are stored in
                 a subdirectory within this folder.
                 -- NOTE: these .lnk files must be in ascending wavelength order to correctly compute Mie coefficients! 
                 -- However, we will flip the arrays once calculated, so that .mieff files are consistently saved in order of descending wavelength.
-    Df: the fractal dimension, if aggregrates = True
-    N_mon = the number of monomers. If None, must set r_mon directly.
-    r_mon: monomer particle radius (cm), used if aggregates = True. Can set directly or calculate from N_mon.
-    k0: the fractal prefactor, either prescribed by user or calculated using Tazaki (2021) Eq 2 
+    Df : float
+        the fractal dimension, if aggregrates = True
+    N_mon : int
+        the number of monomers. If None, must set r_mon directly.
+    r_mon : float
+        monomer particle radius (cm), used if aggregates = True. Can set directly or calculate from N_mon.
+    k0 : float
+        the fractal prefactor, either prescribed by user or calculated using Tazaki (2021) Eq 2 
+
+    Returns
+    -------
+    qext: array
+        extinction effiencies for all particle radii/wavelengths
+    qsca: array
+        scattering effiencies for all particle radii/wavelengths
+    cos_qscat: array
+        average asymmetry parameter x Q_sca for all particle radii/wavelengths
     """
     nwave=len(wave)
     nradii = len(radius)

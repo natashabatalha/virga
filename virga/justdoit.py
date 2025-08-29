@@ -1935,22 +1935,8 @@ def get_refrind(igas,directory,aggregates=False):
 def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
     """
     New version of grid generator - creates lin-spaced or log-spaced radii grids. Updated by MGL 07/01/25.
-
-    ARGUMENTS:
-
-        r_min: minimum radius in grid (in cm). Default is 10^-8 cm (0.0001 um) to match databases in v0.0.
-        r_max: maximum radius in grid (in cm). Default is 5.4239131 x 10^-2 cm (542 um), to match databases in v0.0.
-        n_radii: number of increments (note that each of these increments will be divided into 6 further sub-bins to smooth out any resonance features that occur due to specific particle sizes). Default is 60 to match databases in v0.0.
-        logspace: spaces the radii logarithmically if True (which they tend to be in the clouds, so this is the default). Spaces them linearly if False.
-        
-    RETURNS (all of these are arrays):
-
-        radius = the mean radii for each set of 6 sub-bins
-        bin_min = minimum value of bin
-        bin_max = maximum value of bin
-        dr = the difference between the start and end of the bins (width of the radius bin)
-
-    ALGORITHM DESCRIPTION
+    
+    ALGORITHM DESCRIPTION:
 
     First, VIRGA makes grid of particle sizes and calculates the optical properties for them. Then, when we find the average particle
     size in a particular layer of cloud, it creates a lognormal distribution of particles (one that has the calculated mean radius),
@@ -1960,6 +1946,30 @@ def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
 
     This new version simplifies the arrays to represent the mean, minimum and maximum values of radius in each bin. It also uses a consistent
     function to calculate the radius values and bin widths, as well as correcting an error for the first bin mean.
+    
+    Parameters
+    ----------
+
+    r_min : float
+        minimum radius in grid (in cm). Default is 10^-8 cm (0.0001 um) to match databases in v0.0.
+    r_max : float
+        maximum radius in grid (in cm). Default is 5.4239131 x 10^-2 cm (542 um), to match databases in v0.0.
+    n_radii : int 
+        number of increments (note that each of these increments will be further divided into 6 sub-bins to smooth out any resonance features that occur due to specific particle sizes). Default is 60 to match databases in v0.0.
+    logspace : boolean
+        Default = True. Spaces the radii logarithmically if True (tends to be the case in the clouds). Spaces them linearly if False.
+        
+    Returns
+    -------
+
+    radius : array
+        the mean radii for each set of 6 sub-bins
+    bin_min : array
+        minimum value of each bin
+    bin_max :
+       maximum value of each bin
+    dr : array
+        the difference between the start and end of each bin (width of the radius bin)
 
     """
 
@@ -2346,7 +2356,7 @@ def temperate_neptune():
 
 def convert_refrind_to_lnk(aggregate_list, virga_dir, optool_dir):
     '''
-    Convert VIRGA's .refrind files into OPTOOL .lnk files. The differences in file format are below:
+    Converts VIRGA's .refrind files into OPTOOL .lnk files. The differences in file format are below:
 
         VIRGA: [index,  wavelength,  n,  k]     No header, and in order of descending wavelength
 
@@ -2354,6 +2364,20 @@ def convert_refrind_to_lnk(aggregate_list, virga_dir, optool_dir):
 
     This function converts the XX.refrind file and saves it in the OPTOOL folder as XX_VIRGA.lnk in the optool directory, ready for optool to 
     use in MMF calculations (see "calc_mie_db").
+
+    Parameters
+    ----------
+    aggregate_list : list, str
+        List of names of gasses. Or a single gas name. 
+        See pyeddy.available() to see which ones are currently available. 
+    virga_dir: str 
+        Directory where you store the VIRGA refractive index files (.refind format).
+    optool_dir: str 
+        Directory where you store optool refractive index files (.lnk format).
+    
+    Returns
+    -------
+    None
 
     '''
 

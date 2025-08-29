@@ -116,6 +116,11 @@ def vfall(r, grav, mw_atmos, mfp, visc, t, p, rhop, aggregates, Df, N_mon, r_mon
         number of monomers in aggregate
     r_mon : float, optional
         the monomer radius (i.e., the smaller sub-particles) for aggregate particles (cm).
+    
+    Returns
+    -------
+    v_fall : float
+        terminal velocity of particle (cm/s)
     '''
 
     R_GAS = 8.3143e7 
@@ -695,6 +700,11 @@ def calculate_k0(N_mon, Df):
     Df : float 
         Fractal dimension of aggregate
     
+    Returns
+    -------
+    k0 : float
+        Fractal prefactor k0
+    
     """
 
     if (N_mon<=100):   
@@ -727,6 +737,13 @@ def find_N_mon_and_r_mon(N_mon_prescribed, radius, original_N_mon, r_mon):
         compact radius of aggregate (units:cm)
     original_N_mon : int 
         original number of monomers prescribed by user
+    r_mon : float
+        monomer radius (units:cm)
+    
+    Returns
+    -------
+    N_mon : int 
+        number of monomers
     r_mon : float
         monomer radius (units:cm)
     
