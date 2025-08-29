@@ -13,8 +13,9 @@
 import os
 import sys
 import sphinx_rtd_theme
-import virga
-sys.path.insert(0, os.path.abspath('/home/nbatalh1/codes/virga'))
+
+#sys.path.insert(0, os.path.abspath('/home/nbatalh1/codes/virga'))
+sys.path.insert(0, os.path.abspath('/Users/nbatalh1/Documents/codes/VIRGA/virga/'))
 #/Users/nbatalh1/Documents/codes/VIRGA/virga/'))
 
 
@@ -26,6 +27,7 @@ author = 'Batalha, Rooney, Marley'
 # The full version, including alpha/beta/rc tags
 version = virga.__version__
 release = 'v'+virga.__version__
+
 
 
 # -- General configuration ---------------------------------------------------
@@ -64,7 +66,7 @@ todo_include_todos = True
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+#html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
