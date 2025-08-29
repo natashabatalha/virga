@@ -380,7 +380,7 @@ def CH4(temp,mh = 1 ):
     -----
     .. [1] Lodders, K. & Fegley, B. 1998, The planetary scientist's companion / Katharina Lodders, Bruce Fegley.  New York : Oxford University Press, 1998. QB601 .L84 1998
     """
-    if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CH4")
+    #if mh != 1 : raise Exception("Warning: no M/H Dependence in vapor pressure curve for CH4")
     mh = np.log10(mh)
 
     #     AMR   -- molecular weight / ideal gas constant
