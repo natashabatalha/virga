@@ -89,6 +89,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
 
         #Get gas properties including gas mean molecular weight,
         #gas mixing ratio, and the density
+        print(condensibles, igas)
         run_gas = getattr(gas_properties, igas)
         gas_mw[i], gas_mmr[i], rho_p[i] = run_gas(mmw, mh=mh, gas_mmr=atmo.gas_mmr[igas])
 
