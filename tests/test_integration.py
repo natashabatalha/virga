@@ -1,5 +1,5 @@
 """ This file contains full scale tests of virga """
-
+import os
 import numpy as np
 import astropy.units as u
 
@@ -12,7 +12,7 @@ def test_virga_cloud():
     a.ptk(df=jdi.hot_jupiter())
 
     # calculate cloud profile
-    all_out = jdi.compute(a, as_dict=True, directory='.')
+    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
 
     assert np.isclose(np.sum(all_out['condensate_mmr']), 6.155584963958476e-05)
     
@@ -22,7 +22,7 @@ def test_virga_cloud():
     a.ptk(df=jdi.hot_jupiter())
 
     # calculate cloud profile
-    all_out = jdi.compute(a, as_dict=True, directory='.')
+    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
 
     assert np.isclose(np.sum(all_out['condensate_mmr']), 6.155584963958476e-05)
 
