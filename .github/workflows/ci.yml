@@ -32,10 +32,9 @@ jobs:
           python -m pip install --upgrade pandas astropy miepython
           python -m pip install -e .
       - name: Run Tests
-        working-directory: ./virga/tests
         shell: bash -l {0}
         run: |
-          pytest --cov --cov-report=xml tests/*
+          pytest --cov --cov-report=xml tests/*.py
       - name: Upload code coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
