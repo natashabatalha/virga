@@ -7,8 +7,7 @@ from virga import justdoit as jdi
 
 def test_mie_database():
     qext, qsca, asym, radii, wave = jdi.calc_mie_db(
-        ['MnS'], '.', '.', rmin = 1e-5, nradii = 10,
-        optool_dir=os.path.dirname(__file__)
+        ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 10
     )
 
     assert np.isclose(np.sum(qext), 3902.080488782566)
