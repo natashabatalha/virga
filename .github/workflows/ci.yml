@@ -31,6 +31,9 @@ jobs:
           python -m pip install --upgrade numpy scipy bokeh pytest-cov matplotlib
           python -m pip install --upgrade pandas astropy miepython
           python -m pip install -e .
+      - run: pwd
+      - run: ls -R
+      - run: ls tests/ -R
       - name: Run Tests
         shell: bash -l {0}
         run: |
