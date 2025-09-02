@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ "ubuntu-latest" ]
-        python-version: [ "3.10", "3.11"]
+        python-version: [ "3.11" ]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -34,7 +34,7 @@ jobs:
       - name: Run Tests
         shell: bash -l {0}
         run: |
-          pytest --cov --cov-report=xml ci_test/*
+          pytest --cov --cov-report=xml test/*
       - name: Upload code coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
