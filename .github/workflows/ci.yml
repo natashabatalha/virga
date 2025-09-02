@@ -34,7 +34,7 @@ jobs:
       - name: Run Tests
         shell: bash -l {0}
         run: |
-          pytest --cov --cov-report=xml test/*
+          pytest --cov --cov-report=xml tests/*
       - name: Upload code coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
