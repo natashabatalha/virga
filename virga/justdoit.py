@@ -1918,8 +1918,10 @@ def get_refrind(igas,directory,aggregates=False):
     if aggregates==False:  # use the VIRGA refractive index database file structure
         filename = os.path.join(directory ,igas+".refrind")
          #put skiprows=1 in loadtxt to skip first line
-        idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
-
+        try: 
+            idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
+        except: 
+            wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2], delimiter=',', skiprows=1)
         # if refractive index list is given in ascending order, flip it upside down so that it is descending here (so that it is consistent with the rest of VIRGA)
         if (wave_in[0] < wave_in[-1]): # if first element is smaller than the last one (then it is in ascending order)
             wave_in = np.flipud(wave_in)
