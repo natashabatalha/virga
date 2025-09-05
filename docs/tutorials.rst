@@ -63,3 +63,13 @@ Flexible Cloud Layers
 
    Custom Aerosol Layer </notebooks/8_CustomAerosolLayers.ipynb>
    Custom Cloud Layer </notebooks/9_CustomCloudLayer.ipynb>
+
+Fractal Aggregates
+------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   Running Virga with Aggregates </notebooks/10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter.ipynb>
+   Creating spectra via PICASO with Aggregates </notebooks/11_Fractal_Aggregate_spectra_in_PICASO.ipynb>
+   Greating Custom Fractal Optical Properties </notebooks/12_Custom_Fractal_Aggregate_Aerosols.ipynb>

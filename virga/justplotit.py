@@ -12,6 +12,16 @@ import bokeh.palettes as colpals
 from bokeh.io import output_notebook 
 import astropy.units as u
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter # used to display axes labels as 0.1 instead of 10^-1 power notation
+from matplotlib.ticker import FormatStrFormatter
+from statistics import mean
+from scipy.signal import savgol_filter
+from matplotlib.legend_handler import HandlerPathCollection
+import matplotlib
+import pandas as pd
+import sys
+from .root_functions import calculate_k0, find_N_mon_and_r_mon
 
 from . import justdoit as pyeddy
 
@@ -694,4 +704,501 @@ def fsed_from_output(out,labels,y_axis='pressure',color_indx=0,cld_bounds=False,
     if labels is not None:
         fig.legend.location = "bottom_left"
     plot_format(fig)
+    return fig
+
+def aggregates_optical_properties(aggregate, mieff_dir, d_f_list, min_wavelength, max_wavelength):
+
+    '''
+    Code to plot the optical properties calculated in the .mieff files. for all radii and fractal dimensions analysed.
+
+    Plots a 3D graph of Q_ext against wavelength (um) for all fractal dimensions (third axis).
+
+    Set filtered = True if you want a smoother curve (using a savgol filter) for easier comparison of different fractals.
+
+    Parameters
+    ----------
+    aggregate: string
+        chemical species used in model 
+    mieff_dir: string
+        filepath to directory where .mieff files are stored
+    d_f_list: array
+        list of fractal dimensions analysed
+    min_wavelength: float
+        minimum wavelength to plot
+    max_wavelength: float
+        maximum wavelength to plot
+
+    Returns
+    -------
+    3D graph of Q_ext against wavelength (um) for all fractal dimensions (third axis).
+
+    '''
+
+    # choose a colormap (based on the number of shapes to analyse)
+    colors = plt.cm.winter_r(np.linspace(0,1,len(d_f_list)))
+
+
+    # -------- SPHERES -------- 
+
+    # read in the dataset for spherical particles
+    mieff_col_names= ['A', 'B', 'C', 'D'] # assign arbitrary column names for reading in the data (all the columns have different numbers of rows)
+    mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}.mieff", names=mieff_col_names, header=None, sep=r'\s+')
+
+    num_wavelengths = int(mieff_data['A'][0]) # extract number of wavelengths from header
+    num_radii = int(mieff_data['B'][0]) # extract number of radii from header
+
+    # initialise lists
+    wavelength_list_spheres=[]
+    Q_ext_list_spheres=[]
+
+    # Go through data for one radius size at a time, extracting the Q_ext and wavelength values and storing them in their respective lists
+    for r in range(num_radii):
+
+        wavelengths=[] # reset lists of wavelength and Q_ext each time we move onto a new radius
+        Q_ext=[]
+        
+        for i in range(num_wavelengths):
+            if (mieff_data['A'][r*num_wavelengths+r+i+2]<=max_wavelength) and (mieff_data['A'][r*num_wavelengths+r+i+2]>=min_wavelength): # only add this wavelength and Q_ext pair to our lists if it's smaller than the user-defined maximum
+                wavelengths.append(mieff_data['A'][r*num_wavelengths+r+i+2]) # find the individual wavelengths at this radius
+                Q_ext.append(mieff_data['C'][r*num_wavelengths+r+i+2]) # find the individual Q_ext values at each wavelength and at this radius (here the index 'r*num_wavelengths+r+i+2' basically filters the .mieff file to return it to a simple 2D array of "Wavelength, Qsca, Qext, g_asymmetry" for one particular particle size)
+
+        wavelength_list_spheres.append(wavelengths)
+        Q_ext_list_spheres.append(Q_ext)
+
+
+    # record the radii used in the spherical .mieff file (not needed for the graph, but useful to print alongside it)
+    radii=[]
+    for r in range(num_radii):
+        radii.append(10000.0*mieff_data['A'][r*num_wavelengths+r+1]) # convert all radii from cm (default for the .mieff file) to um as we record them
+
+
+    # -------- AGGREGATES -------- 
+
+    wavelength_list_of_lists=[]
+    Q_ext_list_of_lists=[]
+
+    for j in range(len(d_f_list)):
+
+        # read in each dataset for aggregate particles one fractal dimension at a time
+        mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}_aggregates_Df_{d_f_list[j]:.6f}.mieff", names=mieff_col_names, header=None, sep=r'\s+')
+
+        # reset lists each fractal dimension
+        wavelength_list=[]
+        Q_ext_list=[]
+
+        # Go through data for one radius size at a time, extracting the Q_ext and wavelength values and storing them in their respective lists
+        for r in range(num_radii):
+
+            wavelengths=[] # reset lists of wavelength and Q_ext each time we move onto a new radius
+            Q_ext=[]
+            
+            for i in range(num_wavelengths):
+                if (mieff_data['A'][r*num_wavelengths+r+i+2]<=max_wavelength) and (mieff_data['A'][r*num_wavelengths+r+i+2]>=min_wavelength): # only add this wavelength and Q_ext pair to our lists if it's smaller than the user-defined maximum
+                    wavelengths.append(mieff_data['A'][r*num_wavelengths+r+i+2]) # find the individual wavelengths at this radius
+                    Q_ext.append(mieff_data['C'][r*num_wavelengths+r+i+2]) # find the individual Q_ext values at each wavelength and at this radius (here the index 'r*num_wavelengths+r+i+2' basically filters the .mieff file to return it to a simple 2D array of "Wavelength, Qsca, Qext, g_asymmetry" for one particular particle size)
+
+            wavelength_list.append(wavelengths)
+            Q_ext_list.append(Q_ext)
+
+        # save the lists of wavelengths and Q_ext for each fractal dimension
+        wavelength_list_of_lists.append(wavelength_list)
+        Q_ext_list_of_lists.append(Q_ext_list)
+
+
+    # Create 3D scatterplot figure
+    fig = plt.figure() 
+    fig.set_facecolor('w') # make area around plot white in case user is in dark mode
+    ax = plt.axes(projection ="3d")
+
+    radii_colours = plt.cm.winter(np.linspace(0,1,len(wavelength_list_spheres))) # plot each radius in a different colour, from blue (small) to green (large)
+
+    # SPHERES: plot each Q_ext vs wavelength graph, one radius (each list element) at a time 
+    for i in range(len(wavelength_list_spheres)):
+        ax.plot(wavelength_list_spheres[i], np.full(len(wavelength_list_spheres[i]),3), Q_ext_list_spheres[i], color = radii_colours[i], linewidth=0.5) # plot Q_ext for spheres at d_f = 3 (the np.full is just to make the array the same length, but the value for d_f is constant every time we run this line)
+
+    # AGGREGATES: plot each Q_ext vs wavelength graph, one radius (each list element) and one fractal dimension at a time 
+    for j in range(len(d_f_list)):
+        for i in range(len(wavelength_list_spheres)):
+            ax.plot(wavelength_list_of_lists[j][i], np.full(len(wavelength_list_of_lists[j][i]),d_f_list[j]), Q_ext_list_of_lists[j][i], color = radii_colours[i], linewidth=0.5) # plot Q_ext for each aggregate at a constant d_f value (the np.full is just to make the array the same length, but the value for d_f is constant every time we run this line)
+
+
+    # set axes titles for 3D scatterplot
+    ax.set_xlabel('$\lambda$ ($\mu$m)', fontsize=20)
+    ax.set_ylabel('$d_f$', fontsize=20)
+    ax.set_zlabel('$Q_{ext}$', fontsize=20)
+
+    plt.close() # prevents duplicate plots from appearing
+
+    return fig
+
+
+def aggregates_wavelength_radius_grid(clouds_from_virga_spheres, clouds_from_virga_fractals, aggregate, d_f_list, mieff_dir, colors=None):
+
+    '''
+
+    Code to plot the wavelength-radius grid that was used the create the .mieff files, and then overplot the actual radii
+    for each pressure layer for each fractal dimension, so that we can check that the radii we are using actually have
+    unique optical properties that were calculated at a reasonable resolution.
+
+    Parameters
+    ----------
+    clouds_from_virga_spheres: dict
+        output from virga (spherical model)
+    clouds_from_virga_fractals: dict
+        array of dicts with output from virga (all of the virga models for each fractal dimension)
+    aggregate: string
+        chemical species used in model 
+    d_f_list: array
+        list of fractal dimensions analysed
+    mieff_dir: string
+        filepath to directory where .mieff files are stored
+    colors: array (optional)
+        list of colors to use (in order: spheres, 1.2, 1.6, 2.0, 2.4, 2.8)
+
+    Returns
+    -------
+    Wavelength-radius grid from .mieff files, overplotted with radii for each pressure layer for each fractal dimension.
+
+    '''
+
+    # if colors = None, choose a colormap (based on the number of shapes to analyse).
+    if(colors is None):
+        color_array = plt.cm.viridis(np.linspace(0,1,len(d_f_list)+1))
+    else:
+        color_array = colors # or use colors provided by user
+
+
+    # -------- SPHERES -------- 
+
+    # read in the dataset for spherical particles
+    mieff_col_names= ['A', 'B', 'C', 'D'] # assign arbitrary column names for reading in the data (all the columns have different numbers of rows)
+    mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}.mieff", names=mieff_col_names, header=None, sep=r'\s+')
+
+    num_wavelengths = int(mieff_data['A'][0]) # extract number of wavelengths from header
+    num_radii = int(mieff_data['B'][0]) # extract number of radii from header
+
+    # initialise lists
+    list_of_sphere_wavelengths=[]
+    list_of_sphere_radii=[]
+
+    # record the actual wavelengths used in the spherical .mieff file
+    for i in range(num_wavelengths):
+        list_of_sphere_wavelengths.append(mieff_data['A'][i+2])
+
+    # record the actual radii used in the spherical .mieff file
+    for i in range(num_radii):
+        list_of_sphere_radii.append(10000.0*mieff_data['A'][i*num_wavelengths+i+1]) # convert all radii from cm (default for the .mieff file) to um as we record them
+
+    print(f'For the {aggregate}.mieff file (spheres):')
+    print(f'\n\t Wavelengths are between {list_of_sphere_wavelengths[num_wavelengths-1]:.3f} --> {list_of_sphere_wavelengths[0]:.3f} um in {len(list_of_sphere_wavelengths)} intervals.')
+    print(f'\t Radii are between {list_of_sphere_radii[0]} --> {list_of_sphere_radii[num_radii-1]} um in {len(list_of_sphere_radii)} intervals.')
+
+    #print(list_of_sphere_radii)
+
+    # load the data for the particle radius and column_density values for spheres
+    column_density_data_spheres = clouds_from_virga_spheres['column_density'][(clouds_from_virga_spheres['column_density'] != 0.0).all(1)] # find the rows of data where we have clouds (where column_density was not equal to 0.0)
+    radius_data_spheres = clouds_from_virga_spheres['mean_particle_r'].flatten(order='C')[(clouds_from_virga_spheres['column_density'] != 0.0).all(1)] # find the rows of data where we have clouds (where column_density was not equal to 0.0)
+
+
+
+    # -------- AGGREGATES -------- 
+
+    radius_data_aggregates_list=[] # initialise list to hold all of the radius values (in the cloud only) each fractal dimension
+    column_density_data_aggregates_list=[] # initialise list to hold all of the column_density values (in the cloud only) each fractal dimension
+
+    for j in range(len(d_f_list)):
+
+        # ---- SAFETY CHECK -----
+
+        # first, check that we used the same wavelength-radius grid as the spherical model for each fractal dimension (we don't need to use the data from these .mieff files again otherwise -- this is just a safety check)
+        mieff_data = pd.read_csv(f"{mieff_dir}/{aggregate}_aggregates_Df_{d_f_list[j]:.6f}.mieff", names=mieff_col_names, header=None, sep=r'\s+') # load data
+
+        # extract number of wavelenths and radii used in the grid
+        num_wavelengths_aggregate = int(mieff_data['A'][0]) # extract number of wavelengths from header
+        num_radii_aggregate = int(mieff_data['B'][0]) # extract number of radii from header
+
+        # initialise lists
+        list_of_aggregate_wavelengths=[]
+        list_of_aggregate_radii=[]
+
+        # record the actual wavelengths used in the aggregate .mieff file
+        for i in range(num_wavelengths_aggregate):
+            list_of_aggregate_wavelengths.append(mieff_data['A'][i+2])
+
+        # record the actual radii used in the aggregate .mieff file
+        for i in range(num_radii_aggregate):
+            list_of_aggregate_radii.append(10000.0*mieff_data['A'][i*num_wavelengths_aggregate+i+1]) # convert all radii from cm (default for the .mieff file) to um as we record them
+
+        # check wavelength grid is the same as for spheres
+
+        for i in range(len(list_of_aggregate_wavelengths)):
+            if(abs(list_of_aggregate_wavelengths[i] - list_of_sphere_wavelengths[i])>0.000001): # if the list of wavelengths is not equal to the version used in the spherical .mieff file, to 6 decimal places
+                print('\n\n WARNING: Wavelength grid is not the same (to 6 dp)!') # print a warning
+                print(f"\n Spherical version: ({num_wavelengths} wavelengths) does not match grid for aggregate {d_f_list[j]:.6f} ({int(mieff_data['A'][0])} wavelengths):\n") # explain where the error is
+                print(f"\n The exact error occurs for SPHERE wavelength: {list_of_sphere_wavelengths[i]} um, where the AGGREGATE version is: {list_of_aggregate_wavelengths[i]} um.")
+                print('\n Exiting code.\n')
+                sys.exit() # exit the code
+
+        # check radius grid is the same as for spheres
+        for i in range(len(list_of_aggregate_radii)):
+            if(abs(list_of_aggregate_radii[i] - list_of_sphere_radii[i])>0.000001): # if the list of radii is not equal to the version used in the spherical .mieff file, to 6 decimal places
+                print('\n\n WARNING: Radius grid is not the same (to 6 dp)!') # print a warning
+                print(f"\n Spherical version: ({num_radii} radii) does not match grid for aggregate {d_f_list[j]:.6f} ({int(mieff_data['B'][0])} radii):\n") # explain where the error is
+                print(f"\n The exact error occurs for SPHERE radius: {list_of_sphere_wavelengths[i]} um, where the AGGREGATE version is: {list_of_aggregate_wavelengths[i]} um.")
+                print('\n Exiting code.\n')
+                sys.exit() # exit the code'''
+
+        # ---- SAFETY CHECK COMPLETE -----
+
+
+        # load the cloud data for the particle radius and column_density values for each aggregate and find the pressures that had clouds
+        reduced_column_density_data = clouds_from_virga_fractals[j]['column_density'][(clouds_from_virga_fractals[j]['column_density'] != 0.0).all(1)] # find the rows of data where we have clouds (where column_density was not equal to 0.0)
+        reduced_radius_data = clouds_from_virga_fractals[j]['mean_particle_r'].flatten(order='C')[(clouds_from_virga_fractals[j]['column_density'] != 0.0).all(1)] # find the rows of data where we have clouds (where column_density was not equal to 0.0)
+        reduced_pressure_data = clouds_from_virga_fractals[j]['pressure'][(clouds_from_virga_fractals[j]['column_density'] != 0.0).all(1)] # find the rows of data where we have clouds (where column_density was not equal to 0.0) - we only need one of these, as all aggregates are on the same pressure grid (so no need to add to a list below)
+
+        column_density_data_aggregates_list.append(reduced_column_density_data) # add this data to a list (one for each fractal dimension)
+        radius_data_aggregates_list.append(reduced_radius_data) # add this data to a list (one for each fractal dimension)
+        
+
+    # check whether any of the particle radii are outside of the wavelength-radius grid
+    warning_flag=0
+    for j in range(len(radius_data_aggregates_list)):
+        for i in range(len(radius_data_aggregates_list[j])):
+            if (radius_data_aggregates_list[j][i] < list_of_sphere_radii[0]) or (radius_data_aggregates_list[j][i] > list_of_sphere_radii[num_radii-1]): # if the radius for one of the fractal dimensions is less than the minimum radius or larger than the maximum for the grid (which we have already checked is the same as the one in the spherical version)...
+                print(f"WARNING: {d_f_list[j]} has a radius off the grid ({radius_data_aggregates_list[j][i]:.6f} um, at pressure {reduced_pressure_data[i]:.6f} bar).\n") #...print a warning and highlight which fractal dimension and radius caused it
+                warning_flag=1
+    
+    if(warning_flag==0):
+        print("\nGood news - all aggregates are within the grid!")
+
+    # Create scatterplot figure
+    fig,ax = plt.subplots()
+    fig.set_facecolor('w') # make area around plot white in case user is in dark mode
+
+    ax2 = ax.twinx() # make second y-axis (on right - column_density)
+
+    # make wavelength-radius grid    
+    ax.vlines(list_of_sphere_radii, list_of_sphere_wavelengths[num_wavelengths-1], list_of_sphere_wavelengths[0],  colors='lightgrey', linewidth=0.5) # add vertical lines for each radius in grid
+
+    edge_of_grid_color = 'red' # choose colour for box marking outside of grid
+    ax.vlines(list_of_sphere_radii[0], list_of_sphere_wavelengths[num_wavelengths-1], list_of_sphere_wavelengths[0],  colors=edge_of_grid_color)
+    ax.vlines(list_of_sphere_radii[num_radii-1], list_of_sphere_wavelengths[num_wavelengths-1], list_of_sphere_wavelengths[0],  colors=edge_of_grid_color)
+    ax.hlines(list_of_sphere_wavelengths[0], list_of_sphere_radii[0], list_of_sphere_radii[num_radii-1], colors=edge_of_grid_color)
+    ax.hlines(list_of_sphere_wavelengths[num_wavelengths-1], list_of_sphere_radii[0], list_of_sphere_radii[num_radii-1], colors=edge_of_grid_color)
+
+
+    marker_size = 15 # set marker size
+
+    # SPHERES: add scatter plot of radii and 'column_density' for each pressure layer of cloud
+    ax2.scatter(radius_data_spheres, column_density_data_spheres, color = color_array[0], label= f'Spheres', s=marker_size)
+
+    # AGGREGATES: add scatter plot of radii and 'column_density' for each pressure layer of cloud
+    for j in range(len(d_f_list)):
+        ax2.scatter(radius_data_aggregates_list[j], column_density_data_aggregates_list[j], color = color_array[j+1], label= f'{d_f_list[j]:.1f}', s=marker_size)
+
+    # make log-log plot
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax2.set_yscale('log')
+
+    # set axes titles
+    ax.set_xlabel(r'Compact particle $r$ ($\mu$m)', fontsize=23)
+    ax.set_ylabel(r'$\lambda$ ($\mu$m)', fontsize=23)
+    ax2.set_ylabel(r'Column Density in layer ($\mathrm{cm}^{-2}$)', fontsize=23)
+
+    # set tick font size
+    ax.tick_params(axis='both', which='major', labelsize=20)
+    ax.tick_params(axis='both', which='minor', labelsize=20)
+    ax2.tick_params(axis='both', which='major', labelsize=20)
+    ax2.tick_params(axis='both', which='minor', labelsize=20)
+        
+    #plt.legend(loc='lower left', bbox_to_anchor=(0.1, 0.1), prop={'size': 18})
+
+    plt.close() # prevents duplicate plots from appearing
+
+    return fig
+    
+
+def aggregates_pressure_vs_number_density(clouds_from_virga_spheres, clouds_from_virga_fractals, d_f_list, colors=None, min_pressure=None, max_pressure=None):
+
+    '''
+
+    Code to plot the particle densities at each radius and at each pressure layer for aggregates of each fractal dimension.
+    This basically allows you to see the relative numbers and radii of the particles that form in each layer, for each fractal dimension.
+
+    Parameters
+    ----------
+    clouds_from_virga_spheres: dict
+        output from virga (spherical model)
+    clouds_from_virga_fractals: dict
+        array of dicts with output from virga (all of the virga models for each fractal dimension)
+    d_f_list: array
+        list of fractal dimensions analysed
+    colors: array (optional)
+        list of colors to use (in order: spheres, 1.2, 1.6, 2.0, 2.4, 2.8)
+    min_pressure: float (optional)
+        minimum pressure (bars) to plot on y-axis
+    max_pressure: float (optional)
+        maximum pressure (bars) to plot on y-axis
+
+    Returns
+    -------
+    Figure with the particle densities at each radius and at each pressure layer for aggregates of each fractal dimension
+
+    '''
+
+    
+    # if colors = None, choose a colormap (based on the number of shapes to analyse).
+    if(colors is None):
+        color_array = plt.cm.viridis(np.linspace(0,1,len(d_f_list)+1))
+    else:
+        color_array = colors # or use colors provided by user
+
+    # set maximum and minimum marker sizes (on the screen) - these are arbitrary, and we can scale them to whatever looks good visually
+    max_marker_size = 1000
+    min_marker_size = 1
+
+    # initialise a list to hold all of the data
+    radius_data_list=[]
+
+    # read in all datasets into a single list
+    for i in range(len(d_f_list)):
+        radius_data_list.extend(clouds_from_virga_fractals[i]['mean_particle_r'].flatten(order='C')) # add each fractal
+    radius_data_list.extend(clouds_from_virga_spheres['mean_particle_r'].flatten(order='C')) # add spheres
+
+    # find th min/max values that we will need to display on-screen
+    global_min_r = min(n for n in radius_data_list if n>0) # record the minimum particle size (that is still above zero)
+    global_max_r = max(radius_data_list) # record the maximum particle size
+
+    #print(f'\nFINAL RESULTS: Min = {global_min_r}, Max = {global_max_r}')
+
+    # calculate min and max r2 values because these relate linearly to the marker sizes, which are areas
+    min_r_squared = global_min_r**2
+    max_r_squared = global_max_r**2
+
+    # scale the min/max radii so that they correspond with the min/max marker sizes that we want to show on screen
+    marker_size_per_square_radii = (max_marker_size - min_marker_size) / (max_r_squared - min_r_squared)
+
+    # Create scatterplot figure
+    fig,ax = plt.subplots()
+    fig.set_facecolor('w') # make area around plot white in case user is in dark mode
+
+    # plot values for each fractal dimension d_f
+    for i in range(len(d_f_list)):
+        # create a list of marker sizes for the radii in this fractal dimension
+        square_radii = clouds_from_virga_fractals[i]['mean_particle_r'].flatten(order='C')**2 # first, simply square the radii
+        marker_sizes = min_marker_size + marker_size_per_square_radii * (square_radii - min_r_squared) # use derived equation to find the marker area that would give accurately scaled radii on screen
+        # make scatter plot 
+        legend_handle=ax.scatter(clouds_from_virga_fractals[i]['column_density'], clouds_from_virga_fractals[i]['pressure'], color = color_array[i+1], s=marker_sizes, label= f'{d_f_list[i]:.1f}') # legend handle is just there to make the legend markers all the same size (see it's use below)
+
+    # plot values for spheres
+    # create a list of marker sizes for the radii for spheres
+    square_radii = clouds_from_virga_spheres['mean_particle_r'].flatten(order='C')**2 # first, simply square the radii
+    marker_sizes = min_marker_size + marker_size_per_square_radii * (square_radii - min_r_squared) # use derived equation to find the marker area that would give accurately scaled radii on screen
+
+    ax.scatter(clouds_from_virga_spheres['column_density'], clouds_from_virga_spheres['pressure'], color = color_array[0], s=marker_sizes, label= f'Spheres')
+
+    # make log-log plot
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+
+    if (min_pressure is not None) and (max_pressure is not None):
+        # if provided, set limits on y-axis (to begin at the cloud deck and above)
+        ax.set_ylim(min_pressure, max_pressure)
+
+    # invert the y-axis so that pressure decreases as you go upwards (basically representing altitude)
+    plt.gca().invert_yaxis()
+
+    # set axes titles
+    ax.set_xlabel(r'Column Density in layer ($\mathrm{cm}^{-2}$)', fontsize=20)
+    ax.set_ylabel(r'$P$ (bar)', fontsize=20)
+
+    # set tick font size
+    ax.tick_params(axis='both', which='major', labelsize=15)
+    ax.tick_params(axis='both', which='minor', labelsize=15)
+
+        
+    # produce nice equal marker sizes in the legend
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(list(reversed(handles)), list(reversed(labels)), title='$d_f$', title_fontsize=12, fontsize=12, loc='lower right')
+    marker_size = 36
+    def update_prop(handle, orig):
+        handle.update_from(orig)
+        handle.set_sizes([marker_size])
+    plt.legend(handler_map={type(legend_handle): HandlerPathCollection(update_func=update_prop)})
+    
+    plt.close() # prevents duplicate plots from appearing
+
+    return fig
+
+def aggregates_pressure_vs_radius(clouds_from_virga_spheres, clouds_from_virga_fractals, d_f_list, colors=None, width=3, min_pressure=None, max_pressure=None):
+    
+    '''
+    
+    Code to plot the particle radius at each pressure layer for aggregates of each fractal dimension.
+    Designed originally for diagnostic tests as part for VIRGA development by MGL.
+
+    Parameters
+    ----------
+    clouds_from_virga_spheres: dict
+        output from virga (spherical model)
+    clouds_from_virga_fractals: dict
+        array of dicts with output from virga (all of the virga models for each fractal dimension)
+    d_f_list: array
+        list of fractal dimensions analysed
+    colors: array (optional)
+        list of colors to use (in order: spheres, 1.2, 1.6, 2.0, 2.4, 2.8)
+    width: float (optional)
+        width of lines in plot (default = 3)
+    min_pressure: float (optional)
+        minimum pressure (bars) to plot on y-axis
+    max_pressure: float (optional)
+        maximum pressure (bars) to plot on y-axis
+    
+    Returns
+    -------
+    Figure plotting the particle radius at each pressure layer for aggregates of each fractal dimension.
+
+    '''
+
+    # if colors = None, choose a colormap (based on the number of shapes to analyse).
+    if(colors is None):
+        color_array = plt.cm.viridis(np.linspace(0,1,len(d_f_list)+1))
+    else:
+        color_array = colors # or use colors provided by user
+        
+    # Create scatterplot figure
+    fig,ax = plt.subplots()
+    fig.set_facecolor('w') # make area around plot white in case user is in dark mode
+
+    # plot values for each fractal dimension d_f
+    for i in range(len(d_f_list)):
+        ax.plot(clouds_from_virga_fractals[i]['mean_particle_r'].flatten(order='C'), clouds_from_virga_fractals[i]['pressure'], color = color_array[i+1], label= f'{d_f_list[i]:.1f}', linewidth=width)
+
+    # plot values for spheres
+    ax.plot(clouds_from_virga_spheres['mean_particle_r'].flatten(order='C'), clouds_from_virga_spheres['pressure'], color = color_array[0], label= f'Spheres', linewidth=width)
+
+    # make log-log plot
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+
+    if (min_pressure is not None) and (max_pressure is not None):
+        # if provided, set limits on y-axis (to begin at the cloud deck and above)
+        ax.set_ylim(min_pressure, max_pressure)
+
+    # invert the y-axis so that pressure decreases as you go upwards (basically representing altitude)
+    plt.gca().invert_yaxis()
+
+    # set axes titles
+    ax.set_xlabel(r'Compact particle $r$ ($\mu$m)', fontsize=20)
+    ax.set_ylabel(r'$P$ (bar)', fontsize=20)
+
+    # set tick font size
+    ax.tick_params(axis='both', which='major', labelsize=15)
+    ax.tick_params(axis='both', which='minor', labelsize=15)
+
+    plt.legend(prop={'size': 12})
+
+    plt.close() # prevents duplicate plots from appearing
+
     return fig
