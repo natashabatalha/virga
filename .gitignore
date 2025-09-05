@@ -3,6 +3,7 @@
 *.p
 *.mieff
 *.json~
+*.csv
 
 # Jupyter Notebooks
 .ipynb_checkpoints
