@@ -138,13 +138,6 @@
    "execution_count": null,
    "metadata": {},
    "outputs": [],
-   "source": []
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
    "source": [
     "#below 'output_dir' specifies where the new IOR files are, and where you want the new MIE files to go\n",
     "#in this case I am using the same place\n",

@@ -5,14 +5,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Index &mdash; virga v1.0 documentation</title>
+  <title>Index &mdash; virga v2.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=e160b93e"></script>
+      <script src="_static/documentation_options.js?v=aa039f9c"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -42,7 +42,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/record/3758538#.Xp4w-1NKjOQ">Refractive Indices</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/records/15886530">Refractive Indices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">The Tutorials</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
 <li class="toctree-l1"><a class="reference internal" href="virga.html">The Code</a></li>
@@ -103,14 +103,22 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="virga.html#virga.root_functions.advdiff">advdiff() (in module virga.root_functions)</a>
 </li>
+      <li><a href="virga.html#virga.justplotit.aggregates_optical_properties">aggregates_optical_properties() (in module virga.justplotit)</a>
+</li>
+      <li><a href="virga.html#virga.justplotit.aggregates_pressure_vs_number_density">aggregates_pressure_vs_number_density() (in module virga.justplotit)</a>
+</li>
+      <li><a href="virga.html#virga.justplotit.aggregates_pressure_vs_radius">aggregates_pressure_vs_radius() (in module virga.justplotit)</a>
+</li>
+      <li><a href="virga.html#virga.justplotit.aggregates_wavelength_radius_grid">aggregates_wavelength_radius_grid() (in module virga.justplotit)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="virga.html#virga.gas_properties.Al2O3">Al2O3() (in module virga.gas_properties)</a>
 
       <ul>
         <li><a href="virga.html#virga.pvaps.Al2O3">(in module virga.pvaps)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="virga.html#virga.justplotit.all_optics">all_optics() (in module virga.justplotit)</a>
 </li>
       <li><a href="virga.html#virga.justplotit.all_optics_1d">all_optics_1d() (in module virga.justplotit)</a>
@@ -143,11 +151,15 @@
 </li>
       <li><a href="virga.html#virga.calc_mie.calc_new_mieff">calc_new_mieff() (in module virga.calc_mie)</a>
 </li>
+      <li><a href="virga.html#virga.calc_mie.calc_new_mieff_optool">calc_new_mieff_optool() (in module virga.calc_mie)</a>
+</li>
       <li><a href="virga.html#virga.justdoit.calc_optics">calc_optics() (in module virga.justdoit)</a>
 </li>
       <li><a href="virga.html#virga.justdoit.calc_optics_user_r_dist">calc_optics_user_r_dist() (in module virga.justdoit)</a>
 </li>
       <li><a href="virga.html#virga.justdoit.calc_qc">calc_qc() (in module virga.justdoit)</a>
+</li>
+      <li><a href="virga.html#virga.root_functions.calculate_k0">calculate_k0() (in module virga.root_functions)</a>
 </li>
       <li><a href="virga.html#virga.gas_properties.CaTiO3">CaTiO3() (in module virga.gas_properties)</a>
 
@@ -174,6 +186,8 @@
       <li><a href="virga.html#virga.justdoit.condensation_t">condensation_t() (in module virga.justdoit)</a>
 </li>
       <li><a href="virga.html#virga.justdoit.Atmosphere.constants">constants() (virga.justdoit.Atmosphere method)</a>
+</li>
+      <li><a href="virga.html#virga.justdoit.convert_refrind_to_lnk">convert_refrind_to_lnk() (in module virga.justdoit)</a>
 </li>
       <li><a href="virga.html#virga.gas_properties.Cr">Cr() (in module virga.gas_properties)</a>
 
@@ -205,10 +219,12 @@
       </ul></li>
       <li><a href="virga.html#virga.root_functions.find_cond_t">find_cond_t() (in module virga.root_functions)</a>
 </li>
-      <li><a href="virga.html#virga.justplotit.find_nearest_1d">find_nearest_1d() (in module virga.justplotit)</a>
+      <li><a href="virga.html#virga.root_functions.find_N_mon_and_r_mon">find_N_mon_and_r_mon() (in module virga.root_functions)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="virga.html#virga.justplotit.find_nearest_1d">find_nearest_1d() (in module virga.justplotit)</a>
+</li>
       <li><a href="virga.html#virga.root_functions.find_rg">find_rg() (in module virga.root_functions)</a>
 </li>
       <li><a href="virga.html#virga.root_functions.force_balance">force_balance() (in module virga.root_functions)</a>
@@ -231,17 +247,15 @@
 </li>
       <li><a href="virga.html#virga.justdoit.get_r_grid">get_r_grid() (in module virga.justdoit)</a>
 </li>
-      <li><a href="virga.html#virga.justdoit.get_r_grid_legacy">get_r_grid_legacy() (in module virga.justdoit)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="virga.html#virga.justdoit.get_r_grid_legacy">get_r_grid_legacy() (in module virga.justdoit)</a>
+</li>
       <li><a href="virga.html#virga.justdoit.get_r_grid_w_max">get_r_grid_w_max() (in module virga.justdoit)</a>
 </li>
-      <li><a href="virga.html#virga.calc_mie.get_refrind">get_refrind() (in module virga.calc_mie)</a>
+      <li><a href="virga.html#virga.justdoit.get_refrind">get_refrind() (in module virga.justdoit)</a>
 
       <ul>
-        <li><a href="virga.html#virga.justdoit.get_refrind">(in module virga.justdoit)</a>
-</li>
         <li><a href="virga.html#virga.optics.get_refrind">(in module virga.optics)</a>
 </li>
       </ul></li>
@@ -456,11 +470,13 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="virga.html#virga.root_functions.vfall">vfall() (in module virga.root_functions)</a>
 </li>
-      <li><a href="virga.html#virga.root_functions.vfall_aggregrates">vfall_aggregrates() (in module virga.root_functions)</a>
+      <li><a href="virga.html#virga.root_functions.vfall_aggregates">vfall_aggregates() (in module virga.root_functions)</a>
 </li>
       <li><a href="virga.html#virga.root_functions.vfall_aggregrates_ohno">vfall_aggregrates_ohno() (in module virga.root_functions)</a>
 </li>
       <li><a href="virga.html#virga.root_functions.vfall_find_root">vfall_find_root() (in module virga.root_functions)</a>
+</li>
+      <li><a href="virga.html#virga.root_functions.vfall_legacy">vfall_legacy() (in module virga.root_functions)</a>
 </li>
       <li>
     virga

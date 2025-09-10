@@ -6,21 +6,21 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Code &mdash; virga v1.0 documentation</title>
+  <title>The Code &mdash; virga v2.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=e160b93e"></script>
+      <script src="_static/documentation_options.js?v=aa039f9c"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Switching the Solver" href="notebooks/7_SwitchingSolver.html" /> 
+    <link rel="prev" title="Custom Fractal Aggregate Aerosols" href="notebooks/12_Custom_Fractal_Aggregate_Aerosols.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -44,15 +44,15 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/record/3758538#.Xp4w-1NKjOQ">Refractive Indices</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/records/15886530">Refractive Indices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">The Tutorials</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">The Code</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-virga.calc_mie">virga.calc_mie module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#virga.calc_mie.calc_new_mieff"><code class="docutils literal notranslate"><span class="pre">calc_new_mieff()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.calc_mie.calc_new_mieff_optool"><code class="docutils literal notranslate"><span class="pre">calc_new_mieff_optool()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.calc_mie.fort_mie_calc"><code class="docutils literal notranslate"><span class="pre">fort_mie_calc()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#virga.calc_mie.get_refrind"><code class="docutils literal notranslate"><span class="pre">get_refrind()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-virga.gas_properties">virga.gas_properties module</a><ul>
@@ -93,6 +93,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#virga.justdoit.calc_qc"><code class="docutils literal notranslate"><span class="pre">calc_qc()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justdoit.compute"><code class="docutils literal notranslate"><span class="pre">compute()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justdoit.condensation_t"><code class="docutils literal notranslate"><span class="pre">condensation_t()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.justdoit.convert_refrind_to_lnk"><code class="docutils literal notranslate"><span class="pre">convert_refrind_to_lnk()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justdoit.create_dict"><code class="docutils literal notranslate"><span class="pre">create_dict()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justdoit.eddysed"><code class="docutils literal notranslate"><span class="pre">eddysed()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justdoit.get_mie"><code class="docutils literal notranslate"><span class="pre">get_mie()</span></code></a></li>
@@ -111,6 +112,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-virga.justplotit">virga.justplotit module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#virga.justplotit.aggregates_optical_properties"><code class="docutils literal notranslate"><span class="pre">aggregates_optical_properties()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.justplotit.aggregates_pressure_vs_number_density"><code class="docutils literal notranslate"><span class="pre">aggregates_pressure_vs_number_density()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.justplotit.aggregates_pressure_vs_radius"><code class="docutils literal notranslate"><span class="pre">aggregates_pressure_vs_radius()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.justplotit.aggregates_wavelength_radius_grid"><code class="docutils literal notranslate"><span class="pre">aggregates_wavelength_radius_grid()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justplotit.all_optics"><code class="docutils literal notranslate"><span class="pre">all_optics()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justplotit.all_optics_1d"><code class="docutils literal notranslate"><span class="pre">all_optics_1d()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.justplotit.condensate_mmr"><code class="docutils literal notranslate"><span class="pre">condensate_mmr()</span></code></a></li>
@@ -150,6 +155,8 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-virga.root_functions">virga.roo_functions module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.advdiff"><code class="docutils literal notranslate"><span class="pre">advdiff()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.calculate_k0"><code class="docutils literal notranslate"><span class="pre">calculate_k0()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.find_N_mon_and_r_mon"><code class="docutils literal notranslate"><span class="pre">find_N_mon_and_r_mon()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.find_cond_t"><code class="docutils literal notranslate"><span class="pre">find_cond_t()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.find_rg"><code class="docutils literal notranslate"><span class="pre">find_rg()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.force_balance"><code class="docutils literal notranslate"><span class="pre">force_balance()</span></code></a></li>
@@ -157,9 +164,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.qvs_below_model"><code class="docutils literal notranslate"><span class="pre">qvs_below_model()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.solve_force_balance"><code class="docutils literal notranslate"><span class="pre">solve_force_balance()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.vfall"><code class="docutils literal notranslate"><span class="pre">vfall()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.vfall_aggregrates"><code class="docutils literal notranslate"><span class="pre">vfall_aggregrates()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.vfall_aggregates"><code class="docutils literal notranslate"><span class="pre">vfall_aggregates()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.vfall_aggregrates_ohno"><code class="docutils literal notranslate"><span class="pre">vfall_aggregrates_ohno()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.vfall_find_root"><code class="docutils literal notranslate"><span class="pre">vfall_find_root()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#virga.root_functions.vfall_legacy"><code class="docutils literal notranslate"><span class="pre">vfall_legacy()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-virga">Module contents</a></li>
@@ -204,6 +212,46 @@
 <dd></dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="virga.calc_mie.calc_new_mieff_optool">
+<span class="sig-prename descclassname"><span class="pre">virga.calc_mie.</span></span><span class="sig-name descname"><span class="pre">calc_new_mieff_optool</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wave</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optool_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.calc_mie.calc_new_mieff_optool" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>wave</strong> (<em>array</em>) – wavelength grid, in microns</p></li>
+<li><p><strong>radius</strong> (<em>array</em>) – <dl class="simple">
+<dt>effective (mean) particle radius, in centimeters</dt><dd><p>– if aggregates = False, this is the spherical particle radius
+– if aggregates = True, this is the radius of a sphere of equivalent volume to the fractal aggregate</p>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>bin_min</strong> (<em>array</em>) – minimum radius in each particle bin</p></li>
+<li><p><strong>bin_max</strong> (<em>array</em>) – maximum radius in each particle bin</p></li>
+<li><p><strong>gas</strong> (<em>string</em>) – particle species to condense</p></li>
+<li><p><strong>optool_dir</strong> (<em>string</em>) – <dl class="simple">
+<dt>directory location of compiled OPTOOL code. Assumes that .lnk files (the optool equivalent to .refrind) are stored in</dt><dd><p>a subdirectory within this folder.
+– NOTE: these .lnk files must be in ascending wavelength order to correctly compute Mie coefficients!
+– However, we will flip the arrays once calculated, so that .mieff files are consistently saved in order of descending wavelength.</p>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>Df</strong> (<em>float</em>) – the fractal dimension, if aggregrates = True</p></li>
+<li><p><strong>N_mon</strong> (<em>int</em>) – the number of monomers. If None, must set r_mon directly.</p></li>
+<li><p><strong>r_mon</strong> (<em>float</em>) – monomer particle radius (cm), used if aggregates = True. Can set directly or calculate from N_mon.</p></li>
+<li><p><strong>k0</strong> (<em>float</em>) – the fractal prefactor, either prescribed by user or calculated using Tazaki (2021) Eq 2</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>qext</strong> (<em>array</em>) – extinction effiencies for all particle radii/wavelengths</p></li>
+<li><p><strong>qsca</strong> (<em>array</em>) – scattering effiencies for all particle radii/wavelengths</p></li>
+<li><p><strong>cos_qscat</strong> (<em>array</em>) – average asymmetry parameter x Q_sca for all particle radii/wavelengths</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="virga.calc_mie.fort_mie_calc">
 <span class="sig-prename descclassname"><span class="pre">virga.calc_mie.</span></span><span class="sig-name descname"><span class="pre">fort_mie_calc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">RO</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">RFR</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">RFI</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">THET</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">JX</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">RE2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">TMAG2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">WVNO</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.calc_mie.fort_mie_calc" title="Link to this definition"></a></dt>
 <dd><p>Given the refractive indices at a certain wavelength this module
@@ -234,22 +282,6 @@ Report NO. 320 - 3236 .. MAY 1968 .</p>
 <li><p><strong>ISTATUS</strong> (<em>integer</em>) – Convergence indicator, 0 if converged, -1 if otherwise.</p></li>
 </ul>
 </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="virga.calc_mie.get_refrind">
-<span class="sig-prename descclassname"><span class="pre">virga.calc_mie.</span></span><span class="sig-name descname"><span class="pre">get_refrind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">igas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.calc_mie.get_refrind" title="Link to this definition"></a></dt>
-<dd><p>Reads reference files with wavelength, and refractory indecies.
-This function relies on input files being structured as a 4 column file with
-columns: index, wavelength (micron), nn, kk</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>igas</strong> (<em>str</em>) – Gas name</p></li>
-<li><p><strong>directory</strong> (<em>str</em>) – Directory were reference files are located.</p></li>
-</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -701,7 +733,7 @@ Density of gas cgs</p>
 <span id="virga-justdoit-module"></span><h2>virga.justdoit module<a class="headerlink" href="#module-virga.justdoit" title="Link to this heading"></a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="virga.justdoit.Atmosphere">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">Atmosphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">condensibles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mmw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'const'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mmr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">Atmosphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">condensibles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mmw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'const'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mmr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.Atmosphere" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="virga.justdoit.Atmosphere.compute">
@@ -876,8 +908,8 @@ skiprows=3, sep=r’s+’, header=None, names=[“ind”,”pressure”,”tempe
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.calc_mie_db">
-<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">calc_mie_db</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dir_refrind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dir_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.054239131</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nradii</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logspace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fort_calc_mie</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_mie_db" title="Link to this definition"></a></dt>
-<dd><p>Function that calculations new Mie database using PyMieScatt.
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">calc_mie_db</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">virga_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dir_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optool_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.054239131</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nradii</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logspace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fort_calc_mie</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_mie_db" title="Link to this definition"></a></dt>
+<dd><p>Function that calculations new Mie database using MiePython (for spherical particles) or OPTOOL (for aggregates)
 :param gas_name: List of names of gasses. Or a single gas name.</p>
 <blockquote>
 <div><p>See pyeddy.available() to see which ones are currently available.</p>
@@ -885,19 +917,27 @@ skiprows=3, sep=r’s+’, header=None, names=[“ind”,”pressure”,”tempe
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dir_refrind</strong> (<em>str</em>) – Directory where you store optical refractive index files that will be created.</p></li>
+<li><p><strong>virga_dir</strong> (<em>str</em>) – Directory where you store the VIRGA refractive index files (.refind format).</p></li>
 <li><p><strong>dir_out</strong> (<em>str</em>) – Directory where you want to store Mie parameter files. Will be stored as gas_name.Mieff.
 BEWARE FILE OVERWRITES.</p></li>
-<li><p><strong>rmin</strong> (<em>float</em><em> , </em><em>optional</em>) – (Default=1e-8) Units of cm. The minimum radius to compute Mie parameters for.
-Usually 0.01 microns is small enough. However, if you notice your mean particle radius
+<li><p><strong>optool_dir</strong> (<em>str</em>) – Directory where you store optool refractive index files (.lnk format).</p></li>
+<li><p><strong>rmin</strong> (<em>float</em>) – (Default=1e-8) Units of cm. The minimum radius to compute Mie parameters for.
+Usually 0.001 microns is small enough. However, if you notice your mean particle radius
 is on the low end, you may compute your grid to even lower particle sizes.</p></li>
 <li><p><strong>rmax</strong> (<em>float</em>) – (Default=5.4239131e-2) Units of cm. The maximum radius to compute Mie parameters for.
 If your .mieff files take a long time to create, reduce this number. If you get a warning
 that your particles are “off the grid” (larger than your maximum grid value), increase this number.</p></li>
-<li><p><strong>nradii</strong> (<em>int</em><em>, </em><em>optional</em>) – (Default=60) number of radii points to compute grid on. 40 grid points for exoplanets/BDs
-is generally sufficient.</p></li>
+<li><p><strong>nradii</strong> (<em>int</em><em>, </em><em>optional</em>) – (Default=60) number of radii points to compute grid on. 40 grid points for exoplanets/BDs</p></li>
 <li><p><strong>logspace</strong> (<em>boolean</em><em>, </em><em>optional</em>) – (Default = True)
 Spaces the radii logarithmically (which they generally tend to be in the clouds) if True. Spaces them linearly if False.</p></li>
+<li><p><strong>aggregates</strong> (<em>boolean</em><em>, </em><em>optional</em>) – (Default = True)
+Sets whether particles are aggregates or spheres. If true, we will calculate optical properties using OPTOOL instead of MiePython.</p></li>
+<li><p><strong>Df</strong> (<em>If aggregates = True</em><em>, </em><em>the fractal dimension</em><em> of </em><em>the aggegrate particle. a number between 1 and 3.</em><em> (</em><em>3 would be equal to solid spheres with radii</em><em> of </em><em>the outer effective radius</em><em>)</em>)</p></li>
+<li><p><strong>N_mon</strong> (<em>If aggregates = True</em><em>, </em><em>the number</em><em> of </em><em>monomers that make up an aggregate. Can set directly</em><em> or </em><em>calculate from r_mon.</em>)</p></li>
+<li><p><strong>r_mon</strong> (<em>If aggregates = True</em><em>, </em><em>the monomer radius that makes up an aggregate particle</em><em> (</em><em>in cm</em><em>)</em><em>. Can either set</em><em> or </em><em>calculate from N_mon.</em>)</p></li>
+<li><p><strong>k0</strong> (<em>only used if aggregate = True.</em>) – Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user,
+but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary
+when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -912,7 +952,7 @@ Spaces the radii logarithmically (which they generally tend to be in the clouds)
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.calc_optics">
-<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">calc_optics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nwave</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qext</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qscat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cos_qscat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_optics" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">calc_optics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nwave</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qext</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qscat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cos_qscat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_optics" title="Link to this definition"></a></dt>
 <dd><p>Calculate spectrally-resolved profiles of optical depth, single-scattering
 albedo, and asymmetry parameter.</p>
 <dl class="field-list simple">
@@ -924,12 +964,14 @@ albedo, and asymmetry parameter.</p>
 <li><p><strong>rg</strong> (<em>ndarray</em>) – Geometric mean radius of condensate</p></li>
 <li><p><strong>reff</strong> (<em>ndarray</em>) – Effective (area-weighted) radius of condensate (cm)</p></li>
 <li><p><strong>ndz</strong> (<em>ndarray</em>) – Column density of particle concentration in layer (#/cm^2)</p></li>
-<li><p><strong>radius</strong> (<em>ndarray</em>) – Radius bin centers (cm)</p></li>
+<li><p><strong>radius</strong> (<em>ndarray</em>) – Particle radius bin centers from the grid (cm)</p></li>
 <li><p><strong>dr</strong> (<em>ndarray</em>) – Width of radius bins (cm)</p></li>
 <li><p><strong>qscat</strong> (<em>ndarray</em>) – Scattering efficiency</p></li>
 <li><p><strong>qext</strong> (<em>ndarray</em>) – Extinction efficiency</p></li>
 <li><p><strong>cos_qscat</strong> (<em>ndarray</em>) – qscat-weighted &lt;cos (scattering angle)&gt;</p></li>
 <li><p><strong>sig</strong> (<em>float</em>) – Width of the log normal particle distribution</p></li>
+<li><p><strong>rmin</strong> (<em>float</em>) – Minimum particle radius bin center from the grid (cm)</p></li>
+<li><p><strong>rmax</strong> (<em>float</em>) – Maximum particle radius bin center from the grid (cm)</p></li>
 <li><p><strong>verbose</strong> (<em>bool</em>) – print out warnings or not</p></li>
 </ul>
 </dd>
@@ -985,7 +1027,7 @@ Should integrate to 1.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.calc_qc">
-<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">calc_qc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_below</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mixl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dz_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_convect</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_vfall</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_cld</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_qc" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">calc_qc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_cloud</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_below</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mixl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dz_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_convect</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_vfall</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_cld</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.calc_qc" title="Link to this definition"></a></dt>
 <dd><p>Calculate condensate number density and effective radius for a layer,
 assuming geometric scatterers.</p>
 <dl class="simple">
@@ -1043,6 +1085,29 @@ assuming geometric scatterers.</p>
 <dt>nrad<span class="classifier">int</span></dt><dd><p>Number of radii on Mie grid</p>
 </dd>
 <dt>radius<span class="classifier">ndarray</span></dt><dd><p>Particle radius bin centers from the grid (cm)</p>
+</dd>
+<dt>aggregates<span class="classifier">bool, optional</span></dt><dd><p>set to ‘True’ if you want fractal aggregates, keep at default ‘False’ for spherical cloud particles</p>
+</dd>
+<dt>Df<span class="classifier">float, optional</span></dt><dd><p>only used if aggregate = True.
+The fractal dimension of an aggregate particle.
+Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.</p>
+</dd>
+<dt>N_mon<span class="classifier">float, optional</span></dt><dd><p>only used if aggregate = True.
+The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).</p>
+</dd>
+<dt>r_mon<span class="classifier">float, optional (units: cm)</span></dt><dd><p>only used if aggregate = True.
+The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be
+provided (but not both).</p>
+</dd>
+<dt>k0<span class="classifier">float, optional (units: None)</span></dt><dd><p>only used if aggregate = True.
+Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user,
+but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary
+when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).</p>
+</dd>
+<dt>og_vfall<span class="classifier">bool , optional</span></dt><dd><p>optional, default = True. True does the original fall velocity calculation.
+False does the updated one which runs a tad slower but is more consistent.
+The main effect of turning on False is particle sizes in the upper atmosphere
+that are slightly bigger.</p>
 </dd>
 </dl>
 <dl class="field-list simple">
@@ -1127,13 +1192,38 @@ Default = np.logspace(-3,2,20)</p></li>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="virga.justdoit.convert_refrind_to_lnk">
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">convert_refrind_to_lnk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregate_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">virga_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optool_dir</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.convert_refrind_to_lnk" title="Link to this definition"></a></dt>
+<dd><p>Converts VIRGA’s .refrind files into OPTOOL .lnk files. The differences in file format are below:</p>
+<blockquote>
+<div><p>VIRGA: [index,  wavelength,  n,  k]     No header, and in order of descending wavelength</p>
+<p>OPTOOL: [wavelength,  n,  k]     Header (num wavelengths and density, can also include comments), and in order of ascending wavelength</p>
+</div></blockquote>
+<p>This function converts the XX.refrind file and saves it in the OPTOOL folder as XX_VIRGA.lnk in the optool directory, ready for optool to
+use in MMF calculations (see “calc_mie_db”).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>aggregate_list</strong> (<em>list</em><em>, </em><em>str</em>) – List of names of gasses. Or a single gas name.
+See pyeddy.available() to see which ones are currently available.</p></li>
+<li><p><strong>virga_dir</strong> (<em>str</em>) – Directory where you store the VIRGA refractive index files (.refind format).</p></li>
+<li><p><strong>optool_dir</strong> (<em>str</em>) – Directory where you store optool refractive index files (.lnk format).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.create_dict">
 <span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">create_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opd_gas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wave</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pressure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mmw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_radii</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dz_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mixl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_cld</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.create_dict" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.eddysed">
-<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">eddysed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_mid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_mid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condensibles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mmr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mixl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_molecule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_p_factor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_vfall</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_virtual</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.eddysed" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">eddysed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_mid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_mid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condensibles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mmr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mixl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_h</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_molecule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_p_factor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_vfall</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_virtual</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.eddysed" title="Link to this definition"></a></dt>
 <dd><p>Given an atmosphere and condensates, calculate size and concentration
 of condensates in balance between eddy diffusion and sedimentation.</p>
 <dl class="field-list simple">
@@ -1172,6 +1262,19 @@ Used in the viscocity calculation (units are K) (Rosner, 2000)</p></li>
 <li><p><strong>c_p_factor</strong> (<em>float</em>) – specific heat of atmosphere (erg/K/g) . Usually 7/2 for ideal gas
 diatomic molecules (e.g. H2, N2). Technically does slowly rise with
 increasing temperature</p></li>
+<li><p><strong>aggregates</strong> (<em>bool</em><em>, </em><em>optional</em>) – set to ‘True’ if you want fractal aggregates, keep at default ‘False’ for spherical cloud particles</p></li>
+<li><p><strong>Df</strong> (<em>float</em><em>, </em><em>optional</em>) – only used if aggregate = True.
+The fractal dimension of an aggregate particle.
+Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.</p></li>
+<li><p><strong>N_mon</strong> (<em>float</em><em>, </em><em>optional</em>) – only used if aggregate = True.
+The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).</p></li>
+<li><p><strong>r_mon</strong> (<em>float</em><em>, </em><em>optional</em><em> (</em><em>units: cm</em><em>)</em>) – only used if aggregate = True.
+The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be
+provided (but not both).</p></li>
+<li><p><strong>k0</strong> (<em>float</em><em>, </em><em>optional</em><em> (</em><em>units: None</em><em>)</em>) – only used if aggregate = True.
+Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user,
+but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary
+when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).</p></li>
 <li><p><strong>og_vfall</strong> (<em>bool</em><em> , </em><em>optional</em>) – optional, default = True. True does the original fall velocity calculation.
 False does the updated one which runs a tad slower but is more consistent.
 The main effect of turning on False is particle sizes in the upper atmosphere
@@ -1197,32 +1300,16 @@ species condenses below the model domain.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.get_mie">
-<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">get_mie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.get_mie" title="Link to this definition"></a></dt>
-<dd><p>Get Mie parameters from old ass formatted files</p>
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">get_mie</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.get_mie" title="Link to this definition"></a></dt>
+<dd><p>Get pre-calculated radius-wavelength grid of optical properties, considering the particles as either spheres (gas_name.mieff)
+or aggregates (gas_name_aggregates_Df_XXXX.mieff), if aggregates=true and this aggregates file has been created using calc_mie_db function).</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.get_r_grid">
 <span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">get_r_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.054239131</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_radii</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.get_r_grid" title="Link to this definition"></a></dt>
 <dd><p>New version of grid generator - creates lin-spaced or log-spaced radii grids. Updated by MGL 07/01/25.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>r_min</strong> – minimum radius in grid (in cm). Default is 10^-8 cm (0.0001 um) to match databases in v0.0.</p></li>
-<li><p><strong>r_max</strong> – maximum radius in grid (in cm). Default is 5.4239131 x 10^-2 cm (542 um), to match databases in v0.0.</p></li>
-<li><p><strong>n_radii</strong> – number of increments (note that each of these increments will be divided into 6 further sub-bins to smooth out any resonance features that occur due to specific particle sizes). Default is 60 to match databases in v0.0.</p></li>
-<li><p><strong>logspace</strong> – spaces the radii logarithmically if True (which they tend to be in the clouds, so this is the default). Spaces them linearly if False.</p></li>
-</ul>
-</dd>
-</dl>
-<p>RETURNS (all of these are arrays):</p>
-<blockquote>
-<div><p>radius = the mean radii for each set of 6 sub-bins
-bin_min = minimum value of bin
-bin_max = maximum value of bin
-dr = the difference between the start and end of the bins (width of the radius bin)</p>
-</div></blockquote>
-<p>ALGORITHM DESCRIPTION</p>
+<p>ALGORITHM DESCRIPTION:</p>
 <p>First, VIRGA makes grid of particle sizes and calculates the optical properties for them. Then, when we find the average particle
 size in a particular layer of cloud, it creates a lognormal distribution of particles (one that has the calculated mean radius),
 and then finds how many particles fall into each of the ‘bins’ of the radius ‘grid’ that we have created. Finally, it weights the
@@ -1230,6 +1317,25 @@ contribution from each bin by the number of particles to calculate the total opa
 to be used for making the .mieff files (optical properties) and running VIRGA.</p>
 <p>This new version simplifies the arrays to represent the mean, minimum and maximum values of radius in each bin. It also uses a consistent
 function to calculate the radius values and bin widths, as well as correcting an error for the first bin mean.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r_min</strong> (<em>float</em>) – minimum radius in grid (in cm). Default is 10^-8 cm (0.0001 um) to match databases in v0.0.</p></li>
+<li><p><strong>r_max</strong> (<em>float</em>) – maximum radius in grid (in cm). Default is 5.4239131 x 10^-2 cm (542 um), to match databases in v0.0.</p></li>
+<li><p><strong>n_radii</strong> (<em>int</em>) – number of increments (note that each of these increments will be further divided into 6 sub-bins to smooth out any resonance features that occur due to specific particle sizes). Default is 60 to match databases in v0.0.</p></li>
+<li><p><strong>logspace</strong> (<em>boolean</em>) – Default = True. Spaces the radii logarithmically if True (tends to be the case in the clouds). Spaces them linearly if False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>radius</strong> (<em>array</em>) – the mean radii for each set of 6 sub-bins</p></li>
+<li><p><strong>bin_min</strong> (<em>array</em>) – minimum value of each bin</p></li>
+<li><p><em>bin_max</em> – maximum value of each bin</p></li>
+<li><p><strong>dr</strong> (<em>array</em>) – the difference between the start and end of each bin (width of the radius bin)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1269,10 +1375,17 @@ Discontinued function. See ‘get_r_grid()’.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.get_refrind">
-<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">get_refrind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">igas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.get_refrind" title="Link to this definition"></a></dt>
-<dd><p>Reads reference files with wavelength, and refractory indecies.
-This function relies on input files being structured as a 4 column file with
-columns: index, wavelength (micron), nn, kk</p>
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">get_refrind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">igas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.get_refrind" title="Link to this definition"></a></dt>
+<dd><p>Reads reference files with wavelength, and refractory indicies. The file formats
+are different for VIRGA and OPTOOL. OPTOOL formats should be created by the user
+and stored in /lnk_data using the “convert_refrind_to_lnk function before running
+“calc_mie_db” function</p>
+<p>VIRGA FILE FORMAT:
+Input files are structured as a 4 column file with columns:
+index, wavelength (micron), nn, kk</p>
+<p>OPTOOL FILE FORMAT:
+Input files are structured as a 3 column file with columns:
+wavelength (micron), nn, kk</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1293,7 +1406,7 @@ columns: index, wavelength (micron), nn, kk</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justdoit.layer">
-<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mixl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_below</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_molecule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_p_factor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_vfall</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_cld</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.layer" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">virga.justdoit.</span></span><span class="sig-name descname"><span class="pre">layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gas_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_layer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mixl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_below</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supsat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fsed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_bot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nrad</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_molecule</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps_k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c_p_factor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">og_vfall</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_cld</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justdoit.layer" title="Link to this definition"></a></dt>
 <dd><p>Calculate layer condensate properties by iterating on optical depth
 in one model layer (converging on optical depth over sublayers)</p>
 <dl class="simple">
@@ -1364,6 +1477,24 @@ diatomic molecules (e.g. H2, N2). Technically does slowly rise with
 increasing temperature</p>
 </dd>
 <dt>og_vfall<span class="classifier">bool</span></dt><dd><p>Use original or new vfall calculation</p>
+</dd>
+<dt>aggregates<span class="classifier">bool, optional</span></dt><dd><p>set to ‘True’ if you want fractal aggregates, keep at default ‘False’ for spherical cloud particles</p>
+</dd>
+<dt>Df<span class="classifier">float, optional</span></dt><dd><p>only used if aggregate = True.
+The fractal dimension of an aggregate particle.
+Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.</p>
+</dd>
+<dt>N_mon<span class="classifier">float, optional</span></dt><dd><p>only used if aggregate = True.
+The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).</p>
+</dd>
+<dt>k0<span class="classifier">float, optional (units: None)</span></dt><dd><p>only used if aggregate = True.
+Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user,
+but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary
+when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).</p>
+</dd>
+<dt>r_mon<span class="classifier">float, optional (units: cm)</span></dt><dd><p>only used if aggregate = True.
+The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be
+provided (but not both).</p>
 </dd>
 </dl>
 <dl class="field-list simple">
@@ -1474,6 +1605,96 @@ demonstrate why it has chose the gases it did.</p></li>
 </section>
 <section id="module-virga.justplotit">
 <span id="virga-justplotit-module"></span><h2>virga.justplotit module<a class="headerlink" href="#module-virga.justplotit" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.justplotit.aggregates_optical_properties">
+<span class="sig-prename descclassname"><span class="pre">virga.justplotit.</span></span><span class="sig-name descname"><span class="pre">aggregates_optical_properties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">aggregate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mieff_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_f_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_wavelength</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_wavelength</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.aggregates_optical_properties" title="Link to this definition"></a></dt>
+<dd><p>Code to plot the optical properties calculated in the .mieff files. for all radii and fractal dimensions analysed.</p>
+<p>Plots a 3D graph of Q_ext against wavelength (um) for all fractal dimensions (third axis).</p>
+<p>Set filtered = True if you want a smoother curve (using a savgol filter) for easier comparison of different fractals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>aggregate</strong> (<em>string</em>) – chemical species used in model</p></li>
+<li><p><strong>mieff_dir</strong> (<em>string</em>) – filepath to directory where .mieff files are stored</p></li>
+<li><p><strong>d_f_list</strong> (<em>array</em>) – list of fractal dimensions analysed</p></li>
+<li><p><strong>min_wavelength</strong> (<em>float</em>) – minimum wavelength to plot</p></li>
+<li><p><strong>max_wavelength</strong> (<em>float</em>) – maximum wavelength to plot</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>3D graph of Q_ext against wavelength (um) for all fractal dimensions (third axis).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.justplotit.aggregates_pressure_vs_number_density">
+<span class="sig-prename descclassname"><span class="pre">virga.justplotit.</span></span><span class="sig-name descname"><span class="pre">aggregates_pressure_vs_number_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clouds_from_virga_spheres</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clouds_from_virga_fractals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_f_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.aggregates_pressure_vs_number_density" title="Link to this definition"></a></dt>
+<dd><p>Code to plot the particle densities at each radius and at each pressure layer for aggregates of each fractal dimension.
+This basically allows you to see the relative numbers and radii of the particles that form in each layer, for each fractal dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>clouds_from_virga_spheres</strong> (<em>dict</em>) – output from virga (spherical model)</p></li>
+<li><p><strong>clouds_from_virga_fractals</strong> (<em>dict</em>) – array of dicts with output from virga (all of the virga models for each fractal dimension)</p></li>
+<li><p><strong>d_f_list</strong> (<em>array</em>) – list of fractal dimensions analysed</p></li>
+<li><p><strong>colors</strong> (<em>array</em><em> (</em><em>optional</em><em>)</em>) – list of colors to use (in order: spheres, 1.2, 1.6, 2.0, 2.4, 2.8)</p></li>
+<li><p><strong>min_pressure</strong> (<em>float</em><em> (</em><em>optional</em><em>)</em>) – minimum pressure (bars) to plot on y-axis</p></li>
+<li><p><strong>max_pressure</strong> (<em>float</em><em> (</em><em>optional</em><em>)</em>) – maximum pressure (bars) to plot on y-axis</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Figure with the particle densities at each radius and at each pressure layer for aggregates of each fractal dimension</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.justplotit.aggregates_pressure_vs_radius">
+<span class="sig-prename descclassname"><span class="pre">virga.justplotit.</span></span><span class="sig-name descname"><span class="pre">aggregates_pressure_vs_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clouds_from_virga_spheres</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clouds_from_virga_fractals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_f_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.aggregates_pressure_vs_radius" title="Link to this definition"></a></dt>
+<dd><p>Code to plot the particle radius at each pressure layer for aggregates of each fractal dimension.
+Designed originally for diagnostic tests as part for VIRGA development by MGL.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>clouds_from_virga_spheres</strong> (<em>dict</em>) – output from virga (spherical model)</p></li>
+<li><p><strong>clouds_from_virga_fractals</strong> (<em>dict</em>) – array of dicts with output from virga (all of the virga models for each fractal dimension)</p></li>
+<li><p><strong>d_f_list</strong> (<em>array</em>) – list of fractal dimensions analysed</p></li>
+<li><p><strong>colors</strong> (<em>array</em><em> (</em><em>optional</em><em>)</em>) – list of colors to use (in order: spheres, 1.2, 1.6, 2.0, 2.4, 2.8)</p></li>
+<li><p><strong>width</strong> (<em>float</em><em> (</em><em>optional</em><em>)</em>) – width of lines in plot (default = 3)</p></li>
+<li><p><strong>min_pressure</strong> (<em>float</em><em> (</em><em>optional</em><em>)</em>) – minimum pressure (bars) to plot on y-axis</p></li>
+<li><p><strong>max_pressure</strong> (<em>float</em><em> (</em><em>optional</em><em>)</em>) – maximum pressure (bars) to plot on y-axis</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Figure plotting the particle radius at each pressure layer for aggregates of each fractal dimension.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.justplotit.aggregates_wavelength_radius_grid">
+<span class="sig-prename descclassname"><span class="pre">virga.justplotit.</span></span><span class="sig-name descname"><span class="pre">aggregates_wavelength_radius_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clouds_from_virga_spheres</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clouds_from_virga_fractals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_f_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mieff_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.aggregates_wavelength_radius_grid" title="Link to this definition"></a></dt>
+<dd><p>Code to plot the wavelength-radius grid that was used the create the .mieff files, and then overplot the actual radii
+for each pressure layer for each fractal dimension, so that we can check that the radii we are using actually have
+unique optical properties that were calculated at a reasonable resolution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>clouds_from_virga_spheres</strong> (<em>dict</em>) – output from virga (spherical model)</p></li>
+<li><p><strong>clouds_from_virga_fractals</strong> (<em>dict</em>) – array of dicts with output from virga (all of the virga models for each fractal dimension)</p></li>
+<li><p><strong>aggregate</strong> (<em>string</em>) – chemical species used in model</p></li>
+<li><p><strong>d_f_list</strong> (<em>array</em>) – list of fractal dimensions analysed</p></li>
+<li><p><strong>mieff_dir</strong> (<em>string</em>) – filepath to directory where .mieff files are stored</p></li>
+<li><p><strong>colors</strong> (<em>array</em><em> (</em><em>optional</em><em>)</em>) – list of colors to use (in order: spheres, 1.2, 1.6, 2.0, 2.4, 2.8)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Wavelength-radius grid from .mieff files, overplotted with radii for each pressure layer for each fractal dimension.</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.justplotit.all_optics">
 <span class="sig-prename descclassname"><span class="pre">virga.justplotit.</span></span><span class="sig-name descname"><span class="pre">all_optics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.justplotit.all_optics" title="Link to this definition"></a></dt>
@@ -2109,9 +2330,59 @@ condensate in a model layer</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="virga.root_functions.calculate_k0">
+<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">calculate_k0</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.calculate_k0" title="Link to this definition"></a></dt>
+<dd><p>Find fractal prefactor k0 using Eq 15 of Moran &amp; Lodge (2025)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>N_mon</strong> (<em>int</em>) – Number of monomers in aggregate</p></li>
+<li><p><strong>Df</strong> (<em>float</em>) – Fractal dimension of aggregate</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>k0</strong> – Fractal prefactor k0</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.root_functions.find_N_mon_and_r_mon">
+<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">find_N_mon_and_r_mon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N_mon_prescribed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">original_N_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.find_N_mon_and_r_mon" title="Link to this definition"></a></dt>
+<dd><p>Find the following variables for a given radius. One value should be prescribed by the user, but both
+can change according to the growth model in Figure 2 of Moran &amp; Lodge (2025):</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>N_mon: Number of monomers</p></li>
+<li><p>r_mon: monomer radius</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>N_mon_prescribed</strong> (<em>int</em>) – Value of 1 if the user prescribed N_mon, 0 if they prescribed r_mon instead</p></li>
+<li><p><strong>radius</strong> (<em>float</em>) – compact radius of aggregate (units:cm)</p></li>
+<li><p><strong>original_N_mon</strong> (<em>int</em>) – original number of monomers prescribed by user</p></li>
+<li><p><strong>r_mon</strong> (<em>float</em>) – monomer radius (units:cm)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>N_mon</strong> (<em>int</em>) – number of monomers</p></li>
+<li><p><strong>r_mon</strong> (<em>float</em>) – monomer radius (units:cm)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="virga.root_functions.find_cond_t">
 <span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">find_cond_t</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p_test</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mmw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_mmr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.find_cond_t" title="Link to this definition"></a></dt>
-<dd><p>Root function used used to find condenstation temperature. E.g.
+<dd><p>Root function used used to find condensation temperature. E.g.
 the temperature when</p>
 <p>log p_vap = log partial pressure of gas</p>
 <dl class="field-list simple">
@@ -2253,7 +2524,145 @@ ie if solve_for=”vfall”, temp will be a radius (cm)</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="virga.root_functions.vfall">
-<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall" title="Link to this definition"></a></dt>
+<dd><p>New vfall function written by SEM and MGL, based on the methods of:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>“Aggregate Cloud Particle Effects in Exoplanet Atmospheres”, Vahidinia et al. (2024)</p></li>
+<li><p>“A Condensation–coalescence Cloud Model for Exoplanetary Atmospheres: Formulation and Test Applications to Terrestrial and Jovian Clouds”, Ohno and Okuzumi (2017)</p></li>
+<li><p>“Theoretical modeling of mineral cloud formation on super-Earths”, K. Ohno (2024)</p></li>
+</ul>
+</div></blockquote>
+<p>We adapt the above to include a broad range of aggregates and atmospheric conditions. The general outline of the code is:</p>
+<blockquote>
+<div><ul>
+<li><p>Find the characteristic radius (R_c) of the particle:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>SPHERES: R_c = radius of the sphere</p></li>
+<li><p>AGGREGATES: R_c = radius of gyration</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Determine the Knudsen number:</p>
+<blockquote>
+<div><ul>
+<li><p>If Kn &gt; 10 we are in the Free molecular regime (if the mean free path of the gas is large compared to the particle size).</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Here, use equation 46 of Vahidinia et al. (2024) to adapt the fall velocity of spheres for aggregates of fractal dimension d_f</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>If Kn &lt; 10 we are in the Continuum regime (the gas can be treated a a continuous fluid)</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Here, use equation 23 of Ohno and Okuzumi (2017) to calculate vfall for aggregates of any type, with the addition of the Beta slip correction
+factor (Eq 3.11 of Ohno, 2024). This equation (Eq. 23) is valid for all three of the stokes, slip and turbulent regimes, so there is no need to calculate
+Reynolds number. It is not strictly designed to work for really low fractal dimensions (e.g. DCLA aggregates with d_f = 1.2), so consider the effects
+an upper bound for these if used (though aggregates in high atmospheres are not usually in the continuum regime anyway, they are in the Free molecular
+regime. The use of mobility radius for linear DCLA aggregates was explored, but R_gyr was chosen to remain consistent and continuous as d_f changes.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r</strong> (<em>float</em>) – particle radius (cm)</p></li>
+<li><p><strong>grav</strong> (<em>float</em>) – acceleration of gravity (cm/s^2)</p></li>
+<li><p><strong>mw_atmos</strong> (<em>float</em>) – atmospheric molecular weight (g/mol)</p></li>
+<li><p><strong>mfp</strong> (<em>float</em>) – atmospheric molecular mean free path (cm)</p></li>
+<li><p><strong>visc</strong> (<em>float</em>) – atmospheric dynamic viscosity (dyne s/cm^2) see Eqn. B2 in A&amp;M</p></li>
+<li><p><strong>t</strong> (<em>float</em>) – atmospheric temperature (K)</p></li>
+<li><p><strong>p</strong> (<em>float</em>) – atmospheric pressure (dyne/cm^2)</p></li>
+<li><p><strong>rhop</strong> (<em>float</em>) – density of particle (g/cm^3)</p></li>
+<li><p><strong>aggregates</strong> (<em>bool</em><em>, </em><em>optional</em>) – Turns on aggregate functionality. set to False for default spheres.</p></li>
+<li><p><strong>Df</strong> (<em>float</em><em>, </em><em>optional</em>) – fractal dimension of aggregate particle.</p></li>
+<li><p><strong>N_mon</strong> (<em>float</em><em>, </em><em>optional</em>) – number of monomers in aggregate</p></li>
+<li><p><strong>r_mon</strong> (<em>float</em><em>, </em><em>optional</em>) – the monomer radius (i.e., the smaller sub-particles) for aggregate particles (cm).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>v_fall</strong> – terminal velocity of particle (cm/s)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.root_functions.vfall_aggregates">
+<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall_aggregates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">D</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ragg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall_aggregates" title="Link to this definition"></a></dt>
+<dd><p>DEPRECATED, SEE CURRENT IMPLEMENTATION IN ‘VFALL’ FUNCTION
+Calculate fallspeed for a particle at one layer in an
+atmosphere, assuming low Reynolds number and in the molecular regime (Epstein drag),
+i.e., where Knudsen number (mfp/r) is high (&gt;&gt;1).</p>
+<p>User chooses whether particle is spherical or an aggregate.
+If aggregrate, the monomer size is given by r and the outer effective radius of the aggregrate is Ragg.</p>
+<p>all units are cgs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r</strong> (<em>float</em>) – monomer particle radius (cm)</p></li>
+<li><p><strong>mw_atmos</strong> (<em>float</em>) – atmospheric molecular weight (g/mol)</p></li>
+<li><p><strong>t</strong> (<em>float</em>) – atmospheric temperature (K)</p></li>
+<li><p><strong>p</strong> (<em>float</em>) – atmospheric pressure (dyne/cm^2)</p></li>
+<li><p><strong>rhop</strong> (<em>float</em>) – density of particle (g/cm^3)</p></li>
+<li><p><strong>grav</strong> (<em>float</em>) – acceleration of gravity (cm/s^2)</p></li>
+<li><p><strong>Ragg</strong> (<em>float</em>) – aggregate particle effective radius (cm). (Defaults to being spherical monomers).</p></li>
+<li><p><strong>D</strong> (<em>float</em>) – fractal number (Default is 2 because function reduces to monomers at this value).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.root_functions.vfall_aggregrates_ohno">
+<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall_aggregrates_ohno</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ad_qc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">D</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall_aggregrates_ohno" title="Link to this definition"></a></dt>
+<dd><p>Calculates fallspeed for a fractal aggegrate particle as performed
+by Ohno et al., 2020, with an outer
+effective radius of R_agg made up of monomers of size r, at one layer in an
+atmosphere. <a href="#id34"><span class="problematic" id="id35">**</span></a><a href="#id36"><span class="problematic" id="id37">*</span></a>Requires characteristic radius ragg to have D &gt; or equal 2, i.e., not very fluffy aggregrates.</p>
+<p>Essentially a more explicit version of the regular “vfall_aggregates” function,
+and is not dependent on being in free molecular (Esptein) regime</p>
+<p>all units are cgs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r</strong> (<em>float</em>) – monomer particle radius (cm)</p></li>
+<li><p><strong>grav</strong> (<em>float</em>) – acceleration of gravity (cm/s^2)</p></li>
+<li><p><strong>rhop</strong> (<em>float</em>) – density of monomer particle (g/cm^3)</p></li>
+<li><p><strong>t</strong> (<em>float</em>) – atmospheric temperature (K)</p></li>
+<li><p><strong>p</strong> (<em>float</em>) – atmospheric pressure (dyne/cm^2)</p></li>
+<li><p><strong>mw_atmos</strong> (<em>float</em>) – atmospheric molecular weight (g/mol)</p></li>
+<li><p><strong>mfp</strong> (<em>float</em>) – atmospheric molecular mean free path (cm)</p></li>
+<li><p><strong>ad_qc</strong> (<em>float</em>) – mixing ratio of condensed condensate (g/g)</p></li>
+<li><p><strong>D</strong> (<em>float</em>) – fractal number (Default is 2).</p></li>
+<li><p><strong>gas_mw</strong> (<em>float</em>) – condensate gas mean molecular weight (g/mol)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.root_functions.vfall_find_root">
+<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall_find_root</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_convect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Df</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_mon</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall_find_root" title="Link to this definition"></a></dt>
+<dd><p>This is used to find F(X)-y=0 where F(X) is the fall speed for
+a spherical particle and <cite>y</cite> is the convective velocity scale.
+When the two are balanced we arrive at our correct particle radius.</p>
+<p>Therefore, it is the same as the <cite>vfall</cite> function but with the
+subtraction of the convective velocity scale (cm/s) w_convect.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="virga.root_functions.vfall_legacy">
+<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall_legacy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall_legacy" title="Link to this definition"></a></dt>
 <dd><p>Calculate fallspeed for a spherical particle at one layer in an
 atmosphere, depending on Reynolds number for Stokes flow.</p>
 <p>For Re_Stokes &lt; 1, use Stokes velocity with slip correction
@@ -2285,69 +2694,6 @@ Orton (J. Atmos. Sci. 45, p. 2066, 1988)</p>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="virga.root_functions.vfall_aggregrates">
-<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall_aggregrates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">D</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ragg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall_aggregrates" title="Link to this definition"></a></dt>
-<dd><p>Calculate fallspeed for a particle at one layer in an
-atmosphere, assuming low Reynolds number and in the molecular regime (Epstein drag),
-i.e., where Knudsen number (mfp/r) is high (&gt;&gt;1).</p>
-<p>User chooses whether particle is spherical or an aggregate.
-If aggregrate, the monomer size is given by r and the outer effective radius of the aggregrate is Ragg.</p>
-<p>all units are cgs</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>r</strong> (<em>float</em>) – monomer particle radius (cm)</p></li>
-<li><p><strong>mw_atmos</strong> (<em>float</em>) – atmospheric molecular weight (g/mol)</p></li>
-<li><p><strong>t</strong> (<em>float</em>) – atmospheric temperature (K)</p></li>
-<li><p><strong>p</strong> (<em>float</em>) – atmospheric pressure (dyne/cm^2)</p></li>
-<li><p><strong>rhop</strong> (<em>float</em>) – density of particle (g/cm^3)</p></li>
-<li><p><strong>grav</strong> (<em>float</em>) – acceleration of gravity (cm/s^2)</p></li>
-<li><p><strong>Ragg</strong> (<em>float</em>) – aggregate particle effective radius (cm). (Defaults to 1 for spherical monomers).</p></li>
-<li><p><strong>D</strong> (<em>float</em>) – fractal number (Default is 2 because function reduces to monomers at this value).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="virga.root_functions.vfall_aggregrates_ohno">
-<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall_aggregrates_ohno</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ad_qc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">D</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall_aggregrates_ohno" title="Link to this definition"></a></dt>
-<dd><p>Calculates fallspeed for a fractal aggegrate particle as performed
-by Ohno et al., 2020, with an outer
-effective radius of R_agg made up of monomers of size r, at one layer in an
-atmosphere. <a href="#id34"><span class="problematic" id="id35">**</span></a><a href="#id36"><span class="problematic" id="id37">*</span></a>Requires characteristic radius ragg to have D &gt; or equal 2, i.e., not very fluffy aggregrates.</p>
-<p>Essentially a more explicit version of the regular “vfall_aggregates” function,
-and is not dependent on being in free molecular (Esptein) regime</p>
-<p>all units are cgs</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>r</strong> (<em>float</em>) – monomer particle radius (cm)</p></li>
-<li><p><strong>grav</strong> (<em>float</em>) – acceleration of gravity (cm/s^2)</p></li>
-<li><p><strong>rhop</strong> (<em>float</em>) – density of aggregrate particle (g/cm^3)</p></li>
-<li><p><strong>t</strong> (<em>float</em>) – atmospheric temperature (K)</p></li>
-<li><p><strong>p</strong> (<em>float</em>) – atmospheric pressure (dyne/cm^2)</p></li>
-<li><p><strong>mw_atmos</strong> (<em>float</em>) – atmospheric molecular weight (g/mol)</p></li>
-<li><p><strong>mfp</strong> (<em>float</em>) – atmospheric molecular mean free path (cm)</p></li>
-<li><p><strong>ad_qc</strong> (<em>float</em>) – mixing ratio of condensed condensate (g/g)</p></li>
-<li><p><strong>D</strong> (<em>float</em>) – fractal number (Default is 2).</p></li>
-<li><p><strong>gas_mw</strong> (<em>float</em>) – condensate gas mean molecular weight (g/mol)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="virga.root_functions.vfall_find_root">
-<span class="sig-prename descclassname"><span class="pre">virga.root_functions.</span></span><span class="sig-name descname"><span class="pre">vfall_find_root</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grav</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mw_atmos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mfp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_convect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#virga.root_functions.vfall_find_root" title="Link to this definition"></a></dt>
-<dd><p>This is used to find F(X)-y=0 where F(X) is the fall speed for
-a spherical particle and <cite>y</cite> is the convective velocity scale.
-When the two are balanced we arrive at our correct particle radius.</p>
-<p>Therefore, it is the same as the <cite>vfall</cite> function but with the
-subtraction of the convective velocity scale (cm/s) w_convect.</p>
-</dd></dl>
-
 </section>
 <section id="module-virga">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-virga" title="Link to this heading"></a></h2>
@@ -2358,7 +2704,7 @@ subtraction of the convective velocity scale (cm/s) w_convect.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="notebooks/7_SwitchingSolver.html" class="btn btn-neutral float-left" title="Switching the Solver" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="notebooks/12_Custom_Fractal_Aggregate_Aerosols.html" class="btn btn-neutral float-left" title="Custom Fractal Aggregate Aerosols" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

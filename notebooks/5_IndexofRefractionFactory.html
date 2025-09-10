@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How to see what optical properties are being used &mdash; virga v1.0 documentation</title>
+  <title>How to see what optical properties are being used &mdash; virga v2.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -14,7 +14,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=e160b93e"></script>
+      <script src="../_static/documentation_options.js?v=aa039f9c"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -48,7 +48,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/record/3758538#.Xp4w-1NKjOQ">Refractive Indices</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/records/15886530">Refractive Indices</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">The Tutorials</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#basics">Basics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#pairing-cloud-models-to-spectroscopy">Pairing Cloud Models to Spectroscopy</a></li>
@@ -62,6 +62,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#adding-cloud-complexity">Adding Cloud Complexity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#switch-to-direct-solver">Switch to Direct Solver</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#flexible-cloud-layers">Flexible Cloud Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#fractal-aggregates">Fractal Aggregates</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
@@ -125,7 +126,7 @@
 </style>
 <div>
     <a href="https://bokeh.org" target="_blank" class="bk-notebook-logo"></a>
-    <span id="bc4ff59d-ec4e-4297-9d38-21dfbdc8d174">Loading BokehJS ...</span>
+    <span id="eec9a682-289d-4dc8-a49f-be646873ad9d">Loading BokehJS ...</span>
 </div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -298,7 +299,7 @@ const JS_MIME_TYPE = 'application/javascript';
      "</div>"}};
 
   function display_loaded(error = null) {
-    const el = document.getElementById("bc4ff59d-ec4e-4297-9d38-21dfbdc8d174");
+    const el = document.getElementById("eec9a682-289d-4dc8-a49f-be646873ad9d");
     if (el != null) {
       const html = (() => {
         if (typeof root.Bokeh === "undefined") {
@@ -432,7 +433,7 @@ function(Bokeh) {
       console.log("Bokeh: BokehJS failed to load within specified timeout.");
       root._bokeh_failed_load = true;
     } else if (force !== true) {
-      const cell = $(document.getElementById("bc4ff59d-ec4e-4297-9d38-21dfbdc8d174")).parents('.cell').data().cell;
+      const cell = $(document.getElementById("eec9a682-289d-4dc8-a49f-be646873ad9d")).parents('.cell').data().cell;
       cell.output_area.append_execute_result(NB_LOAD_WARNING)
     }
   }
@@ -724,14 +725,6 @@ Saving /Users/nbatalh1/Documents/data/virga_new/H2SO4.refrind
 </section>
 <section id="Now-follow-through-with-new-Mie-parameters">
 <h1>Now follow through with new Mie parameters<a class="headerlink" href="#Now-follow-through-with-new-Mie-parameters" title="Link to this heading"></a></h1>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
-</div>
-</div>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
@@ -747,7 +740,9 @@ Saving /Users/nbatalh1/Documents/data/virga_new/H2SO4.refrind
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Computing H2O
+
+Computing optical properties for H2O using MiePython...
+If this function seems to be running a really long time... Check that you gave your rmin (and r_mon if using aggregates) in centimeters and that you are not making tennis balls :)
 
 196 wavelengths of refractive index data found for H2O. Grid of mean radii (in bins) to calculate extinction and scattering efficiencies for (in cm):
 
@@ -814,7 +809,8 @@ Computing H2O
            4.715234e-02    5.423913e-02    6.132593e-02       1.417359e-02
 
 Averages from 6 sub-bins will be used to calculate the properties that represent the mean radius in each bin above.
-Optical properties for H2O have been calculated and saved as /Users/nbatalh1/Documents/data/virga_new/H2O.mieff
+Optical properties for H2O have been calculated and saved as /Users/nbatalh1/Documents/data/virga_new/H2O.mieff.
+
 </pre></div></div>
 </div>
 </section>

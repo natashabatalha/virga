@@ -1,0 +1,820 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fractal Aggregate Aerosols in a Hot Jupiter atmosphere &mdash; virga v2.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=aa039f9c"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Fractal Aggregate Spectra in PICASO" href="11_Fractal_Aggregate_spectra_in_PICASO.html" />
+    <link rel="prev" title="Switching the Solver" href="7_SwitchingSolver.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            virga
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/records/15886530">Refractive Indices</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">The Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#basics">Basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#pairing-cloud-models-to-spectroscopy">Pairing Cloud Models to Spectroscopy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#changing-out-index-of-refraction">Changing out Index of Refraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#custom-flex-cloud-layers">Custom Flex Cloud Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#adding-cloud-complexity">Adding Cloud Complexity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#switch-to-direct-solver">Switch to Direct Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#flexible-cloud-layers">Flexible Cloud Layers</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../tutorials.html#fractal-aggregates">Fractal Aggregates</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Fractal Aggregate Aerosols in a Hot Jupiter atmosphere</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Set-planet-parameters">Set planet parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Adding-Mg2SiO4-Clouds-(Spherical-Particles)">Adding Mg2SiO4 Clouds (Spherical Particles)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#p-T-profile">p-T profile</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Adding-Fractal-Aggregate-(Mg2SiO4)-Clouds.">Adding Fractal Aggregate (Mg2SiO4) Clouds.</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Aggregate-Analysis-Tools">Aggregate Analysis Tools</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Visualising-Particle-Sizes-in-each-Pressure-Layer">Visualising Particle Sizes in each Pressure Layer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Probing-the-relationship-between-Pressure,-Radius-and-Number-Density">Probing the relationship between Pressure, Radius and Number Density</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Visualising-.mieff-files-and-Optical-Properties">Visualising .mieff files and Optical Properties</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Checking-that-Particle-Radii-are-within-the-.mieff-Grid">Checking that Particle Radii are within the .mieff Grid</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Next-steps">Next steps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="11_Fractal_Aggregate_spectra_in_PICASO.html">Fractal Aggregate Spectra in PICASO</a></li>
+<li class="toctree-l3"><a class="reference internal" href="11_Fractal_Aggregate_spectra_in_PICASO.html#Aggregate-Analysis-Tools">Aggregate Analysis Tools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="12_Custom_Fractal_Aggregate_Aerosols.html">Greating Custom Fractal Optical Properties</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../virga.html">The Code</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">virga</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Fractal Aggregate Aerosols in a Hot Jupiter atmosphere</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/notebooks/10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference external" href="https://github.com/natashabatalha/virga/tree/master/docs/notebooks/10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter.ipynb">Download full notebook here</a></p>
+</div>
+<section id="Fractal-Aggregate-Aerosols-in-a-Hot-Jupiter-atmosphere">
+<h1>Fractal Aggregate Aerosols in a Hot Jupiter atmosphere<a class="headerlink" href="#Fractal-Aggregate-Aerosols-in-a-Hot-Jupiter-atmosphere" title="Link to this heading"></a></h1>
+<p>In this tutorial, we will learn:</p>
+<ol class="arabic simple">
+<li><p>How to run virga for non-spherical cloud particles.</p></li>
+<li><p>How to compare the particle sizes and optical properties for aggregates vs. spheres</p></li>
+</ol>
+<p>Aerosols can come in a variety of shapes and sizes, which we typically characterise by their fractal dimension (Df). Under this framework, aerosols are made of collections of small spheres called monomers, and Df=3 would represent the most compact possible arrangement, whereas Df=1 would be something perfectly linear. Real aerosols are usually somewhere in-between 1 and 3, and the ultimate shape of an aerosol is usually a result of their formation conditions. VIRGA v2.0 allows us to
+silmultaneously model the effects of a range of different particle shapes on spectra so we can find the best fit to observational data. For further details and example of typical shapes, see Lodge &amp; Moran et al. (2025).</p>
+<p>Striving to maintain the simplicity and ethod of virga, aerosols can be added by providing two simple parameters:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>a) The fractal dimension (general shape) of the aerosols (which can be an array).
+b) EITHER the number of monomers (N_mon) OR the radius of the monomer (r_mon).
+</pre></div>
+</div>
+<p>Figure 2 of Moran &amp; Lodge et al. (2025) demonstrates both of the choices for (b) and explains them in detail – see this for more guidance. in this tutorial we will choose an array of fractal dimensions, and we choose to fix the number of monomers (<span class="math notranslate nohighlight">\(N_{mon}\)</span>=1000).</p>
+<p>Before beginning, make sure you have downloaded the new optical database for aggregates from here: <a class="reference external" href="https://zenodo.org/records/16581692">https://zenodo.org/records/16581692</a> (which are all calculated with the assumption that <span class="math notranslate nohighlight">\(N_{mon}\)</span>=1000) and update the filepaths to the VIRGA reference data in the first cell:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># --------------------------------------------- UPDATE THESE FILEPATHS FOR YOUR OWN SETUP ------------------------------------------------------------------</span>
+
+<span class="c1"># first, set the locations of databases needed for virga</span>
+<span class="n">mieff_dir</span> <span class="o">=</span> <span class="s1">&#39;/Users/nbatalh1/Documents/data/VIRGA_2_mieff_files&#39;</span> <span class="c1"># set file paths for VIRGA v2 optical database (.mieff files) -- make sure you have downloaded the new database that includes aggregates (v2!)</span>
+
+<span class="c1"># --------------------------------------------------------------------------------------------------------------------------------------------</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#standard import statements</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">astropy.units</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">u</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">virga</span><span class="w"> </span><span class="kn">import</span> <span class="n">justdoit</span> <span class="k">as</span> <span class="n">vdi</span>
+
+<span class="c1">#plotting tools</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">virga</span><span class="w"> </span><span class="kn">import</span> <span class="n">justplotit</span> <span class="k">as</span> <span class="n">vpi</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bokeh.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">show</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bokeh.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">output_notebook</span>
+<span class="n">output_notebook</span><span class="p">()</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<style>
+    .bk-notebook-logo {
+        display: block;
+        width: 20px;
+        height: 20px;
+        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABx0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzIENTNui8sowAAAOkSURBVDiNjZRtaJVlGMd/1/08zzln5zjP1LWcU9N0NkN8m2CYjpgQYQXqSs0I84OLIC0hkEKoPtiH3gmKoiJDU7QpLgoLjLIQCpEsNJ1vqUOdO7ppbuec5+V+rj4ctwzd8IIbbi6u+8f1539dt3A78eXC7QizUF7gyV1fD1Yqg4JWz84yffhm0qkFqBogB9rM8tZdtwVsPUhWhGcFJngGeWrPzHm5oaMmkfEg1usvLFyc8jLRqDOMru7AyC8saQr7GG7f5fvDeH7Ej8CM66nIF+8yngt6HWaKh7k49Soy9nXurCi1o3qUbS3zWfrYeQDTB/Qj6kX6Ybhw4B+bOYoLKCC9H3Nu/leUTZ1JdRWkkn2ldcCamzrcf47KKXdAJllSlxAOkRgyHsGC/zRday5Qld9DyoM4/q/rUoy/CXh3jzOu3bHUVZeU+DEn8FInkPBFlu3+nW3Nw0mk6vCDiWg8CeJaxEwuHS3+z5RgY+YBR6V1Z1nxSOfoaPa4LASWxxdNp+VWTk7+4vzaou8v8PN+xo+KY2xsw6une2frhw05CTYOmQvsEhjhWjn0bmXPjpE1+kplmmkP3suftwTubK9Vq22qKmrBhpY4jvd5afdRA3wGjFAgcnTK2s4hY0/GPNIb0nErGMCRxWOOX64Z8RAC4oCXdklmEvcL8o0BfkNK4lUg9HTl+oPlQxdNo3Mg4Nv175e/1LDGzZen30MEjRUtmXSfiTVu1kK8W4txyV6BMKlbgk3lMwYCiusNy9fVfvvwMxv8Ynl6vxoByANLTWplvuj/nF9m2+PDtt1eiHPBr1oIfhCChQMBw6Aw0UulqTKZdfVvfG7VcfIqLG9bcldL/+pdWTLxLUy8Qq38heUIjh4XlzZxzQm19lLFlr8vdQ97rjZVOLf8nclzckbcD4wxXMidpX30sFd37Fv/GtwwhzhxGVAprjbg0gCAEeIgwCZyTV2Z1REEW8O4py0wsjeloKoMr6iCY6dP92H6Vw/oTyICIthibxjm/DfN9lVz8IqtqKYLUXfoKVMVQVVJOElGjrnnUt9T9wbgp8AyYKaGlqingHZU/uG2NTZSVqwHQTWkx9hxjkpWDaCg6Ckj5qebgBVbT3V3NNXMSiWSDdGV3hrtzla7J+duwPOToIg42ChPQOQjspnSlp1V+Gjdged7+8UN5CRAV7a5EdFNwCjEaBR27b3W890TE7g24NAP/mMDXRWrGoFPQI9ls/MWO2dWFAar/xcOIImbbpA3zgAAAABJRU5ErkJggg==);
+    }
+</style>
+<div>
+    <a href="https://bokeh.org" target="_blank" class="bk-notebook-logo"></a>
+    <span id="fc2a5523-ec77-4f0e-9c17-b774631ea63b">Loading BokehJS ...</span>
+</div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="output_javascript"></div>
+<script type="text/javascript">
+var element = document.currentScript.previousSibling.previousSibling;
+'use strict';
+(function(root) {
+  function now() {
+    return new Date();
+  }
+
+  const force = true;
+
+  if (typeof root._bokeh_onload_callbacks === "undefined" || force === true) {
+    root._bokeh_onload_callbacks = [];
+    root._bokeh_is_loading = undefined;
+  }
+
+const JS_MIME_TYPE = 'application/javascript';
+  const HTML_MIME_TYPE = 'text/html';
+  const EXEC_MIME_TYPE = 'application/vnd.bokehjs_exec.v0+json';
+  const CLASS_NAME = 'output_bokeh rendered_html';
+
+  /**
+   * Render data to the DOM node
+   */
+  function render(props, node) {
+    const script = document.createElement("script");
+    node.appendChild(script);
+  }
+
+  /**
+   * Handle when an output is cleared or removed
+   */
+  function handleClearOutput(event, handle) {
+    function drop(id) {
+      const view = Bokeh.index.get_by_id(id)
+      if (view != null) {
+        view.model.document.clear()
+        Bokeh.index.delete(view)
+      }
+    }
+
+    const cell = handle.cell;
+
+    const id = cell.output_area._bokeh_element_id;
+    const server_id = cell.output_area._bokeh_server_id;
+
+    // Clean up Bokeh references
+    if (id != null) {
+      drop(id)
+    }
+
+    if (server_id !== undefined) {
+      // Clean up Bokeh references
+      const cmd_clean = "from bokeh.io.state import curstate; print(curstate().uuid_to_server['" + server_id + "'].get_sessions()[0].document.roots[0]._id)";
+      cell.notebook.kernel.execute(cmd_clean, {
+        iopub: {
+          output: function(msg) {
+            const id = msg.content.text.trim()
+            drop(id)
+          }
+        }
+      });
+      // Destroy server and session
+      const cmd_destroy = "import bokeh.io.notebook as ion; ion.destroy_server('" + server_id + "')";
+      cell.notebook.kernel.execute(cmd_destroy);
+    }
+  }
+
+  /**
+   * Handle when a new output is added
+   */
+  function handleAddOutput(event, handle) {
+    const output_area = handle.output_area;
+    const output = handle.output;
+
+    // limit handleAddOutput to display_data with EXEC_MIME_TYPE content only
+    if ((output.output_type != "display_data") || (!Object.prototype.hasOwnProperty.call(output.data, EXEC_MIME_TYPE))) {
+      return
+    }
+
+    const toinsert = output_area.element.find("." + CLASS_NAME.split(' ')[0]);
+
+    if (output.metadata[EXEC_MIME_TYPE]["id"] !== undefined) {
+      toinsert[toinsert.length - 1].firstChild.textContent = output.data[JS_MIME_TYPE];
+      // store reference to embed id on output_area
+      output_area._bokeh_element_id = output.metadata[EXEC_MIME_TYPE]["id"];
+    }
+    if (output.metadata[EXEC_MIME_TYPE]["server_id"] !== undefined) {
+      const bk_div = document.createElement("div");
+      bk_div.innerHTML = output.data[HTML_MIME_TYPE];
+      const script_attrs = bk_div.children[0].attributes;
+      for (let i = 0; i < script_attrs.length; i++) {
+        toinsert[toinsert.length - 1].firstChild.setAttribute(script_attrs[i].name, script_attrs[i].value);
+        toinsert[toinsert.length - 1].firstChild.textContent = bk_div.children[0].textContent
+      }
+      // store reference to server id on output_area
+      output_area._bokeh_server_id = output.metadata[EXEC_MIME_TYPE]["server_id"];
+    }
+  }
+
+  function register_renderer(events, OutputArea) {
+
+    function append_mime(data, metadata, element) {
+      // create a DOM node to render to
+      const toinsert = this.create_output_subarea(
+        metadata,
+        CLASS_NAME,
+        EXEC_MIME_TYPE
+      );
+      this.keyboard_manager.register_events(toinsert);
+      // Render to node
+      const props = {data: data, metadata: metadata[EXEC_MIME_TYPE]};
+      render(props, toinsert[toinsert.length - 1]);
+      element.append(toinsert);
+      return toinsert
+    }
+
+    /* Handle when an output is cleared or removed */
+    events.on('clear_output.CodeCell', handleClearOutput);
+    events.on('delete.Cell', handleClearOutput);
+
+    /* Handle when a new output is added */
+    events.on('output_added.OutputArea', handleAddOutput);
+
+    /**
+     * Register the mime type and append_mime function with output_area
+     */
+    OutputArea.prototype.register_mime_type(EXEC_MIME_TYPE, append_mime, {
+      /* Is output safe? */
+      safe: true,
+      /* Index of renderer in `output_area.display_order` */
+      index: 0
+    });
+  }
+
+  // register the mime type if in Jupyter Notebook environment and previously unregistered
+  if (root.Jupyter !== undefined) {
+    const events = require('base/js/events');
+    const OutputArea = require('notebook/js/outputarea').OutputArea;
+
+    if (OutputArea.prototype.mime_types().indexOf(EXEC_MIME_TYPE) == -1) {
+      register_renderer(events, OutputArea);
+    }
+  }
+  if (typeof (root._bokeh_timeout) === "undefined" || force === true) {
+    root._bokeh_timeout = Date.now() + 5000;
+    root._bokeh_failed_load = false;
+  }
+
+  const NB_LOAD_WARNING = {'data': {'text/html':
+     "<div style='background-color: #fdd'>\n"+
+     "<p>\n"+
+     "BokehJS does not appear to have successfully loaded. If loading BokehJS from CDN, this \n"+
+     "may be due to a slow or bad network connection. Possible fixes:\n"+
+     "</p>\n"+
+     "<ul>\n"+
+     "<li>re-rerun `output_notebook()` to attempt to load from CDN again, or</li>\n"+
+     "<li>use INLINE resources instead, as so:</li>\n"+
+     "</ul>\n"+
+     "<code>\n"+
+     "from bokeh.resources import INLINE\n"+
+     "output_notebook(resources=INLINE)\n"+
+     "</code>\n"+
+     "</div>"}};
+
+  function display_loaded(error = null) {
+    const el = document.getElementById("fc2a5523-ec77-4f0e-9c17-b774631ea63b");
+    if (el != null) {
+      const html = (() => {
+        if (typeof root.Bokeh === "undefined") {
+          if (error == null) {
+            return "BokehJS is loading ...";
+          } else {
+            return "BokehJS failed to load.";
+          }
+        } else {
+          const prefix = `BokehJS ${root.Bokeh.version}`;
+          if (error == null) {
+            return `${prefix} successfully loaded.`;
+          } else {
+            return `${prefix} <b>encountered errors</b> while loading and may not function as expected.`;
+          }
+        }
+      })();
+      el.innerHTML = html;
+
+      if (error != null) {
+        const wrapper = document.createElement("div");
+        wrapper.style.overflow = "auto";
+        wrapper.style.height = "5em";
+        wrapper.style.resize = "vertical";
+        const content = document.createElement("div");
+        content.style.fontFamily = "monospace";
+        content.style.whiteSpace = "pre-wrap";
+        content.style.backgroundColor = "rgb(255, 221, 221)";
+        content.textContent = error.stack ?? error.toString();
+        wrapper.append(content);
+        el.append(wrapper);
+      }
+    } else if (Date.now() < root._bokeh_timeout) {
+      setTimeout(() => display_loaded(error), 100);
+    }
+  }
+
+  function run_callbacks() {
+    try {
+      root._bokeh_onload_callbacks.forEach(function(callback) {
+        if (callback != null)
+          callback();
+      });
+    } finally {
+      delete root._bokeh_onload_callbacks
+    }
+    console.debug("Bokeh: all callbacks have finished");
+  }
+
+  function load_libs(css_urls, js_urls, callback) {
+    if (css_urls == null) css_urls = [];
+    if (js_urls == null) js_urls = [];
+
+    root._bokeh_onload_callbacks.push(callback);
+    if (root._bokeh_is_loading > 0) {
+      console.debug("Bokeh: BokehJS is being loaded, scheduling callback at", now());
+      return null;
+    }
+    if (js_urls == null || js_urls.length === 0) {
+      run_callbacks();
+      return null;
+    }
+    console.debug("Bokeh: BokehJS not loaded, scheduling load and callback at", now());
+    root._bokeh_is_loading = css_urls.length + js_urls.length;
+
+    function on_load() {
+      root._bokeh_is_loading--;
+      if (root._bokeh_is_loading === 0) {
+        console.debug("Bokeh: all BokehJS libraries/stylesheets loaded");
+        run_callbacks()
+      }
+    }
+
+    function on_error(url) {
+      console.error("failed to load " + url);
+    }
+
+    for (let i = 0; i < css_urls.length; i++) {
+      const url = css_urls[i];
+      const element = document.createElement("link");
+      element.onload = on_load;
+      element.onerror = on_error.bind(null, url);
+      element.rel = "stylesheet";
+      element.type = "text/css";
+      element.href = url;
+      console.debug("Bokeh: injecting link tag for BokehJS stylesheet: ", url);
+      document.body.appendChild(element);
+    }
+
+    for (let i = 0; i < js_urls.length; i++) {
+      const url = js_urls[i];
+      const element = document.createElement('script');
+      element.onload = on_load;
+      element.onerror = on_error.bind(null, url);
+      element.async = false;
+      element.src = url;
+      console.debug("Bokeh: injecting script tag for BokehJS library: ", url);
+      document.head.appendChild(element);
+    }
+  };
+
+  function inject_raw_css(css) {
+    const element = document.createElement("style");
+    element.appendChild(document.createTextNode(css));
+    document.body.appendChild(element);
+  }
+
+  const js_urls = ["https://cdn.bokeh.org/bokeh/release/bokeh-3.5.1.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-gl-3.5.1.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.5.1.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-tables-3.5.1.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-mathjax-3.5.1.min.js"];
+  const css_urls = [];
+
+  const inline_js = [    function(Bokeh) {
+      Bokeh.set_log_level("info");
+    },
+function(Bokeh) {
+    }
+  ];
+
+  function run_inline_js() {
+    if (root.Bokeh !== undefined || force === true) {
+      try {
+            for (let i = 0; i < inline_js.length; i++) {
+      inline_js[i].call(root, root.Bokeh);
+    }
+
+      } catch (error) {display_loaded(error);throw error;
+      }if (force === true) {
+        display_loaded();
+      }} else if (Date.now() < root._bokeh_timeout) {
+      setTimeout(run_inline_js, 100);
+    } else if (!root._bokeh_failed_load) {
+      console.log("Bokeh: BokehJS failed to load within specified timeout.");
+      root._bokeh_failed_load = true;
+    } else if (force !== true) {
+      const cell = $(document.getElementById("fc2a5523-ec77-4f0e-9c17-b774631ea63b")).parents('.cell').data().cell;
+      cell.output_area.append_execute_result(NB_LOAD_WARNING)
+    }
+  }
+
+  if (root._bokeh_is_loading === 0) {
+    console.debug("Bokeh: BokehJS loaded, going straight to plotting");
+    run_inline_js();
+  } else {
+    load_libs(css_urls, js_urls, function() {
+      console.debug("Bokeh: BokehJS plotting callback run at", now());
+      run_inline_js();
+    });
+  }
+}(window));
+</script></div>
+</div>
+<section id="Set-planet-parameters">
+<h2>Set planet parameters<a class="headerlink" href="#Set-planet-parameters" title="Link to this heading"></a></h2>
+<p>To start with, let’s create choose a standard hot Jupiter profile and a condensible species for the clouds. Here we choose Mg2SiO4, a common species for these environments.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># set planet parameters:</span>
+
+<span class="n">planet_mass</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1"># M_Jup</span>
+<span class="n">planet_radius</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1"># R_Jup</span>
+
+<span class="c1"># choose condensible species</span>
+<span class="n">aggregate_species</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Mg2SiO4&#39;</span><span class="p">]</span> <span class="c1"># Aggregate species</span>
+
+<span class="c1"># set Kzz, metallicity and mean molecular weight</span>
+<span class="n">metallicity</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1">#atmospheric metallicity relative to Solar</span>
+<span class="n">mean_molecular_weight</span> <span class="o">=</span> <span class="mf">2.3</span> <span class="c1"># atmospheric mean molecular weight</span>
+<span class="n">constant_kzz</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**</span><span class="mi">10</span> <span class="c1"># constant Kzz</span>
+<span class="n">f_sed</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="c1"># sedimentation efficiency</span>
+<span class="n">sigma_width</span> <span class="o">=</span> <span class="mi">2</span> <span class="c1"># width of lognormal distribution</span>
+
+<span class="c1"># create hot Jupiter atmosphere</span>
+<span class="n">jupiter</span> <span class="o">=</span> <span class="n">vdi</span><span class="o">.</span><span class="n">Atmosphere</span><span class="p">(</span><span class="n">aggregate_species</span><span class="p">,</span>
+                         <span class="n">fsed</span><span class="o">=</span><span class="n">f_sed</span><span class="p">,</span>
+                         <span class="n">mh</span><span class="o">=</span><span class="n">metallicity</span><span class="p">,</span>
+                         <span class="n">mmw</span> <span class="o">=</span> <span class="n">mean_molecular_weight</span><span class="p">,</span>
+                         <span class="n">sig</span> <span class="o">=</span> <span class="n">sigma_width</span><span class="p">,</span>
+                         <span class="n">aggregates</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># set gravity</span>
+<span class="n">jupiter</span><span class="o">.</span><span class="n">gravity</span><span class="p">(</span><span class="n">mass</span><span class="o">=</span><span class="n">planet_mass</span><span class="p">,</span> <span class="n">mass_unit</span><span class="o">=</span><span class="n">vdi</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;M_jup&#39;</span><span class="p">),</span> <span class="n">radius</span><span class="o">=</span><span class="n">planet_radius</span><span class="p">,</span> <span class="n">radius_unit</span><span class="o">=</span><span class="n">vdi</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="s1">&#39;R_jup&#39;</span><span class="p">))</span> <span class="c1"># order: planet mass, unit, planet radius, unit</span>
+
+<span class="c1"># load preset hot jupiter p-T profile</span>
+<span class="n">jupiter</span><span class="o">.</span><span class="n">ptk</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">vdi</span><span class="o">.</span><span class="n">hot_jupiter</span><span class="p">())</span>
+
+<span class="c1"># add constant Kzz (value set by user at top of this cell) to atmosphere profile</span>
+<span class="n">jupiter</span><span class="o">.</span><span class="n">kz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">jupiter</span><span class="o">.</span><span class="n">kz</span><span class="p">))</span><span class="o">+</span> <span class="n">constant_kzz</span> <span class="c1"># make a constant Kzz profile as an array</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Adding-Mg2SiO4-Clouds-(Spherical-Particles)">
+<h2>Adding Mg2SiO4 Clouds (Spherical Particles)<a class="headerlink" href="#Adding-Mg2SiO4-Clouds-(Spherical-Particles)" title="Link to this heading"></a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># run virga: this will determine where the clouds are, what particles sizes they are made from, and how opaque they are at each pressure level</span>
+<span class="n">clouds_from_virga_spheres</span> <span class="o">=</span> <span class="n">vdi</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">jupiter</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="n">mieff_dir</span><span class="p">)</span> <span class="c1"># Add the Mg2SiO4 clouds!</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="p-T-profile">
+<h2>p-T profile<a class="headerlink" href="#p-T-profile" title="Link to this heading"></a></h2>
+<p>To view the p-T profile and get an idea of where in the atmosphere our Mg2SiO4 condensates are forming into clouds, we can use virga’s usual pt() function.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot pressure-Temperature profile</span>
+<span class="n">show</span><span class="p">(</span><span class="n">vpi</span><span class="o">.</span><span class="n">pt</span><span class="p">(</span><span class="n">clouds_from_virga_spheres</span><span class="p">,</span><span class="n">plot_height</span><span class="o">=</span><span class="mi">450</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area rendered_html docutils container">
+<div id="a79f9d1a-0851-4447-a17f-096c3708bb6d" data-root-id="p1001" style="display: contents;"></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="output_javascript"></div>
+<script type="text/javascript">
+var element = document.currentScript.previousSibling.previousSibling;
+(function(root) {
+  function embed_document(root) {
+  const docs_json = {"f8d1a847-ced2-40d8-94bc-87f5f8155b0e":{"version":"3.5.1","title":"Bokeh Application","roots":[{"type":"object","name":"Figure","id":"p1001","attributes":{"height":450,"x_range":{"type":"object","name":"DataRange1d","id":"p1003"},"y_range":{"type":"object","name":"Range1d","id":"p1010","attributes":{"start":145.59,"end":2.9176000000000002e-06}},"x_scale":{"type":"object","name":"LinearScale","id":"p1011"},"y_scale":{"type":"object","name":"LogScale","id":"p1012"},"title":{"type":"object","name":"Title","id":"p1008"},"renderers":[{"type":"object","name":"GlyphRenderer","id":"p1042","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1036","attributes":{"selected":{"type":"object","name":"Selection","id":"p1037","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1038"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"7c84QQ0lmEC9/AQxjIeYQJoQYb877ZhA8Hk6P0RWmUACnYS20MKZQAMtBxkPM5pA63xIiTCnmkDSrVSgaR+bQABOPr3ym5tAVDZVXQgdnEAHEzZ+66KcQNUPAQviLZ1Au9I5Vje+nUDrzg+iPFSeQMzaFblJ8J5AXBnFmb2Sn0DSPMab/x2gQJZdUyo/dqBAQKhAPFrSoEDH9ZUDkzKhQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1043","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1044"}}},"glyph":{"type":"object","name":"Line","id":"p1039","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#000003"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1040","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#000003","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1041","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#000003","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1053","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1047","attributes":{"selected":{"type":"object","name":"Selection","id":"p1048","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1049"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"v3NqM6L5QUAF2AfjnotCQPz0B5kIJ0NA5UgOVc7MQ0DFI7J1/31EQL4OfVrRO0VA/6PqO6YHRkAEvJeJFeNGQICfSDf2z0dAlzyZgmvQSED88JTo9OZJQMhrU0GCFktAdVHMT41iTEDtWwmROs9NQGWgmMmDYU9AB/Y667ePUEABU9plLohRQK+CK9uxnlJA5YbYbvDYU0CO3Sp1GD5VQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1054","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1055"}}},"glyph":{"type":"object","name":"Line","id":"p1050","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#0B0824"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1051","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#0B0824","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1052","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#0B0824","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1063","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1057","attributes":{"selected":{"type":"object","name":"Selection","id":"p1058","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1059"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"aZEuo55Ol0Cn+CynQqyXQIG9lRrjDJhAa5TFJaVwmECqIMFjsNeYQOWwrBYvQplAG3qgYU6wmUBhxX+IPiKaQAb/kDYzmJpAMduvzGMSm0BThRK4C5GbQHPjv9JqFJxAIF4Az8WcnECFk0WvZiqdQKhcQUydvZ1Ax2gr679WnkCHp4jmK/aeQGGEK2xGnJ9AkHzNqb4koEBjd04IJH+gQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1064","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1065"}}},"glyph":{"type":"object","name":"Line","id":"p1060","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#1F114B"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1061","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#1F114B","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1062","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#1F114B","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1073","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1067","attributes":{"selected":{"type":"object","name":"Selection","id":"p1068","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1069"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"ohShjwnxlECADXZ1OEaVQC6+7YknnpVAwpozePn4lUDG8cM701aWQKlArFLct5ZAGs//9D4cl0CxXSRSKISXQLQhstTI75dAYYu9bVRfmEDNJIHoAtOYQKQQg0cQS5lAOVx9LL3HmUAevYNMT0maQBf5HfIR0JpAUwZWj1Zcm0CkPA5ide6bQO+UWS3OhpxAKIQJC8klnUAK5zZZ18udQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1074","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1075"}}},"glyph":{"type":"object","name":"Line","id":"p1070","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#3B0F6F"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1071","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#3B0F6F","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1072","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#3B0F6F","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1083","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1077","attributes":{"selected":{"type":"object","name":"Selection","id":"p1078","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1079"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"ZOVaved2kECVP6IZuNOQQNW+kHK2NJFAKhAPuSyakUDe4z7XawSSQH+mBYjMc5JAk5CXTrDokkCEFbKTgmOTQIPCY++55JNAMY23p9lslEAga25uc/yUQKANPmoplJVAuGfxmrA0lkBzPnWr096WQGsRjkl2k5dAdWkAIZlTmEAeYMqfXiCZQGu5SLMQ+5lAVzSbuyflmkBUeIEEU+CbQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1084","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1085"}}},"glyph":{"type":"object","name":"Line","id":"p1080","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#57147D"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1081","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#57147D","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1082","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#57147D","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1093","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1087","attributes":{"selected":{"type":"object","name":"Selection","id":"p1088","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1089"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"3WhkazLfkkATl/rhH1eTQJoB8mIo1ZNADUqXacZZlEC+lSGVgeWUQNZcP3jweJVAKot2t7oUlkBREXCGm7mWQG5MJZhkaJdAagXYmgEimEAkcRxffOeYQO3ef9EBuplAmh0k+eeamkAF6OQ7tYubQB5ijDspjpxAtU8HuUeknUA8tgENZtCeQH10SfqdCqBAn4kQWfy6oECH/EzvLnuhQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1094","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1095"}}},"glyph":{"type":"object","name":"Line","id":"p1090","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#711F81"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1091","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#711F81","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1092","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#711F81","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1103","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1097","attributes":{"selected":{"type":"object","name":"Selection","id":"p1098","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1099"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"xD6wNhH7Y0BgoSF6wIBkQFjH69JpDWVAEwzu556hZUDZH87lAT5mQHO6n/FH42ZAsk4cEDySZ0Aws+qbwktoQKKer2zdEGlAAics2rDiaUDkNG/TicJqQFbDU1PlsWtAJCcEk3mybEDQh7Z7QcZtQEmZXwaL725AzLZxvIQYcEA2uAJn9sZwQAvwVSgnlXFALjk9XDmHckCV9IQl55hzQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1104","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1105"}}},"glyph":{"type":"object","name":"Line","id":"p1100","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#8C2980"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1101","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#8C2980","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1102","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#8C2980","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1113","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1107","attributes":{"selected":{"type":"object","name":"Selection","id":"p1108","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1109"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"emIOJtGagUBBsRXxvPqBQCWCDLzUXoJAh/pdwF/HgkCyyp6xqzSDQCEQbn4Np4NA9aPmLOIehECYCVbXj5yEQC9V386GIIVA+i3Z6kKrhUBVMSUNTT2GQGVxh+U814ZAo2s/ALt5h0AtQPEugyWIQN5deV5n24hAGdrH8FKciUCMrqi3TmmKQAwA1LSFQ4tAzb1UzUosjEDDIQqrHyWNQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1114","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1115"}}},"glyph":{"type":"object","name":"Line","id":"p1110","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#A7317D"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1111","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#A7317D","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1112","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#A7317D","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1123","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1117","attributes":{"selected":{"type":"object","name":"Selection","id":"p1118","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1119"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"AjND85BDkkBIeFAKI5qSQKFBg0z585JA555d9UNRk0BqF6YIN7KTQLYDN7MKF5RADhCot/t/lECOTozoS+2UQJSJSrJCX5VAQYvvti3WlUAaE8Z+YVKWQGJNAkE61JZAbvVryBxcl0BRVbF4d+qXQNNM9nnDf5hAN+hPEYYcmUC3RTwuUsGZQJrn2DbKbppAhZO1HqIlm0C32MTWoeabQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1124","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1125"}}},"glyph":{"type":"object","name":"Line","id":"p1120","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#C33B74","line_width":5}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1121","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#C33B74","line_alpha":0.1,"line_width":5}},"muted_glyph":{"type":"object","name":"Line","id":"p1122","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#C33B74","line_alpha":0.2,"line_width":5}}}},{"type":"object","name":"GlyphRenderer","id":"p1133","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1127","attributes":{"selected":{"type":"object","name":"Selection","id":"p1128","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1129"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"8am3xY2wkkCsbazjHgaTQIVHZcbNXpNAxT6c0ca6k0DVzAvEORqUQJe/KQpafZRAr9qhGl/klEDQNe7dhE+VQJqTpCIMv5VAL+pTIDszlkCMXx4LXqyWQF3mnLrHKpdAg/4NZ9Kul0BASl2A4DiYQJk8O6NdyZhAJSJKsb9gmUA4EWESiP+ZQMFDGSZFpppAPYpV7pNVm0Ahtkj9IQ6cQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1134","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1135"}}},"glyph":{"type":"object","name":"Line","id":"p1130","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#DD4968"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1131","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#DD4968","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1132","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#DD4968","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1143","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1137","attributes":{"selected":{"type":"object","name":"Selection","id":"p1138","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1139"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"3FpZoO5Dj0AlxKC4F9SPQDZMJ07FNJBA7lfXlkmCkEABckeLwdKQQCAq6itZJpFAswYP9T99kUCzEu84qdeRQMcM3ITMNZJA9R82E+aXkkDMQxRMN/6SQJfe4VYHaZNADTycv6PYk0DO49cyYU2UQCrhTVScx5RAnAlqtLpHlUB1XzXqK86VQI46DdhqW5ZAdUXuIv/vlkDp4sLlfoyXQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1144","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1145"}}},"glyph":{"type":"object","name":"Line","id":"p1140","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#F0605D"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1141","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#F0605D","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1142","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#F0605D","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1153","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1147","attributes":{"selected":{"type":"object","name":"Selection","id":"p1148","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1149"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"SIeUvUyrV0DNR2PzUkdYQAYr9IOY61hAF3y2Y8mYWUDyvbG4pE9aQDrBxpv/EFtAjGcAV8jdW0A5SJ07CrdcQEeFLjHynV1AGdTPJ9STXkC9zsCiMZpfQA3vt89gWWBAlGlLGL3vYECxQ5QfTpFhQArUAwNhP2JA/ZS9hnj7YkBAzLdWWMdjQE9m3jwTpWRAXP3lPh2XZUCtwqrzYqBmQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1154","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1155"}}},"glyph":{"type":"object","name":"Line","id":"p1150","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FA7F5E"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1151","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FA7F5E","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1152","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FA7F5E","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1163","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1157","attributes":{"selected":{"type":"object","name":"Selection","id":"p1158","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1159"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"94V9ZGashUAfBhr8jyOGQHNvBqv0n4ZACALml+4hh0CXsYcw4KmHQP8l2iI1OIhAZVXQeWPNiEBKh2rk7GmJQPGkWC5gDopA778281q7ikAooE+Xi3GLQDLqNJOzMYxAMwF7Iqr8jEDw96xpX9ONQBMuVizgto5AuyobMlqoj0BImdrAkFSQQM70ZlFb3ZBAZiF9EmdvkUDRssHdrAuSQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1164","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1165"}}},"glyph":{"type":"object","name":"Line","id":"p1160","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FD9F6C"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1161","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FD9F6C","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1162","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FD9F6C","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1173","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1167","attributes":{"selected":{"type":"object","name":"Selection","id":"p1168","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1169"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"OfrKJSvikkBpGP9jyzqTQLm+TRG7lpNA1bOrjyr2k0BrRjcCTlmUQGliTKxdwJRA9DwcXJYrlUB1nXHiOZuVQHhNkpmPD5ZA0pCD/eSIlkA4vF1YjgeXQFLb1YXni5dA0pa40VQWmEA8JsX1Q6eYQEWdMTwtP5lA/OgszZTemUB6m/ouDIaaQCL32AE0NptA6ejWAr7vm0DATzBjb7OcQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1174","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1175"}}},"glyph":{"type":"object","name":"Line","id":"p1170","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FEBE83"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1171","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FEBE83","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1172","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FEBE83","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1183","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1177","attributes":{"selected":{"type":"object","name":"Selection","id":"p1178","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1179"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"nP8xdv1flkCkiqpysLuWQKrVZEhfGpdAnHhy3S98l0C9r4SkSuGXQH6HvNTaSZhARuFOpw62mED8QrWbFyaZQGMQP8MqmplAauL1FIESmkDBAezKV4+aQG+VNsrwEJtAzxIHF5OXm0C2YpJWiyOcQI7NuWAstZxA10u8489MnUDpCpkc1+qdQEEtQaerj55AlzlDasA7n0B3g0Oiku+fQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1184","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1185"}}},"glyph":{"type":"object","name":"Line","id":"p1180","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FDDD9F"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1181","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FDDD9F","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1182","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FDDD9F","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1193","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1187","attributes":{"selected":{"type":"object","name":"Selection","id":"p1188","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1189"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"o/RubwQhg0BNOr1V2HGDQPBkKMJixYNAf+stRccbhEC7oLTnK3WEQHop7mK50YRArZhAXpsxhUAZNv6zAJWFQKwEz70b/IVAvTzSqSJnhkBGmKbZT9aGQNk0uEziSYdAhGZrFx7Ch0Cx6f7oTD+IQIukT6K+wYhA11MHAMpJiUAkdDFbzdeJQIiuuoMvbIpA8U0EuWAHi0AbbH3F26mLQA=="},"shape":[20],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"je21oPfGsD6TOSgpKh7GPviiSGiTKN0+ntLOwF448z5dsnsvplYJP5DAwODBsyA/WGBM99YENj/0tVtyMAdNPxNXUOpcImM/avEh9KI5eT8CAqIfoqCQP2FSt8Sg66U/XiW6tvPlvD+IiZRGdAzTP5DS+/DAHOk/qF4qRJiNAEBgYzVwh9IVQGmbngndxCxAZkbBuKT2QkAAAAAAAABZQA=="},"shape":[20],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1194","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1195"}}},"glyph":{"type":"object","name":"Line","id":"p1190","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FBFCBF"}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1191","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FBFCBF","line_alpha":0.1}},"muted_glyph":{"type":"object","name":"Line","id":"p1192","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_color":"#FBFCBF","line_alpha":0.2}}}},{"type":"object","name":"GlyphRenderer","id":"p1203","attributes":{"data_source":{"type":"object","name":"ColumnDataSource","id":"p1197","attributes":{"selected":{"type":"object","name":"Selection","id":"p1198","attributes":{"indices":[],"line_indices":[]}},"selection_policy":{"type":"object","name":"UnionRenderers","id":"p1199"},"data":{"type":"map","entries":[["x",{"type":"ndarray","array":{"type":"bytes","data":"+ox0b8Z7iED2HQ0t942IQMjkl9hU3IhAmiALLJpJiUAyqjw5X8mJQK/n32yeS4pACb7h3y7FikARZqJLujCLQGU57t4SkotAZhr6A1Dzi0BX6CtyX1+MQKoO225S24xArwq3PEhijUC3FRmOruiNQPeNqYBMZY5Agh6iPALUjkDHmVia5TGPQIH/WXJKfY9AO5at+aa6j0Cdw/bIUv6PQHW0CKYNMJBA0GC+n+FykECl5EiMRMSQQHHs/GRXGZFAAtUVGRlqkUAqwgQYIcCRQOIefQLyK5JA4Mxj1w6zkkAz55L5vU+TQCt1OB49+pNAPslMINeslEBKebpxEWWVQD293i1LIZZAOf5t2i/RlkDvnrowqGqXQA7fvCMH8pdAz/5AV4ptmECMH6Gb5PeYQImihtS+mZlAj9+WI1A4mkD9dmTticWaQMBkEbVQNptAqDn24Xuqm0Ays+1PIyKcQBeMFJZDZ5xAsG+Il0vOnEBtxxcwJ22dQBmedoECDJ5AWSAR+N2qnkAlMFZruUmfQEgLHsCU6J9A7p2TKrhDoEA="},"shape":[52],"dtype":"float64","order":"little"}],["y",{"type":"ndarray","array":{"type":"bytes","data":"f4cGkH95yD7N3DO7xFLRPmljlajYhdg+D8oHPndb4T5nUrQCJJLoPiqRuz1FZPE+d9g69Lqe+D4JXdPND20BP2C0yQwUqwg/6SjrXdp1ET+YYHCBj7cYP97oCIWtfiE/+PQiJBzEKD/3kDLakYcxPzmbTOSb0Dg/4FbNtWCQQT97QXakG91IPz5kBDMqmVE/1lhnIabpWD+40Et7OaJhPwN8EjNW9mg/AeTfwhWrcT91BMts6wJ5P5pQd1Trs4E/ij+KOnMPiT9bmfBL/byRP9NKIZBLHJk/t5p1xvfFoT/7c9GQ8SipP7jLft3pzrE/j95wH7k1uT+ADvPlBdjBP22oGOdvQsk/VFc+y/Pg0T8BE7h1N0/ZP3ztmSUB6uE/JLn8h/Rb6T9QNuUK7/LxP9Sa5h2naPk/zhlR2hv8AUDZPXlYqHUJQKHWNO84BRJANIC3QIKCGUAgY+5aQg4iQI/C9ShcjylAgZVDi2wXMkA/NV66SZw5QH9qvHSTIEJA8KfGSzepSUB9PzVeuilSQKAaL90ktllAexSuR+EyYkA="},"shape":[52],"dtype":"float64","order":"little"}]]}}},"view":{"type":"object","name":"CDSView","id":"p1204","attributes":{"filter":{"type":"object","name":"AllIndices","id":"p1205"}}},"glyph":{"type":"object","name":"Line","id":"p1200","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_width":5,"line_dash":[6]}},"nonselection_glyph":{"type":"object","name":"Line","id":"p1201","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_alpha":0.1,"line_width":5,"line_dash":[6]}},"muted_glyph":{"type":"object","name":"Line","id":"p1202","attributes":{"x":{"type":"field","field":"x"},"y":{"type":"field","field":"y"},"line_alpha":0.2,"line_width":5,"line_dash":[6]}}}}],"toolbar":{"type":"object","name":"Toolbar","id":"p1009","attributes":{"tools":[{"type":"object","name":"PanTool","id":"p1023"},{"type":"object","name":"WheelZoomTool","id":"p1024","attributes":{"renderers":"auto"}},{"type":"object","name":"BoxZoomTool","id":"p1025","attributes":{"overlay":{"type":"object","name":"BoxAnnotation","id":"p1026","attributes":{"syncable":false,"line_color":"black","line_alpha":1.0,"line_width":2,"line_dash":[4,4],"fill_color":"lightgrey","fill_alpha":0.5,"level":"overlay","visible":false,"left":{"type":"number","value":"nan"},"right":{"type":"number","value":"nan"},"top":{"type":"number","value":"nan"},"bottom":{"type":"number","value":"nan"},"left_units":"canvas","right_units":"canvas","top_units":"canvas","bottom_units":"canvas","handles":{"type":"object","name":"BoxInteractionHandles","id":"p1032","attributes":{"all":{"type":"object","name":"AreaVisuals","id":"p1031","attributes":{"fill_color":"white","hover_fill_color":"lightgray"}}}}}}}},{"type":"object","name":"SaveTool","id":"p1033"},{"type":"object","name":"ResetTool","id":"p1034"},{"type":"object","name":"HelpTool","id":"p1035"}]}},"left":[{"type":"object","name":"LogAxis","id":"p1018","attributes":{"ticker":{"type":"object","name":"LogTicker","id":"p1019","attributes":{"num_minor_ticks":10,"mantissas":[1,5]}},"formatter":{"type":"object","name":"LogTickFormatter","id":"p1020"},"axis_label":"Pressure (bars)","axis_label_text_font":"times","axis_label_text_font_size":"14pt","axis_label_text_font_style":"bold","major_label_policy":{"type":"object","name":"AllLabels","id":"p1021"},"major_label_text_font":"times","major_label_text_font_size":"14pt"}}],"below":[{"type":"object","name":"LinearAxis","id":"p1013","attributes":{"ticker":{"type":"object","name":"BasicTicker","id":"p1014","attributes":{"mantissas":[1,2,5]}},"formatter":{"type":"object","name":"BasicTickFormatter","id":"p1015"},"axis_label":"Temperature (K)","axis_label_text_font":"times","axis_label_text_font_size":"14pt","axis_label_text_font_style":"bold","major_label_policy":{"type":"object","name":"AllLabels","id":"p1016"},"major_label_text_font":"times","major_label_text_font_size":"14pt"}}],"center":[{"type":"object","name":"Grid","id":"p1017","attributes":{"axis":{"id":"p1013"}}},{"type":"object","name":"Grid","id":"p1022","attributes":{"dimension":1,"axis":{"id":"p1018"}}},{"type":"object","name":"Legend","id":"p1045","attributes":{"items":[{"type":"object","name":"LegendItem","id":"p1046","attributes":{"label":{"type":"value","value":"Al2O3"},"renderers":[{"id":"p1042"}]}},{"type":"object","name":"LegendItem","id":"p1056","attributes":{"label":{"type":"value","value":"CH4"},"renderers":[{"id":"p1053"}]}},{"type":"object","name":"LegendItem","id":"p1066","attributes":{"label":{"type":"value","value":"CaAl12O19"},"renderers":[{"id":"p1063"}]}},{"type":"object","name":"LegendItem","id":"p1076","attributes":{"label":{"type":"value","value":"CaTiO3"},"renderers":[{"id":"p1073"}]}},{"type":"object","name":"LegendItem","id":"p1086","attributes":{"label":{"type":"value","value":"Cr"},"renderers":[{"id":"p1083"}]}},{"type":"object","name":"LegendItem","id":"p1096","attributes":{"label":{"type":"value","value":"Fe"},"renderers":[{"id":"p1093"}]}},{"type":"object","name":"LegendItem","id":"p1106","attributes":{"label":{"type":"value","value":"H2O"},"renderers":[{"id":"p1103"}]}},{"type":"object","name":"LegendItem","id":"p1116","attributes":{"label":{"type":"value","value":"KCl"},"renderers":[{"id":"p1113"}]}},{"type":"object","name":"LegendItem","id":"p1126","attributes":{"label":{"type":"value","value":"Mg2SiO4"},"renderers":[{"id":"p1123"}]}},{"type":"object","name":"LegendItem","id":"p1136","attributes":{"label":{"type":"value","value":"MgSiO3"},"renderers":[{"id":"p1133"}]}},{"type":"object","name":"LegendItem","id":"p1146","attributes":{"label":{"type":"value","value":"MnS"},"renderers":[{"id":"p1143"}]}},{"type":"object","name":"LegendItem","id":"p1156","attributes":{"label":{"type":"value","value":"NH3"},"renderers":[{"id":"p1153"}]}},{"type":"object","name":"LegendItem","id":"p1166","attributes":{"label":{"type":"value","value":"Na2S"},"renderers":[{"id":"p1163"}]}},{"type":"object","name":"LegendItem","id":"p1176","attributes":{"label":{"type":"value","value":"SiO2"},"renderers":[{"id":"p1173"}]}},{"type":"object","name":"LegendItem","id":"p1186","attributes":{"label":{"type":"value","value":"TiO2"},"renderers":[{"id":"p1183"}]}},{"type":"object","name":"LegendItem","id":"p1196","attributes":{"label":{"type":"value","value":"ZnS"},"renderers":[{"id":"p1193"}]}},{"type":"object","name":"LegendItem","id":"p1206","attributes":{"label":{"type":"value","value":"User"},"renderers":[{"id":"p1203"}]}}]}}]}}]}};
+  const render_items = [{"docid":"f8d1a847-ced2-40d8-94bc-87f5f8155b0e","roots":{"p1001":"a79f9d1a-0851-4447-a17f-096c3708bb6d"},"root_ids":["p1001"]}];
+  void root.Bokeh.embed.embed_items_notebook(docs_json, render_items);
+  }
+  if (root.Bokeh !== undefined) {
+    embed_document(root);
+  } else {
+    let attempts = 0;
+    const timer = setInterval(function(root) {
+      if (root.Bokeh !== undefined) {
+        clearInterval(timer);
+        embed_document(root);
+      } else {
+        attempts++;
+        if (attempts > 100) {
+          clearInterval(timer);
+          console.log("Bokeh: ERROR: Unable to run BokehJS code because BokehJS library is missing");
+        }
+      }
+    }, 10, root)
+  }
+})(window);
+</script></div>
+</div>
+</section>
+<section id="Adding-Fractal-Aggregate-(Mg2SiO4)-Clouds.">
+<h2>Adding Fractal Aggregate (Mg2SiO4) Clouds.<a class="headerlink" href="#Adding-Fractal-Aggregate-(Mg2SiO4)-Clouds." title="Link to this heading"></a></h2>
+<p>Everything up to this point has been the same method as for Virga v1.0. Now let’s add fractal aggregate clouds to our clear model instead of spheres. The function is very similar, but we just provide two extra bits of information (fractal dimension and number of monomers). We have added a loop below to make clouds for five different fractal dimensions and save the output to a list.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Set a range of fractal dimensions to explore (a different model will be run each time). This can be a single value or an array.</span>
+<span class="c1"># In this example, we will choose the values [1.2, 1.6, 2.0, 2.4, 2.8]:</span>
+<span class="n">d_f_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">1.2</span><span class="p">,</span><span class="mf">2.8</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># create a list to store all of the different cloud models for each fractal dimension</span>
+<span class="n">clouds_from_virga_fractals</span><span class="o">=</span><span class="p">[]</span>
+
+<span class="c1"># loop over all particle shapes</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">d_f_values</span><span class="p">)):</span>
+
+
+    <span class="n">d_f</span> <span class="o">=</span> <span class="n">d_f_values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">N_monomers</span> <span class="o">=</span> <span class="mi">1000</span> <span class="c1"># Here we provide the number of monomers. If you prefer to provide r_mon instead, set it here (but note that it needs to be in cm, not um), and submit r_mon instead of N_mon in the .virga() function below</span>
+
+    <span class="n">jupiter</span><span class="o">.</span><span class="n">aggregates</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">jupiter</span><span class="o">.</span><span class="n">Df</span><span class="o">=</span> <span class="n">d_f</span>
+    <span class="n">jupiter</span><span class="o">.</span><span class="n">N_mon</span> <span class="o">=</span> <span class="n">N_monomers</span>
+    <span class="c1"># That&#39;s it -- Df and N_mon are all you need to prescribe for aggregates! More details on other typical aggregate parameters below for experts:</span>
+    <span class="c1"># k0 will usually be calculated using Eq. 14+15 of Moran &amp; Lodge et al. (2025), but this can be prescribed here if you wish to use a fixed value.</span>
+    <span class="c1"># Radius of gyration will be calculated within the code: virga can calculate the mass of the each aggregate, meaning that r_mon can be calculated</span>
+    <span class="c1"># from N_mon (or vice versa). k0 is calculated as stated above, so including Df we have everything we need to find R_gyr using Eq. 2 of Moran &amp; Lodge</span>
+    <span class="c1"># et al. (2025)</span>
+
+    <span class="c1"># take the clear atmosphere (cloudy_jupiter_list[i]) and run virga to find the clouds for each fractal dimension (using aggregates=True and our aggregate parameters).</span>
+    <span class="c1"># this method saves each cloud model as a new model in a list (clouds_from_virga_fractals).</span>
+    <span class="n">clouds_from_virga_fractals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vdi</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">jupiter</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="n">mieff_dir</span><span class="p">))</span> <span class="c1"># Add the Mg2SiO4 clouds!</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optics file found. Reading data from: /Users/nbatalh1/Documents/data/VIRGA_2_mieff_files/Mg2SiO4_aggregates_Df_1.200000.mieff.
+Optics file found. Reading data from: /Users/nbatalh1/Documents/data/VIRGA_2_mieff_files/Mg2SiO4_aggregates_Df_1.600000.mieff.
+Optics file found. Reading data from: /Users/nbatalh1/Documents/data/VIRGA_2_mieff_files/Mg2SiO4_aggregates_Df_2.000000.mieff.
+Optics file found. Reading data from: /Users/nbatalh1/Documents/data/VIRGA_2_mieff_files/Mg2SiO4_aggregates_Df_2.400000.mieff.
+Optics file found. Reading data from: /Users/nbatalh1/Documents/data/VIRGA_2_mieff_files/Mg2SiO4_aggregates_Df_2.800000.mieff.
+</pre></div></div>
+</div>
+</section>
+</section>
+<section id="Aggregate-Analysis-Tools">
+<h1>Aggregate Analysis Tools<a class="headerlink" href="#Aggregate-Analysis-Tools" title="Link to this heading"></a></h1>
+<p>We’ve made our clouds! Now let’s see how the aggregates compared to spheres. There are a number of tools that have been added to compare between the different models, and each one can give you interesting diagnostic information. Let’s explore them one-by-one. First, set-up the figure size and the min/max wavelength to plot.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># set figure size in notebook</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.figsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>
+
+<span class="c1"># set min and max wavelength to show on plots</span>
+<span class="n">min_wavelength</span> <span class="o">=</span> <span class="mf">0.3</span> <span class="c1"># in um</span>
+<span class="n">max_wavelength</span> <span class="o">=</span> <span class="mi">15</span> <span class="c1"># in um</span>
+
+<span class="c1"># set custom colors for plots</span>
+<span class="n">cloud_colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;#ce3fce&#39;</span><span class="p">,</span> <span class="s1">&#39;#7cf2fb&#39;</span><span class="p">,</span> <span class="s1">&#39;#33b9cc&#39;</span><span class="p">,</span> <span class="s1">&#39;#1c7bb8&#39;</span><span class="p">,</span> <span class="s1">&#39;#295091&#39;</span><span class="p">,</span> <span class="s1">&#39;#212255&#39;</span><span class="p">]</span> <span class="c1"># order: spheres, 1.2, 1.6, 2.0, 2.4, 2.8</span>
+</pre></div>
+</div>
+</div>
+<section id="Visualising-Particle-Sizes-in-each-Pressure-Layer">
+<h2>Visualising Particle Sizes in each Pressure Layer<a class="headerlink" href="#Visualising-Particle-Sizes-in-each-Pressure-Layer" title="Link to this heading"></a></h2>
+<p>Virga will typically find different particle sizes for different aggregate shapes because of how they behave dynamically (see Moran &amp; Lodge et al. 2025). Lower fractal dimensions tend to form into larger particles (because they have slower fall speed vs compact spheres. However, the upwards forces are the same in both versions of the model. Therefore, the aggregates need to form into more massive particles to stay stable against the same upwards velocity from Kzz/convection). The mean particle
+sizes that virga found for each shape can be seen and compared using the tool below.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">vpi</span><span class="o">.</span><span class="n">aggregates_pressure_vs_radius</span><span class="p">(</span><span class="n">clouds_from_virga_spheres</span><span class="p">,</span> <span class="n">clouds_from_virga_fractals</span><span class="p">,</span> <span class="n">d_f_list</span><span class="o">=</span><span class="n">d_f_values</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">cloud_colors</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_14_0.png" src="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_14_0.png" />
+</div>
+</div>
+<p>Interpretation: The Df=1.2 model has the largest particles, which are at the bottom of the cloud-deck. In all models, cloud particles get smaller as altitude increases.</p>
+</section>
+<section id="Probing-the-relationship-between-Pressure,-Radius-and-Number-Density">
+<h2>Probing the relationship between Pressure, Radius and Number Density<a class="headerlink" href="#Probing-the-relationship-between-Pressure,-Radius-and-Number-Density" title="Link to this heading"></a></h2>
+<p>Because the same amount of condensate is condensing out in each model in virga (regardless of particle shape), if the low fractal dimensions form into larger particles, there must be fewer of them. Plotting the number density at each pressure layer shows demonstrates this balance between particle size and number density visually with altitude. The marker size indicates particle size.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">vpi</span><span class="o">.</span><span class="n">aggregates_pressure_vs_number_density</span><span class="p">(</span><span class="n">clouds_from_virga_spheres</span><span class="p">,</span> <span class="n">clouds_from_virga_fractals</span><span class="p">,</span> <span class="n">d_f_list</span><span class="o">=</span><span class="n">d_f_values</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">cloud_colors</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_17_0.png" src="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_17_0.png" />
+</div>
+</div>
+<p>Interpretation: The Df=1.2 clouds are shown to be made of fewer (but larger) particles than in the other models, just like in Figure 4 of Lodge &amp; Moran et al. (2025).</p>
+</section>
+<section id="Visualising-.mieff-files-and-Optical-Properties">
+<h2>Visualising .mieff files and Optical Properties<a class="headerlink" href="#Visualising-.mieff-files-and-Optical-Properties" title="Link to this heading"></a></h2>
+<p>This tool allows you to see how the optical properties of the cloud particles vary with shape. <span class="math notranslate nohighlight">\(Q_{ext}\)</span> represents how efficiently they will absorb and scatter radiation, and it is a function of particle size, wavelength and shape. This reads all of the data from the .mieff database and plots <span class="math notranslate nohighlight">\(Q_{ext}\)</span> for all particle sizes (blue = smallest particles in the grid, green = largest particles in the grid).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot Q_ext as a function of wavelength for each fractal dimension</span>
+<span class="n">vpi</span><span class="o">.</span><span class="n">aggregates_optical_properties</span><span class="p">(</span><span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate_species</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mieff_dir</span><span class="o">=</span><span class="n">mieff_dir</span><span class="p">,</span> <span class="n">d_f_list</span><span class="o">=</span><span class="n">d_f_values</span><span class="p">,</span> <span class="n">min_wavelength</span><span class="o">=</span><span class="n">min_wavelength</span><span class="p">,</span> <span class="n">max_wavelength</span><span class="o">=</span><span class="n">max_wavelength</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_20_0.png" src="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_20_0.png" />
+</div>
+</div>
+<p>Interpretation: This is usually a busy plot, but it is useful because it can provide intuition into how linear and compact aggregates compare to their spherical counterparts. Here the linear fractals with Df = 1.2 are the most opaque at short wavelengths. We saw that these particles are the least opaque in the transmission spectrum, which is because their number density is so much lower as shown in the previous figure.</p>
+<p>These plots can highlight resonance features and aid in checking that your optics are behaving as expected for a particular chemical species.</p>
+</section>
+<section id="Checking-that-Particle-Radii-are-within-the-.mieff-Grid">
+<h2>Checking that Particle Radii are within the .mieff Grid<a class="headerlink" href="#Checking-that-Particle-Radii-are-within-the-.mieff-Grid" title="Link to this heading"></a></h2>
+<p>It’s important that virga finds particles that are within the range of optical properties in the .mieff grid, otherwise virga may underpredict or overpredict the opacity of the particles. Virga will give warnings if it finds particles off-grid, but this plot is a quick visual check to see if and where that happens:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">vpi</span><span class="o">.</span><span class="n">aggregates_wavelength_radius_grid</span><span class="p">(</span><span class="n">clouds_from_virga_spheres</span><span class="p">,</span> <span class="n">clouds_from_virga_fractals</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="n">aggregate_species</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">d_f_list</span><span class="o">=</span><span class="n">d_f_values</span><span class="p">,</span> <span class="n">mieff_dir</span><span class="o">=</span><span class="n">mieff_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+For the Mg2SiO4.mieff file (spheres):
+
+         Wavelengths are between 0.268 --&gt; 29.700 um in 189 intervals.
+         Radii are between 0.0001 --&gt; 100.0 um in 60 intervals.
+
+Good news - all aggregates are within the grid!
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_23_1.png" src="../_images/notebooks_10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter_23_1.png" />
+</div>
+</div>
+<p>Interpretation:</p>
+<ul class="simple">
+<li><p>The red outline box marks the extremes of the .mieff grid, with faint red vertical lines representing the grid spacing in radius.</p></li>
+<li><p>The vertical extent of the box is just to show the wavelength range in the .mieff files. The colored markers show the column density so that we have an indication of how many particles were in each radius bin for each model.</p></li>
+<li><p>The “radius” of an aggregate is defined as the compact radius (the radius of a sphere made from the same volume of material) and this is how they are stored in the .mieff files. The particle sizes obtained by virga at each pressure layer and for each fractal dimension are plotted on this grid as markers, and these should all ideally be inside the horizontal bounds of the red box. If not, you may need to adjust your Kzz/fsed values (both of these can effect particle size), or make a new .mieff
+grid (see next tutorial!). It’s ok for the particles to be near the vertical bounds of the red box – the marker y-positions just scale with column density, so they will always sit on the top/bottom edge of the box.</p></li>
+</ul>
+</section>
+</section>
+<section id="Next-steps">
+<h1>Next steps<a class="headerlink" href="#Next-steps" title="Link to this heading"></a></h1>
+<p>To see how different the spectra would be for these fractal aggergate clouds, check out the next tutorial: “11 Fractal Aggregate Spectra in PICASO”</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="7_SwitchingSolver.html" class="btn btn-neutral float-left" title="Switching the Solver" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="11_Fractal_Aggregate_spectra_in_PICASO.html" class="btn btn-neutral float-right" title="Fractal Aggregate Spectra in PICASO" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

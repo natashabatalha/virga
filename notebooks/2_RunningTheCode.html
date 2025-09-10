@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Running the Code &mdash; virga v1.0 documentation</title>
+  <title>Running the Code &mdash; virga v2.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -14,7 +14,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=e160b93e"></script>
+      <script src="../_static/documentation_options.js?v=aa039f9c"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -48,7 +48,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/record/3758538#.Xp4w-1NKjOQ">Refractive Indices</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://zenodo.org/records/15886530">Refractive Indices</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">The Tutorials</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="../tutorials.html#basics">Basics</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="1_GettingStarted.html">Before you run the code</a></li>
@@ -67,6 +67,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#adding-cloud-complexity">Adding Cloud Complexity</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#switch-to-direct-solver">Switch to Direct Solver</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials.html#flexible-cloud-layers">Flexible Cloud Layers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials.html#fractal-aggregates">Fractal Aggregates</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/natashabatalha/virga">Github</a></li>
@@ -148,7 +149,7 @@
 </style>
 <div>
     <a href="https://bokeh.org" target="_blank" class="bk-notebook-logo"></a>
-    <span id="b147dca4-0802-4d87-a266-b83845b65b4a">Loading BokehJS ...</span>
+    <span id="e6f8b2f4-83c5-4f59-85ab-1400a6babf15">Loading BokehJS ...</span>
 </div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -321,7 +322,7 @@ const JS_MIME_TYPE = 'application/javascript';
      "</div>"}};
 
   function display_loaded(error = null) {
-    const el = document.getElementById("b147dca4-0802-4d87-a266-b83845b65b4a");
+    const el = document.getElementById("e6f8b2f4-83c5-4f59-85ab-1400a6babf15");
     if (el != null) {
       const html = (() => {
         if (typeof root.Bokeh === "undefined") {
@@ -455,7 +456,7 @@ function(Bokeh) {
       console.log("Bokeh: BokehJS failed to load within specified timeout.");
       root._bokeh_failed_load = true;
     } else if (force !== true) {
-      const cell = $(document.getElementById("b147dca4-0802-4d87-a266-b83845b65b4a")).parents('.cell').data().cell;
+      const cell = $(document.getElementById("e6f8b2f4-83c5-4f59-85ab-1400a6babf15")).parents('.cell').data().cell;
       cell.output_area.append_execute_result(NB_LOAD_WARNING)
     }
   }
