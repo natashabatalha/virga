@@ -1685,7 +1685,9 @@ class Atmosphere():
         run = compute(self, directory = directory, as_dict = as_dict)
         return run
 
-def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax = 5.4239131e-2, nradii = 60, logspace=True, aggregates=False, Df=None, N_mon=None, r_mon=None, k0=0, fort_calc_mie = False):
+def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax = 5.4239131e-2,
+                nradii = 60, logspace=True, aggregates=False, Df=None, N_mon=None, r_mon=None,
+                k0=0, fort_calc_mie = False):
     """
     Function that calculations new Mie database using MiePython (for spherical particles) or OPTOOL (for aggregates)
     Parameters
