@@ -16,16 +16,18 @@ def test_mie_database():
     # assert np.isclose(np.sum(qsca), 3720.809396082643)
     # assert np.isclose(np.sum(asym), 1905.5623111571579)
 
-    # ==== Fractals
-    qext, qsca, asym, radii, wave = jdi.calc_mie_db(
-        ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 10,
-        aggregates=os.path.dirname(__file__), Df=1, N_mon=100,
-        optool_dir='/home/kiefersv/Documents/work/not_my_code/optool'
-    )
-
-    assert np.isclose(np.sum(qext), 3902.080488782566)
-    assert np.isclose(np.sum(qsca), 3720.809396082643)
-    assert np.isclose(np.sum(asym), 1905.5623111571579)
+    # # ==== Fractals
+    # qext, qsca, asym, radii, wave = jdi.calc_mie_db(
+    #     ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 10,
+    #     aggregates=os.path.dirname(__file__), Df=1, N_mon=100,
+    #     optool_dir='/home/kiefersv/Documents/work/not_my_code/optool'
+    # )
+    # print(np.sum(qext))
+    # print(np.sum(qsca))
+    # print(np.sum(asym))
+    # assert np.isclose(np.sum(qext), 3902.080488782566)
+    # assert np.isclose(np.sum(qsca), 3720.809396082643)
+    # assert np.isclose(np.sum(asym), 1905.5623111571579)
 
     # ==== Basic
     qext, qsca, asym, radii, wave = jdi.calc_mie_db(

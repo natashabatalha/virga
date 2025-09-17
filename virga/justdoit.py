@@ -330,7 +330,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
             if iz == 0:
                 ibot=0
         #print(igas,ibot)
-        if ibot >= nz -2:
+        if ibot >= nz -3:
             print("Not doing sublayer as cloud deck at the bottom of pressure grid")
             
         else:
