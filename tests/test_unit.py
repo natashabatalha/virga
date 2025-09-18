@@ -88,5 +88,3 @@ def test_pvaps():
         for temp in temps:
             result += func(temp, pressure)
         assert np.isclose(result, results_w_p[f])
-
-

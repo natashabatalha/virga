@@ -31,7 +31,7 @@ def test_basic_virga():
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
     all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__),
-                          og_solver=False)
+                          og_solver=False, analytical_rg=False, og_vfall=False, do_virtual=False)
     assert np.isclose(np.sum(all_out['condensate_mmr']), 1.843949389772658e-05)
 
 def test_fractals():
