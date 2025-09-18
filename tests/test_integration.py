@@ -24,7 +24,7 @@ def test_basic_virga():
     all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
     assert np.isclose(np.sum(all_out['condensate_mmr']), 6.155584963958476e-05)
 
-    # ==== testing direct solver
+    # ==== testing direct solver, analytic radius calc, and original fall velocity calc
     # initialise atmosphere
     a = jdi.Atmosphere('MnS', fsed=1, mh=1, mmw=2.2)
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
