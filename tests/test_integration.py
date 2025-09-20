@@ -13,16 +13,18 @@ def test_basic_virga():
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
     all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
-    assert np.isclose(np.sum(all_out['condensate_mmr']), 6.155584963958476e-05)
-
-    # ==== Basic run, with string input
-    # initialise atmosphere
-    a = jdi.Atmosphere('MnS', fsed=1, mh=1, mmw=2.2)
-    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
-    a.ptk(df=jdi.hot_jupiter())
-    # calculate cloud profile
-    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
-    assert np.isclose(np.sum(all_out['condensate_mmr']), 6.155584963958476e-05)
+    # test the output
+    tested_outputs = [
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
+        'single_scattering', 'asymmetry', 'opd_by_gas', 'mixing_length', 'altitude',
+    ]
+    expected_outputs = [
+        6.155584963958476e-05, 203.8323901780218, 677.5142421477923,
+        4277.703510668625, 5919.737864805443, 3171.822432592176, 0.960369799652179,
+        3400236589.2062654, 36062700139.00066,
+    ]
+    for i, test in enumerate(tested_outputs):
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
 
     # ==== testing direct solver, analytic radius calc, and original fall velocity calc
     # initialise atmosphere
@@ -39,8 +41,37 @@ def test_fractals():
     a = jdi.Atmosphere(['MnS'], fsed=1, mh=1, mmw=2.2, aggregates=True, Df=2, N_mon=100)
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
     a.ptk(df=jdi.hot_jupiter())
-
     # calculate cloud profile
     all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
+    # test the output
+    tested_outputs = [
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
+        'single_scattering', 'asymmetry', 'opd_by_gas', 'mixing_length', 'altitude',
+    ]
+    expected_outputs = [
+        6.163940981671749e-05, 455.73378048873894, 1514.8040340365344,
+        172.35717609739288, 4956.102590299978, 221.52557712010397, 0.5743750726911432,
+        3400236589.2062654, 36062700139.00066,
+    ]
+    for i, test in enumerate(tested_outputs):
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
 
-    assert np.isclose(np.sum(all_out['condensate_mmr']), 6.163940981671749e-05)
+def test_mixed_clouds():
+    # initialise atmosphere
+    a = jdi.Atmosphere(['MnS', 'SiO2'], fsed=1, mh=1, mmw=2.2, mixed=True)
+    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
+    a.ptk(df=jdi.hot_jupiter())
+    # calculate cloud profile
+    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
+    # test the output
+    tested_outputs = [
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
+        'single_scattering', 'asymmetry', 'opd_by_gas', 'mixing_length', 'altitude',
+    ]
+    expected_outputs = [
+        0.00959528233777504, 674.8984205851, 2243.2808227882874, 4350662.838922345,
+        7597.8662982779315, 5858.9127816366845, 2280.446317377925, 3400236589.2062654,
+        36062700139.00066,
+    ]
+    for i, test in enumerate(tested_outputs):
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])

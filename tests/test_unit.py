@@ -88,3 +88,7 @@ def test_pvaps():
         for temp in temps:
             result += func(temp, pressure)
         assert np.isclose(result, results_w_p[f])
+
+def test_small_things():
+    a = jdi.Atmosphere('MnS', fsed=1, mh=1, mmw=2.2)
+    assert a.condensibles[0] == 'MnS'
