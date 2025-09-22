@@ -13,6 +13,14 @@
 
 ``virga`` computes cloud profiles for exoplanet atmospheres
 
+
+What to Cite
+============
+
+- Virga v2 (aggregates functionality): `Moran & Lodge et al., 2025 <https://ui.adsabs.harvard.edu/abs/2025arXiv250906708M/abstract>`_. 
+- Virga v1 (main functionality): `Batalha et al., 2025 <https://ui.adsabs.harvard.edu/abs/2025arXiv250815102B/abstract>`_.
+
+
 Content
 =======
 
