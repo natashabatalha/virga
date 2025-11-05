@@ -611,7 +611,7 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None, gas_mmr
     else:
         pv = gas_mw/mmw*pvap_fun(t_test, mh=mh)/1e6 #dynes to bars 
     #get partial pressure
-    partial_p = gas_mmr*p_test*mh 
+    partial_p = gas_mmr*p_test
     if pv == 0:
         pv = 1e-30 #dummy small
     return np.log10(pv) - np.log10(partial_p)
