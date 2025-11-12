@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import astropy.units as u
+import pandas as pd
 
 from virga import justdoit as jdi
 
@@ -25,6 +26,15 @@ def test_basic_virga():
     ]
     for i, test in enumerate(tested_outputs):
         assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
+
+    # ==== additional unit tests done here because we already run virga =================
+    df_cl = jdi.picaso_format(
+        all_out['opd_per_layer'], all_out['single_scattering'], all_out['asymmetry'],
+        pressure=all_out['pressure'], wavenumber=1/all_out['wave']/1e-4,
+    )
+    df_cl.to_csv('tests/picaso_format_test.csv', index=False)
+    df_test = pd.read_csv('tests/picaso_format_test.csv')
+    pd.testing.assert_frame_equal(df_cl, df_test)
 
     # ==== testing direct solver, analytic radius calc, and original fall velocity calc
     # initialise atmosphere

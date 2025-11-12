@@ -1,5 +1,6 @@
 import astropy.constants as c
 import astropy.units as u
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import os
@@ -17,7 +18,8 @@ from .direct_mmr_solver import direct_solver
 
 
 def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15,
-            refine_TP=True, og_vfall=True, analytical_rg=True, do_virtual=True):
+            refine_TP=True, og_vfall=True, analytical_rg=True, do_virtual=True,
+            quick_mix=False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class 
     before running this. 
@@ -49,6 +51,9 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     do_virtual : bool 
         If the user adds an upper bound pressure that is too low. There are cases where
         a cloud wants to form off the grid towards higher pressures. This enables that.
+    quick_mix : bool, optional
+        Only used if atmo.mixed=True. If quick_mix=True, the opacities are calculated in
+        the Batch approximation (see Kiefer et al. 2024b)
 
 
     Returns 
@@ -191,10 +196,13 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
                                              refine_TP, og_vfall, analytical_rg)
 
             
-    #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
-    #albedo, and asymmetry parameter.    
-    opd, w0, g0, opd_gas = calc_optics(nwave, qc, qt, rg, reff, ndz,radius,
-                                       dr,qext, qscat,cos_qscat,atmo.sig, rmin, rmax, verbose=atmo.verbose)
+    # Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
+    # albedo, and asymmetry parameter.
+    opd, w0, g0, opd_gas = calc_optics(
+        nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
+        cos_qscat, atmo.sig, rmin, rmax, atmo.mixed, rho_p, wave_in, condensibles,
+        directory, quick_mix, verbose=atmo.verbose
+    )
 
     if as_dict:
         if atmo.param == 'exp':
@@ -243,7 +251,8 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         'cloud_deck':z_cld
     }
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig, rmin, rmax, verbose=False):
+def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat, cos_qscat, sig,
+                rmin, rmax, mixed, rhop, wavelength, gas_name, directory, quick_mix=False, verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -278,6 +287,18 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
         Minimum particle radius bin center from the grid (cm)
     rmax: float
         Maximum particle radius bin center from the grid (cm)
+    mixed: bool
+        If True, cloud particles are considered to mix together rather than form
+        individual particles.
+    rhop: np.ndarray
+        densities of all homogenous materials
+    wavelength : np.ndarray
+        Wavelength grid [micron]
+    directory : str, optional
+        Directory string that describes where refrind files are
+    quick_mix : bool, optional
+        Only used if mixed=True. If quick_mix=True, the opacities are calculated in the
+        Batch approximation (see Kiefer et al. 2024b)
     verbose: bool 
         print out warnings or not
 
@@ -293,63 +314,223 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     opd_gas : ndarray
         cumulative (from top) opd by condensing vapor as geometric conservative scatterers
     """
+    # ndz[:, 0] = 0
+    # ndz[:, 2] = 0
+    # rg[:, -1] = rg[:, 1]
+    # ndz[:, -1] = ndz[:, 1]
+    # ===================================================================================
+    # Initialisation
+    # ===================================================================================
+    # general variables
+    nz = qc.shape[0]  # number of atmospheric lauyers
+    ngas = qc.shape[1]  # number of gas-phase species
+    nrad = len(radius)  # number of cloud particle radii
+    wave_in = wavelength[:, 0]  # wavelengths (Input array has wavelength per species)
+    nw = wavelength.shape[0]  # number of wavelength points
 
-    PI=np.pi
-    nz = qc.shape[0]
-    ngas = qc.shape[1]
-    nrad = len(radius)
+    # working and output arrays
+    opd_layer = np.zeros((nz, ngas))  # optical depth per layer
+    scat_gas = np.zeros((nz, nwave, ngas))  # working array scattering coefficient
+    ext_gas = np.zeros((nz, nwave, ngas))  # working array extinction coefficient
+    cqs_gas = np.zeros((nz, nwave, ngas))  # working array asymmetry coefficient
+    qextm = np.zeros((nz, nw, nrad))  # mixed cloud particle extinction coefficient
+    qscam = np.zeros((nz, nw, nrad))  # mixed cloud particle scattering coefficient
+    cos_qscam = np.zeros((nz, nw, nrad)) # mixed cloud particle asymmetry coefficient
+    opd = np.zeros((nz, nwave))  # total optical depth
+    opd_gas = np.zeros((nz, ngas))  # optical depth by gas
+    w0 = np.zeros((nz, nwave))  # single scattering albedo
+    g0 = np.zeros((nz, nwave))  # asymmetry parameter
 
-    opd_layer = np.zeros((nz, ngas))
-    scat_gas = np.zeros((nz,nwave,ngas))
-    ext_gas = np.zeros((nz,nwave,ngas))
-    cqs_gas = np.zeros((nz,nwave,ngas))
-    opd = np.zeros((nz,nwave))
-    opd_gas = np.zeros((nz,ngas))
-    w0 = np.zeros((nz,nwave))
-    g0 = np.zeros((nz,nwave))
+    # test
+    qextmm = np.zeros((nz, nw, nrad))  # mixed cloud particle extinction coefficient
+    qscamm = np.zeros((nz, nw, nrad))  # mixed cloud particle scattering coefficient
+    cos_qscamm = np.zeros((nz, nw, nrad)) # mixed cloud particle asymmetry coefficient
+
+    # ===================================================================================
+    # ==== Work in progress =============================================================
+
+    # calcualte mie values for mixed cloud partilces
+    # NOTE SK: This step needs to be done here since their opacity depends on their
+    # mixing properties.
+
+    # i = 2
+    # qext[:, :, 0] = qext[:, :, i]
+    # qscat[:, :, 0] = qscat[:, :, i]
+    # cos_qscat[:, :, 0] = cos_qscat[:, :, i]
+    # qext[:, :, 1] = qext[:, :, i]
+    # qscat[:, :, 1] = qscat[:, :, i]
+    # cos_qscat[:, :, 1] = cos_qscat[:, :, i]
+    if mixed:
+        if not quick_mix:
+            # Mieai requires tensorflow. Importing it here allows users who don't have
+            # tensorflow installed to use Virga with mixed=False. If you would like to
+            # use mixed particles but not install tensorflow, use mixed=True and
+            # quick_mix=True.
+            from mieai import Mieai
+
+            # calculate volume fractions of each material for each height
+            vol = qc[:, :-1] / rhop[np.newaxis, ]
+            volfrac = vol / np.sum(vol, axis=1)[:, np.newaxis]
+
+            from time import time  # delete after testing
+            start = time()  # delete after testing
+            ma = Mieai()  # set up mieai class (this will most likely change)
+            # Calculate mie coefficient using ML network (Attaway et al. in prep)
+            qext_c, qsca_c, cos_qsca_c = (None, None, None)
+            vmr_c = None
+            for z in range(nz):
+                vmr = {}
+                ss = time()
+                for g, gas in enumerate(gas_name[:-1]):
+                    vmr['Fe'] = np.ones_like(radius)*volfrac[z, g]*0
+                    vmr['TiO2'] = np.ones_like(radius)*volfrac[z, g]*0
+                    vmr[gas] = np.ones_like(radius)*volfrac[z, g]
+                    # if g != 2:
+                    #     vmr[gas] *= 0
+
+                if vmr_c is None:
+                    vmr_c = vmr
+                    diff_found = True
+                else:
+                    diff_found = any(
+                        np.any(np.abs((vmr[key] - vmr_c[key]) / vmr_c[key]) > 1e-4)
+                        for key in vmr
+                    )
+
+                if diff_found:
+                    qext_c, qsca_c, cos_qsca_c = ma.efficiencies(wave_in, radius*1e4, vmr)
+                    #qext_cc, qsca_cc, cos_qsca_cc = ma.efficiencies(wave_in, radius*1e4, vmr)
+                    vmr_c = vmr
+
+                # qextm[z] = qext[:, :, 2]
+                # qscam[z] = qscat[:, :, 2]
+                # cos_qscam[z] = cos_qscat[:, :, 2]
+                qextm[z], qscam[z], cos_qscam[z] = qext_c.T, qsca_c.T, cos_qsca_c.T
+                for i in range(nrad):
+                    plt.figure()
+                    plt.plot(wavelength[:, 0], qext[:, i, 0], label='Virga')
+                    plt.plot(wavelength[:, 0], qextm[z, :, i], label='Mieai.efficiencies')
+                    # plt.plot(wavelength[:, 0], qext_cc[:, i], label='Mieai.ai_efficiencies')
+                    plt.yscale('log')
+                    plt.xscale('log')
+                    plt.legend()
+                    plt.show()
+                test = 0
+
+                # qextm[z], qscam[z], cos_qscam[z] = ma.ai_efficiencies(wave_in, radius*1e4, vmr)
+                #qextm[z], qscam[z], cos_qscam[z] = ma.efficiencies(wave_in, radius*1e4, vmr)
+                # plt.figure()
+                # data = qextmm[z]-qextm[z]
+                # data[data>0.1] = np.nan
+                # data[data<-0.1] = np.nan
+                # plt.contourf(qextm[z], levels=[0, 1, 2, 3, 4, 5, 6])
+                # plt.colorbar()
+                # plt.show()
+                # print(vmr)
+                print(time()-ss)
+                print(z)
+            end = time()  # delete after testing
+            print(end - start)  # delete after testing
+        else:
+            # if quick mix is selected, remove the mixed particle entry (always the last)
+            # from the opacity calculation.
+            ngas -= 1
+
+    # ==== Work in progress =============================================================
+    # ===================================================================================
+
+
+    # ===================================================================================
+    # Calculate opacity of each cloud particle material
+    # ===================================================================================
     warning=''
     for iz in range(nz):
         for igas in range(ngas):
             # Optical depth for conservative geometric scatterers 
             if ndz[iz,igas] > 0:
                 
-                # precise warning for when particles are either above or below the grid defined by the .mieff files
-                if rg[iz,igas] < rmin: # if the radius of the particle found by VIRGA is smaller than rmin it is "off the grid". We assume this because even if it was at the bottom of the smallest bin e.g. r_g = (r_min - dr/2), half the distribution would not be considered by the number density, so we need to make the grid bigger to account for this portion of smaller particles  
-                    warning0 = f'Take caution in analyzing results. Particle sizes were predicted by eddysed() that were smaller than the minimum radius in the .mieff file ({rmin} cm). The optics and number densities for these particles will therefore not be correct. This can be solved by recreating the .mieff grids with a smaller r_min. The errors occurred at the following pressure layers:'
-                    warning+='\nParticles of radius {0} cm were found (where rmin from the mieff file is {1} cm) for gas {2} in the {3}th altitude layer'.format(str(rg[iz,igas]),str(rmin),str(igas),str(iz))
+                # precise warning for when particles are either above or below the grid
+                # defined by the .mieff files
+                # if the radius of the particle found by VIRGA is smaller than rmin it
+                # is "off the grid". We assume this because even if it was at the bottom
+                # of the smallest bin e.g. r_g = (r_min - dr/2), half the distribution
+                # would not be considered by the number density, so we need to make the
+                # grid bigger to account for this portion of smaller particles
+                if rg[iz,igas] < rmin:
+                    warning0 = (f'Take caution in analyzing results. Particle sizes were '
+                                f'predicted by eddysed() that were smaller than the minimum '
+                                f'radius in the .mieff file ({rmin} cm). The optics and '
+                                f'number densities for these particles will therefore not '
+                                f'be correct. This can be solved by recreating the .mieff '
+                                f'grids with a smaller r_min. The errors occurred at the '
+                                f'following pressure layers:')
+                    warning+=('\nParticles of radius {0} cm were found (where rmin from the '
+                              'mieff file is {1} cm) for gas {2} in the {3}th altitude layer'
+                              ).format(str(rg[iz,igas]),str(rmin),str(igas),str(iz))
 
-                if rg[iz,igas] > rmax: # if the radius of the particle found by VIRGA is larger than rmax it is "off the grid". We assume this because even if it was at the top of the largest bin e.g. r_g = (r_max + dr/2), half the distribution would not be considered by the number density, so we need to make the grid bigger to account for this portion of larger particles
-                    warning0 = f'Take caution in analyzing results. Particle sizes were predicted by eddysed() that were larger than the maximum radius in the .mieff file ({rmax} cm). The optics and number densities for these particles will therefore not be correct. This can be solved by recreating the .mieff grids with a larger r_max. The errors occurred at the following pressure layers:'
-                    warning+='\nParticles of radius {0} cm were found (where rmax from the mieff file is {1} cm) for gas {2} in the {3}th altitude layer'.format(str(rg[iz,igas]),str(rmax),str(igas),str(iz))
+                # if the radius of the particle found by VIRGA is larger than rmax it is
+                # "off the grid". We assume this because even if it was at the top of the
+                # largest bin e.g. r_g = (r_max + dr/2), half the distribution would not
+                # be considered by the number density, so we need to make the grid bigger
+                # to account for this portion of larger particles
+                if rg[iz,igas] > rmax:
+                    warning0 = (f'Take caution in analyzing results. Particle sizes were '
+                                f'predicted by eddysed() that were larger than the '
+                                f'maximum radius in the .mieff file ({rmax} cm). The '
+                                f'optics and number densities for these particles will '
+                                f'therefore not be correct. This can be solved by '
+                                f'recreating the .mieff grids with a larger r_max. The '
+                                f'errors occurred at the following pressure layers:')
+                    warning+=('\nParticles of radius {0} cm were found (where rmax from '
+                              'the mieff file is {1} cm) for gas {2} in the {3}th altitude '
+                              'layer'
+                              ).format(str(rg[iz,igas]),str(rmax),str(igas),str(iz))
 
-                r2 = rg[iz,igas]**2 * np.exp( 2*np.log( sig)**2 )
-                opd_layer[iz,igas] = 2.*PI*r2*ndz[iz,igas]
+                # Calculate geometrical optical depth
+                r2 = rg[iz,igas]**2 * np.exp(2 * np.log(sig)**2)
+                opd_layer[iz,igas] = 2. * np.pi * r2 * ndz[iz,igas]
 
-                #  Calculate normalization factor (forces lognormal sum = 1.0)
+                # Calculate normalization factor (forces lognormal sum = 1.0)
                 rsig = sig #the log normal particle size distribution 
                 norm = 0.
                 for irad in range(nrad):
                     rr = radius[irad]
-                    arg1 = dr[irad] / ( np.sqrt(2.*PI)*rr*np.log(rsig) )
-                    arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
+                    arg1 = dr[irad] / (np.sqrt(2. * np.pi) * rr * np.log(rsig))
+                    arg2 = -np.log(rr / rg[iz,igas])**2 / (2 * np.log(rsig)**2)
                     norm = norm + arg1*np.exp( arg2 )
-                    #print (rr, rg[iz,igas],rsig,arg1,arg2)
 
                 # normalization
                 norm = ndz[iz,igas] / norm #number density distribution
 
                 for irad in range(nrad):
                     rr = radius[irad]
-                    arg1 = dr[irad] / ( np.sqrt(2.*PI)*np.log(rsig) ) # log normal distribution is the rsig
-                    arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
-                    pir2ndz = norm*PI*rr*arg1*np.exp( arg2 )         
-                    for iwave in range(nwave): 
-                        scat_gas[iz,iwave,igas] = scat_gas[iz,iwave,igas]+qscat[iwave,irad,igas]*pir2ndz
-                        ext_gas[iz,iwave,igas] = ext_gas[iz,iwave,igas]+qext[iwave,irad,igas]*pir2ndz
-                        cqs_gas[iz,iwave,igas] = cqs_gas[iz,iwave,igas]+cos_qscat[iwave,irad,igas]*pir2ndz
+                    # factors for lognormal distribution
+                    arg1 = dr[irad] / (np.sqrt(2. * np.pi) * np.log(rsig))
+                    arg2 = - np.log(rr / rg[iz,igas])**2 / (2 * np.log(rsig)**2)
+                    # geometric cross-section
+                    pir2ndz = norm * np.pi * rr * arg1 * np.exp(arg2)
 
-                    #TO DO ADD IN CLOUD SUBLAYER KLUGE LATER 
-    
+                    # if cloud particle are not mixed, evaluate each particle homogenous
+                    # and then mix each material. This is also used if the opacity values
+                    # of mixed particles is approximated.
+                    if not mixed or quick_mix:
+                        for iw in range(nwave):
+                            scat_gas[iz, iw, igas] += qscat[iw, irad, igas] * pir2ndz
+                            ext_gas[iz, iw, igas] += qext[iw, irad, igas] * pir2ndz
+                            cqs_gas[iz, iw, igas] += cos_qscat[iw, irad, igas] * pir2ndz
+
+                        #TO DO ADD IN CLOUD SUBLAYER KLUGE LATER
+
+                    else:
+                        # only consider the mixed species, all others are skipped
+                        if gas_name[igas] != 'mixed':
+                            continue
+                        # opacity of mixed particles
+                        for iw in range(nwave):
+                            scat_gas[iz, iw, igas] += qscam[iz, iw, irad] * pir2ndz
+                            ext_gas[iz, iw, igas] += qextm[iz, iw, irad] * pir2ndz
+                            cqs_gas[iz, iw, igas] += cos_qscam[iz, iw, irad] * pir2ndz
+
     for igas in range(ngas):
         for iz in range(nz-1,-1,-1):
 
@@ -1172,6 +1353,14 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
     # ===================================================================================
     for i, gas in enumerate(gas_name):
 
+        # solution for exponentially parametrisation
+        if param == "exp":
+            fs = fsed / np.exp(z_alpha / b)
+            fsed_mid[i] = fs * np.exp(z_layer / b) + eps
+        # solution for constant fsed
+        else:
+            fsed_mid[i] = fsed
+
         # skip mixed cloud particle entry, this will only be used later
         if gas == 'mixed':
             continue
@@ -1208,12 +1397,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                 qt_top[i] = (qvs + (q_below[i] - qvs)
                              * np.exp(-b * fs / mixl * np.exp(z_bot / b)
                              * (np.exp(dz_layer / b) - 1) + eps * dz_layer / mixl))
-
-                fsed_mid[i] = fs * np.exp(z_layer / b) + eps
             # solution for constant fsed
             else:
                 qt_top[i] = qvs + (q_below[i] - qvs) * np.exp(-fsed * dz_layer / mixl)
-                fsed_mid[i] = fsed
 
             # Use trapezoid rule to calculate layer averages
             qt_layer[i] = 0.5 * (q_below[i] + qt_top[i])
@@ -1449,10 +1635,10 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         # EQN. 13 A&M
         # geometric mean radius of lognormal size distribution
         rg_layer[i] = (fsed_mid[i]**(1./alpha) *
-                       rw_layer * np.exp( -(alpha+6)*lnsig2 ))
+                       rw_layer * np.exp(-(alpha + 6) * lnsig2))
 
         # droplet effective radius (cm)
-        reff_layer[i] = rg_layer[i]*np.exp( 5*lnsig2 )
+        reff_layer[i] = rg_layer[i]*np.exp(5 * lnsig2)
 
     # ===================================================================================
     # Calculate the cloud particle number densities
