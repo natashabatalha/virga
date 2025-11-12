@@ -133,7 +133,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         if atmo.param == 'exp': 
             #the formalism of this is detailed in Rooney et al. 2021
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
-            fsed_in = (atmo.fsed-atmo.eps) 
+            fsed_in = (atmo.fsed-atmo.eps)
         elif atmo.param == 'const':
             fsed_in = atmo.fsed
         qc, qt, rg, reff, ndz, qc_path, mixl, z_cld = eddysed(atmo.t_level, atmo.p_level, atmo.t_layer, atmo.p_layer, 
@@ -156,7 +156,7 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
         z_cld = None #temporary fix 
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(atmo.t_layer, atmo.p_layer,
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, radius, 
+                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, radius,
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
                                              atmo.aggregates,atmo.Df,atmo.N_mon,atmo.r_mon,atmo.k0, direct_tol, refine_TP, og_vfall, analytical_rg)
 
@@ -472,7 +472,7 @@ def calc_optics_user_r_dist(wave_in, ndz,
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, 
     gas_mw, gas_mmr,rho_p,mw_atmos,gravity, kz,mixl,
-    fsed, b, eps, scale_h, z_top, z_alpha, z_min, param,
+    fsed_in, b, eps, scale_h, z_top, z_alpha, z_min, param,
     mh,sig, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
     aggregates, Df, N_mon, r_mon, k0, og_vfall=True,do_virtual=True, supsat=0, verbose=False):
     """
@@ -504,7 +504,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     kz : float or ndarray
         Kzz in cgs, either float or ndarray depending of whether or not 
         it is set as input
-    fsed : float 
+    fsed_in : ndarray
         Sedimentation efficiency coefficient, unitless
     b : float
         Denominator of exponential in sedimentation efficiency  (if param is 'exp')
@@ -605,6 +605,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     for i, igas in zip(range(ngas), condensibles):
 
         q_below = gas_mmr[i]
+        fsed = fsed_in[i]
 
         #include decrease in condensate mixing ratio below model domain
         if do_virtual: 
@@ -1265,8 +1266,9 @@ class Atmosphere():
         ----------
         condensibles : list of str
             list of gases for which to consider as cloud species 
-        fsed : float 
+        fsed : float or dict
             Sedimentation efficiency coefficient. Jupiter ~3-6. Hot Jupiters ~ 0.1-1.
+            Can be given for each condensible seperatly: {'Fe': 1, 'TiO2': 0.8}
         b : float
             Denominator of exponential in sedimentation efficiency  (if param is 'exp')
         eps: float
@@ -1309,7 +1311,6 @@ class Atmosphere():
             self.condensibles = condensibles
         self.mh = mh
         self.mmw = mmw
-        self.fsed = fsed
         self.b = b
         self.sig = sig
         self.param = param
@@ -1327,6 +1328,20 @@ class Atmosphere():
             self.gas_mmr = {igas:None for igas in self.condensibles}
         else: 
             self.gas_mmr = gas_mmr
+
+        # set fsed with the same length as condensibles
+        if isinstance(fsed, (int, float)):
+            # if only one value is given, use the same for all species
+            self.fsed = [fsed]*len(self.condensibles)
+        else:
+            # if multiple values are given, assign them in the correct order
+            self.fsed = []
+            for cond in self.condensibles:
+                if cond in fsed:
+                    self.fsed.append(fsed[cond])
+                else:
+                    raise ValueError("Missing fsed of " + cond)
+        self.fsed = np.asarray(self.fsed)  # we need to do math with this later
 
     def constants(self):
         #   Depth of the Lennard-Jones potential well for the atmosphere 
