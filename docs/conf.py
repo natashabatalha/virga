@@ -13,6 +13,7 @@
 import os
 import sys
 import sphinx_rtd_theme
+import virga 
 
 #sys.path.insert(0, os.path.abspath('/home/nbatalh1/codes/virga'))
 sys.path.insert(0, os.path.abspath('/Users/nbatalh1/Documents/codes/VIRGA/virga/'))
