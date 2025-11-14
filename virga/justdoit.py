@@ -324,7 +324,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     nz = qc.shape[0]  # number of atmospheric lauyers
     ngas = qc.shape[1]  # number of gas-phase species
     nrad = len(radius)  # number of cloud particle radii
-    wave_in = wavelength[:, 0]  # wavelengths (Input array has wavelength per species)
     nw = wavelength.shape[0]  # number of wavelength points
 
     # working and output arrays
@@ -332,9 +331,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     scat_gas = np.zeros((nz, nwave, ngas))  # working array scattering coefficient
     ext_gas = np.zeros((nz, nwave, ngas))  # working array extinction coefficient
     cqs_gas = np.zeros((nz, nwave, ngas))  # working array asymmetry coefficient
-    qextm = np.zeros((nz, nw, nrad))  # mixed cloud particle extinction coefficient
-    qscam = np.zeros((nz, nw, nrad))  # mixed cloud particle scattering coefficient
-    cos_qscam = np.zeros((nz, nw, nrad)) # mixed cloud particle asymmetry coefficient
     opd = np.zeros((nz, nwave))  # total optical depth
     opd_gas = np.zeros((nz, ngas))  # optical depth by gas
     w0 = np.zeros((nz, nwave))  # single scattering albedo
@@ -777,7 +773,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
 
             # if the atmosphere is supersaturated at the lowest altitude, remove the
             # additional material
-            if qvs <= q_below[i]:
+            if qvs <= q_below:
 
                 #find the pressure at cloud base 
                 #   parameters for finding root 
