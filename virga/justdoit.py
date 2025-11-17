@@ -752,8 +752,6 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
     # include decrease in condensate mixing ratio below model domain
     if do_virtual:
         for i, igas in zip(range(ngas), condensibles):
-            q_below = gas_mmr[i]
-            fsed = fsed_in[i]
 
             # skip mixed species
             if igas == 'mixed':
@@ -773,7 +771,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
 
             # if the atmosphere is supersaturated at the lowest altitude, remove the
             # additional material
-            if qvs <= q_below:
+            if qvs <= q_below[i]:
 
                 #find the pressure at cloud base 
                 #   parameters for finding root 
@@ -810,7 +808,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
                     _, _, _, _, _, q_below[i], _, _ = layer(
                         igas, [rho_p[i]], t_layer_virtual, p_layer_virtual, t_bot,t_base,
                         p_bot, p_base, kz[-1], mixl[-1], gravity, mw_atmos, [gas_mw[i]],
-                        [q_below[i]], supsat, fsed, b, eps, z_bot, z_base, z_alpha, z_min,
+                        [q_below[i]], supsat, fsed_in[i], b, eps, z_bot, z_base, z_alpha, z_min,
                         param, sig, mh, rmin, nrad, radius, d_molecule, eps_k, c_p_factor,
                         og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, mixed
                     )
@@ -828,7 +826,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         qc[iz], qt[iz], rg[iz], reff[iz],ndz[iz], q_below, z_cld, _  = layer(
             condensibles, rho_p, t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz],
             p_top[iz+1], kz[iz], mixl[iz], gravity, mw_atmos, gas_mw, q_below,
-            supsat, fsed, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
+            supsat, fsed_in, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
             sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
             og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, mixed
         )
@@ -1149,7 +1147,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         density of condensed vapor (g/cm^3)
     w_convect : float    
         convective velocity scale (cm/s)
-    fsed : float
+    fsed : ndarray
         Sedimentation efficiency coefficient (unitless) 
     b : float
         Denominator of exponential in sedimentation efficiency  (if param is 'exp')
@@ -1245,6 +1243,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
     qc_layer = np.zeros(lg)
     z_cld = np.zeros(lg)
     fsed_mid = np.zeros(lg)
+    material_can_condense = (fsed_mid == 0)  # all values True
 
     # prepare output arrays
     rg_layer = np.zeros(lg)
@@ -1262,7 +1261,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             fsed_mid[i] = fs * np.exp(z_layer / b) + eps
         # solution for constant fsed
         else:
-            fsed_mid[i] = fsed
+            fsed_mid[i] = fsed[i]
 
         # skip mixed cloud particle entry, this will only be used later
         if gas == 'mixed':
@@ -1286,6 +1285,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             qc_layer[i] = 0.
             z_cld[i] = z_cld[i]
             fsed_mid[i] = 0
+            material_can_condense[i] = False
 
         # Cloudy layer: first calculate qt and qc at top of layer, then calculate the
         # additional cloud properties of the layer
@@ -1296,13 +1296,13 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 
             # solution for exponentially parametrisation
             if param == "exp":
-                fs = fsed / np.exp(z_alpha / b)
+                fs = fsed[i] / np.exp(z_alpha / b)
                 qt_top[i] = (qvs + (q_below[i] - qvs)
                              * np.exp(-b * fs / mixl * np.exp(z_bot / b)
                              * (np.exp(dz_layer / b) - 1) + eps * dz_layer / mixl))
             # solution for constant fsed
             else:
-                qt_top[i] = qvs + (q_below[i] - qvs) * np.exp(-fsed * dz_layer / mixl)
+                qt_top[i] = qvs + (q_below[i] - qvs) * np.exp(-fsed[i] * dz_layer / mixl)
 
             # Use trapezoid rule to calculate layer averages
             qt_layer[i] = 0.5 * (q_below[i] + qt_top[i])
@@ -1315,6 +1315,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
     # This is an approximation as cloud particle of different sizes might have different
     # average densities. All other calculations here are identical to pure materials.
     if mixed:
+        # check if there is any condensiable material
+        material_can_condense[-1] = (material_can_condense[:-1] == True).any()
+
         # calcualte total cloud mass of mixed particles
         qc_layer[-1] = np.asarray([np.sum(qc_layer)])
 
@@ -1322,6 +1325,11 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         rho_p[-1] = 0
         if qc_layer[-1] > 0:
             rho_p[-1] = np.sum(qc_layer[:-1]) / np.sum(qc_layer[:-1] / rho_p[:-1])
+
+    # check if any material can condense
+    if not material_can_condense.all():
+        return (qt_top, qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, z_cld,
+                fsed_mid, rho_p)
 
     # ===================================================================================
     # Calculate the radius of cloud particles by balancing the fall out rate
@@ -1634,7 +1642,11 @@ class Atmosphere():
         # set fsed with the same length as condensibles
         if isinstance(fsed, (int, float)):
             # if only one value is given, use the same for all species
-            self.fsed = [fsed]*len(self.condensibles)
+            fsed_len = len(self.condensibles)
+            if self.mixed:
+                # if mixed, add the mixed species as well
+                fsed_len += 1
+            self.fsed = [fsed]*fsed_len
         else:
             # if multiple values are given, assign them in the correct order
             self.fsed = []
@@ -1643,6 +1655,10 @@ class Atmosphere():
                     self.fsed.append(fsed[cond])
                 else:
                     raise ValueError("Missing fsed of " + cond)
+            if mixed:
+                # add the mixed species fsed
+                self.fsed.append(fsed['mixed'])
+
         self.fsed = np.asarray(self.fsed)  # we need to do math with this later
 
     def constants(self):

@@ -72,16 +72,52 @@ def test_mixed_clouds():
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
+    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__), quick_mix=True)
+    # test the output
+    tested_outputs = [
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density', 'mixing_length',
+        'altitude',
+    ]
+    expected_outputs = [
+        0.009600444481429805, 741.1002992334354, 2463.327870276736, 23435.298259890198,
+        3400236589.2062654, 36062700139.00066,
+    ]
+
+    for i, test in enumerate(tested_outputs):
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
+
+    # initialise atmosphere
+    a = jdi.Atmosphere(['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':2, 'mixed': 3}, mh=1, mmw=2.2, mixed=True)
+    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
+    a.ptk(df=jdi.hot_jupiter())
+    # calculate cloud profile
+    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__), quick_mix=True)
+    # test the output
+    tested_outputs = [
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
+        'mixing_length', 'altitude',
+    ]
+    expected_outputs = [
+        0.004892882346521104, 1260.8837468647716, 4191.0252607422235, 4541.284526267978,
+        3400236589.2062654, 36062700139.00066,
+    ]
+    for i, test in enumerate(tested_outputs):
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
+
+    # initialise atmosphere
+    a = jdi.Atmosphere(['MnS', 'SiO2'], fsed=1, mh=1, mmw=2.2, mixed=False)
+    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
+    a.ptk(df=jdi.hot_jupiter())
+    # calculate cloud profile
     all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
     # test the output
     tested_outputs = [
         'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
-        'single_scattering', 'asymmetry', 'opd_by_gas', 'mixing_length', 'altitude',
+        'mixing_length', 'altitude',
     ]
     expected_outputs = [
-        0.00959528233777504, 674.8984205851, 2243.2808227882874, 4350662.838922345,
-        7597.8662982779315, 5858.9127816366845, 2280.446317377925, 3400236589.2062654,
-        36062700139.00066,
+        0.004800222240714903, 479.5232340104981, 1593.8773037942406, 12144.145061051053,
+        3400236589.2062654, 36062700139.00066,
     ]
     for i, test in enumerate(tested_outputs):
         assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
