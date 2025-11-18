@@ -289,9 +289,9 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     mixed: bool
         If True, cloud particles are considered to mix together rather than form
         individual particles.
-    rhop: np.ndarray
+    rhop: ndarray
         densities of all homogenous materials
-    wavelength : np.ndarray
+    wavelength : ndarray
         Wavelength grid [micron]
     directory : str, optional
         Directory string that describes where refrind files are
@@ -592,30 +592,30 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
 
     Parameters
     ----------
-    t_top : np.ndarray
+    t_top : ndarray
         Temperature at each layer (K)
-    p_top : np.ndarray
+    p_top : ndarray
         Pressure at each layer (dyn/cm^2)
-    t_mid : np.ndarray
+    t_mid : ndarray
         Temperature at each midpoint (K)
-    p_mid : np.ndarray
+    p_mid : ndarray
         Pressure at each midpoint (dyn/cm^2)
-    condensibles : np.ndarray or list of str
+    condensibles : ndarray or list of str
         List or array of condensible gas names
-    gas_mw : np.ndarray
+    gas_mw : ndarray
         Array of gas mean molecular weight from `gas_properties`
-    gas_mmr : np.ndarray
+    gas_mmr : ndarray
         Array of gas mixing ratio from `gas_properties`
-    rho_p : np.ndarray
+    rho_p : ndarray
         density of condensed vapor (g/cm^3)
-    mw_atmos : np.ndarray
+    mw_atmos : ndarray
         Mean molecular weight of the atmosphere
     gravity : float 
         Gravity of planet cgs
-    kz : np.ndarray
+    kz : ndarray
         Kzz in cgs, either float or ndarray depending of whether or not 
         it is set as input
-    mixl : np.ndarray
+    mixl : ndarray
         mixing length
     fsed_in : ndarray
         Sedimentation efficiency coefficient, unitless
@@ -623,9 +623,9 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         Denominator of exponential in sedimentation efficiency  (if param is 'exp')
     eps: float
         Minimum value of fsed function (if param=exp)
-    scale_h : np.ndarray
+    scale_h : ndarray
         Scale height of the atmosphere
-    z_top : np.ndarray
+    z_top : ndarray
         Altitude at each layer
     z_alpha : float
         Altitude at which fsed=alpha for variable fsed calculation
@@ -640,7 +640,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         Minium radius on grid (cm)
     nrad : int 
         Number of radii on Mie grid
-    radius : np.ndarray
+    radius : ndarray
         Particle radius bin centers from the grid (cm)
     d_molecule : float 
         diameter of atmospheric molecule (cm) (Rosner, 2000)
@@ -848,7 +848,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
 
     gas_name : str 
         Name of condenstante 
-    rho_p : np.ndarray
+    rho_p : ndarray
         density of condensed vapor (g/cm^3)
     t_layer : float 
         Temperature of layer mid-pt (K)
@@ -870,9 +870,9 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
         Gravity of planet cgs 
     mw_atmos : float 
         Molecular weight of the atmosphere 
-    gas_mw : np.ndarray
+    gas_mw : ndarray
         Gas molecular weight 
-    q_below : np.ndarray
+    q_below : ndarray
         total mixing ratio (vapor+condensate) below layer (g/g)
     supsat : float 
         Super saturation factor
@@ -1127,9 +1127,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         Pressure of layer mid-pt (dyne/cm^2)
     r_atmos : float 
         specific gas constant for atmosphere (erg/K/g)
-    r_cloud : np.ndarray
+    r_cloud : ndarray
         specific gas constant for cloud species (erg/K/g)     
-    q_below : np.ndarray
+    q_below : ndarray
         total mixing ratio (vapor+condensate) below layer (g/g)
     mxl : float 
         convective mixing length scale (cm): no less than 1/10 scale height
@@ -1207,23 +1207,23 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 
     Returns
     -------
-    qt_top : np.ndarray
+    qt_top : ndarray
         gas + condensate mixing ratio at top of layer(g/g)
-    qc_layer : np.ndarray
+    qc_layer : ndarray
         condenstate mixing ratio (g/g)
-    qt_layer : np.ndarray
+    qt_layer : ndarray
         gas + condensate mixing ratio (g/g)
-    rg_layer : np.ndarray
+    rg_layer : ndarray
         geometric mean radius of condensate  cm 
-    reff_layer : np.ndarray
+    reff_layer : ndarray
         droplet effective radius (second moment of size distrib, cm)
-    ndz_layer : np.ndarray
+    ndz_layer : ndarray
         number column density of condensate (cm^-3)
-    z_cld : np.ndarray
+    z_cld : ndarray
         altitude of the cloud layer
-    fsed_layer : np.ndarray
+    fsed_layer : ndarray
         fsed within the layers
-    rho_p_out : np.ndarray
+    rho_p_out : ndarray
         output densities, only differ from input if mixed=True
     """
     # ===================================================================================
