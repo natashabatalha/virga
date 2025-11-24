@@ -211,13 +211,13 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
                            opd_gas,wave_in, pres_out, temp_out, condensibles,
                            mh,mmw, fsed_out, atmo.sig, nradii,rmin, rmax, log_radii, z_out, atmo.dz_layer, 
-                           mixl, atmo.kz, atmo.scale_h, z_cld) 
+                           mixl, atmo.kz, atmo.scale_h, z_cld, atmo.mixed)
     else:
         return opd, w0, g0
 
 def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,rmax,log_radii,z, dz_layer, mixl, kz, scale_h, z_cld):
-    return {
+    mh,mmw,fsed,sig,nrad,rmin,rmax,log_radii,z, dz_layer, mixl, kz, scale_h, z_cld, mixed):
+    output = {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
         "temperature":temperature,
@@ -249,6 +249,33 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         'scale_height':scale_h,
         'cloud_deck':z_cld
     }
+
+    if mixed:
+        # create mixed sub entry
+        output['components'] = {
+            "condensate_mmr":qc[:, :-1],
+            "cond_plus_gas_mmr":qt[:, :-1],
+            "mean_particle_r":rg[:, :-1]*1e4,
+            "droplet_eff_r":reff[:, :-1]*1e4,
+            "opd_by_gas": opd_gas[:, :-1],
+            "r_units":'micron',
+            "column_density":ndz[:, :-1],
+            "column_density_unit":'#/cm^2',
+            "condensibles":gas_names[:-1],
+            "fsed": fsed[:-1],
+            'cloud_deck':z_cld[:-1]
+        }
+        # assign only the last entry since this is the mixed particle
+        output["condensate_mmr"] = qc[:, -1:]
+        output["cond_plus_gas_mmr"] = qt[:, -1:]
+        output["mean_particle_r"] = rg[:, -1:]*1e4
+        output["droplet_eff_r"] = reff[:, -1:]*1e4
+        output["column_density"] = ndz[:, -1:]
+        output["condensibles"] = gas_names[-1:]
+        output["fsed"] =  fsed[-1:]
+        output['cloud_deck'] = z_cld[-1:]
+
+    return output
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat, cos_qscat, sig,
                 rmin, rmax, mixed, rhop, wavelength, gas_name, directory, quick_mix=False, verbose=False):
