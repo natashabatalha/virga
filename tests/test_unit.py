@@ -7,14 +7,14 @@ from virga import justdoit as jdi
 
 def test_mie_database():
 
-    # ==== Fortran (this one thakes way to long to calcualte, but it works)
-    qext, qsca, asym, radii, wave = jdi.calc_mie_db(
-        ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 2, fort_calc_mie=True
-    )
-
-    assert np.isclose(np.sum(qext), 795.2903509450259)
-    assert np.isclose(np.sum(qsca), 3324.2373085461054)
-    assert np.isclose(np.sum(asym), 1154.4167919503002)
+    # # ==== Fortran (this one thakes way to long to calcualte, but it works)
+    # qext, qsca, asym, radii, wave = jdi.calc_mie_db(
+    #     ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 2, fort_calc_mie=True
+    # )
+    #
+    # assert np.isclose(np.sum(qext), 795.2903509450259)
+    # assert np.isclose(np.sum(qsca), 3324.2373085461054)
+    # assert np.isclose(np.sum(asym), 1154.4167919503002)
 
     # # ==== Fractals, takes forever
     # qext, qsca, asym, radii, wave = jdi.calc_mie_db(

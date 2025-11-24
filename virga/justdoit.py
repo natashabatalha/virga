@@ -205,7 +205,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
 
     if as_dict:
         if atmo.param == 'exp':
-            fsed_out = fsed_in * np.exp((atmo.z - atmo.z_alpha) / atmo.b ) + atmo.eps
+            fsed_out = fsed_in[:, np.newaxis] * np.exp((atmo.z[np.newaxis] - atmo.z_alpha) / atmo.b ) + atmo.eps
         else: 
             fsed_out = fsed_in 
         return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
@@ -1257,7 +1257,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 
         # solution for exponentially parametrisation
         if param == "exp":
-            fs = fsed / np.exp(z_alpha / b)
+            fs = fsed[i] / np.exp(z_alpha / b)
             fsed_mid[i] = fs * np.exp(z_layer / b) + eps
         # solution for constant fsed
         else:
