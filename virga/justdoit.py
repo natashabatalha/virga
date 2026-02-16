@@ -1891,10 +1891,10 @@ def get_mie(gas, directory, aggregates=False, Df=None):
         df['qext'] = flipped_qext
         df['cos_qscat'] = flipped_cos_qscat
 
-    wave = df['wave'].values.copy().reshape((nradii,nwave)).T
-    qscat = df['qscat'].values.copy().reshape((nradii,nwave)).T
-    qext = df['qext'].values.copy().reshape((nradii,nwave)).T
-    cos_qscat = df['cos_qscat'].values.copy().reshape((nradii,nwave)).T
+    wave = np.ascontiguousarray(df['wave'].to_numpy().reshape(nradii, nwave).T)
+    qscat = np.ascontiguousarray(df['qscat'].values.copy().reshape((nradii,nwave)).T)
+    qext = np.ascontiguousarray(df['qext'].values.copy().reshape((nradii,nwave)).T)
+    cos_qscat = np.ascontiguousarray(df['cos_qscat'].values.copy().reshape((nradii,nwave)).T)
 
     # if scattering code returns Q_sca <0 (can happen for extreme examples, like very large particles with very low fractal dimensions), set Q_sca = 1e-16 (basically zero, 
     # but slighty positive so that calc_optics still records opacity in the optical depth array (opd) for purely absorbing cases -- the statement here 
