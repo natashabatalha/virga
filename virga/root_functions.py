@@ -2,7 +2,7 @@ import numpy as np
 from . import  pvaps
 from . import  gas_properties
 from scipy.stats import lognorm
-from scipy.integrate import quad, simps
+from scipy.integrate import quad
 from scipy import optimize
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
