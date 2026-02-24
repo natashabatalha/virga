@@ -1409,10 +1409,10 @@ class Atmosphere():
         #first read in dataframe, dict or file and sort by pressure
         if not isinstance(df, type(None)):
             if isinstance(df, dict): df = pd.DataFrame(df)
-            df = df.sort_values('pressure')
+            df = df.sort_values('pressure').copy()
         elif not isinstance(filename, type(None)):
             df = pd.read_csv(filename, **pd_kwargs)
-            df = df.sort_values('pressure')
+            df = df.sort_values('pressure').copy()
 
         #convert bars to dyne/cm^2 
         self.p_level = np.array(df['pressure'])*1e6
@@ -1891,10 +1891,10 @@ def get_mie(gas, directory, aggregates=False, Df=None):
         df['qext'] = flipped_qext
         df['cos_qscat'] = flipped_cos_qscat
 
-    wave = df['wave'].values.reshape((nradii,nwave)).T
-    qscat = df['qscat'].values.reshape((nradii,nwave)).T
-    qext = df['qext'].values.reshape((nradii,nwave)).T
-    cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
+    wave = np.ascontiguousarray(df['wave'].to_numpy().reshape(nradii, nwave).T)
+    qscat = np.ascontiguousarray(df['qscat'].values.copy().reshape((nradii,nwave)).T)
+    qext = np.ascontiguousarray(df['qext'].values.copy().reshape((nradii,nwave)).T)
+    cos_qscat = np.ascontiguousarray(df['cos_qscat'].values.copy().reshape((nradii,nwave)).T)
 
     # if scattering code returns Q_sca <0 (can happen for extreme examples, like very large particles with very low fractal dimensions), set Q_sca = 1e-16 (basically zero, 
     # but slighty positive so that calc_optics still records opacity in the optical depth array (opd) for purely absorbing cases -- the statement here 
