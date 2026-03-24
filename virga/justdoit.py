@@ -1854,7 +1854,7 @@ def get_mie(gas, directory, aggregates=False, Df=None):
     nradii = int(df.iloc[0,1])
 
     #get the radii (all the rows where there the last three rows are nans)
-    radii = df.loc[np.isnan(df['qscat'])]['wave'].values
+    radii = df.loc[np.isnan(df['qscat'])]['wave'].values.copy()
 
     df = df.dropna()
 
@@ -1876,10 +1876,10 @@ def get_mie(gas, directory, aggregates=False, Df=None):
         df['qext'] = flipped_qext
         df['cos_qscat'] = flipped_cos_qscat
 
-    wave = df['wave'].values.reshape((nradii,nwave)).T
-    qscat = df['qscat'].values.reshape((nradii,nwave)).T
-    qext = df['qext'].values.reshape((nradii,nwave)).T
-    cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
+    wave = df['wave'].values.reshape((nradii,nwave)).T.copy()
+    qscat = df['qscat'].values.reshape((nradii,nwave)).T.copy()
+    qext = df['qext'].values.reshape((nradii,nwave)).T.copy()
+    cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T.copy()
 
     # if scattering code returns Q_sca <0 (can happen for extreme examples, like very large particles with very low fractal dimensions), set Q_sca = 1e-16 (basically zero, 
     # but slighty positive so that calc_optics still records opacity in the optical depth array (opd) for purely absorbing cases -- the statement here 
