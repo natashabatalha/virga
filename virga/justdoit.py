@@ -250,16 +250,16 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
         qscat-weighted <cos (scattering angle)>
     sig : float
         Width of the particle size distribution (geometric standard deviation)
+    rmin: float
+        Minimum particle radius bin center from the grid (cm)
+    rmax: float
+        Maximum particle radius bin center from the grid (cm)
     dist : str, optional
         Particle size distribution, either 'lognormal' (default) or 'gamma'
         (Christie et al. 2022, Appendix B)
     gamma_A : float, optional
         Gamma distribution shape parameter A, derived from sig via the trigamma
-        function. Only used when dist='gamma'. None for lognormal.
-    rmin: float
-        Minimum particle radius bin center from the grid (cm)
-    rmax: float
-        Maximum particle radius bin center from the grid (cm)
+        function. Only used when dist='gamma'. None for lognormal.       
     verbose: bool
         print out warnings or not
 
@@ -1354,7 +1354,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer,
 
             #   I (Elspeth) changed to the 3rd/2nd moment effective radius convention, 
             #   as opposed to the Christie et al. (2022) RMS equation (commented out below)
-            #reff_layer = np.sqrt(gamma_A(gamma_A+1))/B
+            #reff_layer = np.sqrt(gamma_A * (gamma_A + 1)) / B 
             reff_layer = (gamma_A + 2) / B
 
             #   column number density — Eq. B9
@@ -1384,7 +1384,9 @@ class Atmosphere():
         mmw : float 
             MMW of the atmosphere 
         sig : float 
-            Width of the log normal distribution for the particle sizes
+            Geometric standard deviation controlling the width of the particle size
+            distribution. Used directly for lognormal. For gamma, controls the shape
+            parameter A using the trigamma equation.
         dist : str
             Particle size distribution ('lognormal' or 'gamma')
         param : str
