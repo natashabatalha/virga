@@ -520,7 +520,7 @@ def calc_new_mieff_optool(wave,radius,bin_min,bin_max,gas,optool_dir,aggregates=
         r_mon_max = r_mon
 
     # determine largest size parameter required
-    min_wavelength = pd.read_csv(f"{optool_dir}/lnk_data/{gas}_VIRGA.lnk", skiprows=1, header=None, sep='\s+', usecols=[0]).values.min() # find minimum wavelength from the lnk data file
+    min_wavelength = pd.read_csv(f"{optool_dir}/lnk_data/{gas}_VIRGA.lnk", skiprows=1, header=None, sep=r'\s+', usecols=[0]).values.min() # find minimum wavelength from the lnk data file
     largest_size_parameter_x = 2.0*np.pi*r_mon_max*1e4/min_wavelength # find largest size parameter: remember to convert largest monomer radius from cm to um
     
     if (aggregates==True) and (largest_size_parameter_x > 200):
