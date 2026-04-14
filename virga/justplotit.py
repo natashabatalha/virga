@@ -17,7 +17,7 @@ from matplotlib.ticker import FuncFormatter # used to display axes labels as 0.1
 from matplotlib.ticker import FormatStrFormatter
 from statistics import mean
 from scipy.signal import savgol_filter
-from scipy.special import gamma as gamma_func
+from scipy.special import gamma as gamma_func, gammaln
 from matplotlib.legend_handler import HandlerPathCollection
 import matplotlib
 import pandas as pd
@@ -187,8 +187,10 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
                 gamma_A = out[j]['scalar_inputs']['gamma_A']
                 r_g_cm = r_g[nl, gas_name.index(i)] * 1e-4  # microns to cm
                 B = gamma_A / r_g_cm
-                dndr[i] = N[nl, gas_name.index(i)] * (
-                    B**gamma_A * r**(gamma_A - 1) * np.exp(-B * r) / gamma_func(gamma_A))
+                # evaluate PDF in log-space to avoid overflow for large A (small sig)
+                log_norm_factor = gamma_A * np.log(B) - gammaln(gamma_A)
+                dndr[i] = N[nl, gas_name.index(i)] * np.exp(
+                    log_norm_factor + (gamma_A - 1) * np.log(r) - B * r)
         dndr['r'] = r*1e4 #convert to microns
 
         if j==0:

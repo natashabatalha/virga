@@ -4,8 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 from scipy import optimize 
-from scipy.special import gamma as gamma_func
-from scipy.special import polygamma
+from scipy.special import polygamma, gammaln
 from scipy.optimize import brentq
 from pathlib import Path
 
@@ -333,14 +332,18 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
 
                 elif dist == 'gamma':
                     B = gamma_A / rg[iz,igas]
+                    # Use ln_gamma instead of gamma for numerical stability for large gamma_A
+                    log_B = np.log(B)
+                    log_norm_factor = gamma_A * log_B - gammaln(gamma_A)
                     norm = 0.
                     for irad in range(nrad):
                         rr = radius[irad]
-                        norm = norm + dr[irad] * B**gamma_A * rr**(gamma_A-1) * np.exp(-B*rr) / gamma_func(gamma_A)
+                        norm = norm + dr[irad] * np.exp(log_norm_factor + (gamma_A - 1) * np.log(rr) - B * rr)
                     norm = ndz[iz,igas] / norm
                     for irad in range(nrad):
                         rr = radius[irad]
-                        pir2ndz = norm*PI*rr * dr[irad] * B**gamma_A * rr**(gamma_A-1) * np.exp(-B*rr) / gamma_func(gamma_A)
+                        pdf_rr = np.exp(log_norm_factor + (gamma_A - 1) * np.log(rr) - B * rr)
+                        pir2ndz = norm * PI * rr**2 * dr[irad] * pdf_rr
                         for iwave in range(nwave):
                             scat_gas[iz,iwave,igas] += qscat[iwave,irad,igas]*pir2ndz
                             ext_gas[iz,iwave,igas]  += qext[iwave,irad,igas]*pir2ndz
@@ -1346,8 +1349,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer,
             else:
                 fsed_mid = fsed
 
-            #   Christie et al. 2022 Eq. B6 — rate parameter B
-            B = (1.0 / rw_layer) * (gamma_func(gamma_A + 3 + alpha) / (fsed_mid * gamma_func(gamma_A + 3))) ** (1.0 / alpha)
+            #   Christie et al. (2022) Eq. B6 — rate parameter B (using ln_gamma for large gamma_A)
+            B = (1.0 / rw_layer) * np.exp((gammaln(gamma_A + 3 + alpha) - gammaln(gamma_A + 3) - np.log(fsed_mid)) / alpha)
 
             #   mean radius = A/B  (Christie et al. 2022)
             rg_layer = gamma_A / B
