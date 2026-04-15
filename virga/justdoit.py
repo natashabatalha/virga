@@ -160,7 +160,8 @@ def compute(atmo, directory = None, as_dict = True, og_solver = True,
                                              condensibles, gas_mw, gas_mmr, rho_p , mmw, 
                                              atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, radius, 
                                              atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
-                                             atmo.aggregates,atmo.Df,atmo.N_mon,atmo.r_mon,atmo.k0, direct_tol, refine_TP, og_vfall, analytical_rg)
+                                             atmo.aggregates,atmo.Df,atmo.N_mon,atmo.r_mon,atmo.k0, direct_tol, refine_TP, og_vfall, analytical_rg,
+                                             atmo.dist, getattr(atmo, 'gamma_A', None))
 
             
     #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
@@ -232,7 +233,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz,radius,dr,qext, qscat,cos_qscat,sig
     qt : ndarray 
         Gas + condensate mixing ratio 
     rg : ndarray 
-        Geometric mean radius of condensate 
+        Representative particle radius of condensate. 
     reff : ndarray
         Effective (area-weighted) radius of condensate (cm)
     ndz : ndarray
@@ -614,7 +615,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles,
     qt : ndarray 
         gas + condensate mixing ratio (g/g)
     rg : ndarray
-        geometric mean radius of condensate  cm 
+        representative particle radius of condensate (cm)
     reff : ndarray
         droplet effective radius (second moment of size distrib, cm)
     ndz : ndarray 
@@ -835,7 +836,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     qt_layer : ndarray 
         gas + condensate mixing ratio (g/g)
     rg_layer : ndarray
-        geometric mean radius of condensate  cm 
+        representative particle radius of condensate (cm)
     reff_layer : ndarray
         droplet effective radius (second moment of size distrib, cm)
     ndz_layer : ndarray 
@@ -965,8 +966,11 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
 
     if opd_layer > 0. : 
         reff_layer = 1.5*qc_layer / (rho_p*opd_layer)
-        lnsig2 = 0.5*np.log( sig )**2
-        rg_layer = reff_layer*np.exp( -5*lnsig2 )
+        if dist == 'lognormal':
+            lnsig2 = 0.5*np.log( sig )**2
+            rg_layer = reff_layer*np.exp( -5*lnsig2 )
+        elif dist == 'gamma':
+            rg_layer = reff_layer * gamma_A / (gamma_A + 2)
     else : 
         reff_layer = 0.
         rg_layer = 0.
@@ -974,7 +978,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot,
     qc_layer = qc_layer*gravity / dp_layer
     qt_layer = qt_layer*gravity / dp_layer
 
-    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer,q_below, z_cld, fsed_layer
+    return qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, q_below, z_cld, fsed_layer
 
 def calc_qc(gas_name, supsat, t_layer, p_layer,
     r_atmos, r_cloud, q_below, mixl, dz_layer, gravity,mw_atmos,
@@ -1078,13 +1082,13 @@ def calc_qc(gas_name, supsat, t_layer, p_layer,
     qt_layer : float 
         gas + condensate mixing ratio (g/g)
     rg_layer : float
-        geometric mean radius of condensate  cm 
+        representative particle radius of condensate (cm)
     reff_layer : float
         droplet effective radius (second moment of size distrib, cm)
     ndz_layer : float 
         number column density of condensate (cm^-3)
     """
-
+    
     get_pvap = getattr(pvaps, gas_name)
     if gas_name in ['Mg2SiO4','CaTiO3','CaAl12O19','FakeHaze','H2SO4','KhareHaze','SteamHaze300K','SteamHaze400K']:
         pvap = get_pvap(t_layer, p_layer,mh=mh)
@@ -1428,6 +1432,8 @@ class Atmosphere():
         self.b = b
         self.sig = sig
         self.dist = dist
+        if self.dist not in ('lognormal', 'gamma'):
+            raise ValueError("dist must be 'lognormal' or 'gamma'.")
         if dist == 'gamma':
             self.gamma_A = brentq(lambda A: polygamma(1, A) - np.log(sig)**2, 1e-6, 1e6)
         self.param = param
@@ -2061,7 +2067,7 @@ def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
     ALGORITHM DESCRIPTION:
 
     First, VIRGA makes grid of particle sizes and calculates the optical properties for them. Then, when we find the average particle
-    size in a particular layer of cloud, it creates a lognormal distribution of particles (one that has the calculated mean radius),
+    size in a particular layer of cloud, it creates the requested distribution of particles (one that has the calculated representative radius),
     and then finds how many particles fall into each of the 'bins' of the radius 'grid' that we have created. Finally, it weights the
     contribution from each bin by the number of particles to calculate the total opacity of that layer. Therefore, the same grid needs
     to be used for making the .mieff files (optical properties) and running VIRGA.

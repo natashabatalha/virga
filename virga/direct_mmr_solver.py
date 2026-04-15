@@ -1,6 +1,7 @@
 from scipy.integrate import solve_ivp
 from scipy.interpolate import UnivariateSpline, interp1d
 from scipy import optimize 
+from scipy.special import gammaln
 import numpy as np
 import pandas as pd
 from . import  pvaps
@@ -8,9 +9,92 @@ from .root_functions import vfall, vfall_find_root, find_rg, moment, solve_force
 import time
 from . import justdoit as jdi
 
+def _particle_distribution_properties(fsed, rw, alpha, qc, rho_atmos_val, dz, rho_p,
+                                      sig, dist='lognormal', gamma_A=None, analytical_rg=True):
+    """
+    Calculate representative radius, optical effective radius, and column
+    number density for a particle size distribution.
+
+    Parameters
+    ----------
+    fsed : float
+        Sedimentation efficiency coefficient (unitless)
+    rw : float
+        Fall velocity particle radius (cm)
+    alpha : float
+        Exponent in power-law approximation for particle fall speed
+    qc : float
+        Condensate mixing ratio (g/g)
+    rho_atmos_val : float
+        Atmospheric density (g/cm^3)
+    dz : float
+        Layer thickness (cm)
+    rho_p : float
+        Density of condensed vapor (g/cm^3)
+    sig : float
+        Width of the particle size distribution
+    dist : str, optional
+        Particle size distribution, either 'lognormal' or 'gamma'
+    gamma_A : float, optional
+        Gamma distribution shape parameter A. Required when dist='gamma'.
+    analytical_rg : bool, optional
+        Use analytical expressions for rg, reff, and ndz. If False, solve for
+        rg numerically using distribution moments.
+
+    Returns
+    -------
+    rg : float
+        Representative particle radius (cm). This is the geometric mean for
+        lognormal distributions and the mean radius A/B for gamma
+        distributions.
+    reff : float
+        Optical effective radius, <r^3>/<r^2> (cm)
+    ndz : float
+        Column droplet number concentration (cm^-2)
+    """
+
+    if dist == 'lognormal':
+        if analytical_rg:
+            lnsig2 = 0.5 * np.log(sig)**2
+            rg = fsed**(1. / alpha) * rw * np.exp(-(alpha + 6) * lnsig2)
+            reff = rg * np.exp(5 * lnsig2)
+            ndz = (3 * rho_atmos_val * qc * dz /
+                   (4 * np.pi * rho_p * rg**3) * np.exp(-9 * lnsig2))
+            return rg, reff, ndz
+
+        moment_s = np.log(sig)
+
+    elif dist == 'gamma':
+        if gamma_A is None:
+            raise ValueError("gamma_A is required when dist='gamma'.")
+        if analytical_rg:
+            B = (1.0 / rw) * np.exp(
+                (gammaln(gamma_A + 3 + alpha) - gammaln(gamma_A + 3) - np.log(fsed)) / alpha)
+            rg = gamma_A / B
+            reff = (gamma_A + 2) / B
+            ndz = (3 * rho_atmos_val * qc * dz * B**3 /
+                   (4 * np.pi * rho_p * gamma_A * (gamma_A + 1) * (gamma_A + 2)))
+            return rg, reff, ndz
+
+        moment_s = gamma_A
+
+    else:
+        raise ValueError("dist must be 'lognormal' or 'gamma'.")
+
+    # Numerical branch shared by supported distributions.
+    rlo = 1.e-10
+    rhi = 1.e2
+    rg_temp = optimize.root_scalar(find_rg, bracket=[rlo, rhi], method='brentq',
+                                   args=(fsed, rw, alpha, moment_s, 0., dist))
+    rg = rg_temp.root
+    reff = moment(3, moment_s, 0., rg, dist) / moment(2, moment_s, 0., rg, dist)
+    ndz = (3 * fsed * rw**alpha * qc * rho_atmos_val * dz /
+           (4 * np.pi * rho_p * moment(3 + alpha, moment_s, 0., rg, dist)))
+    return rg, reff, ndz
+
 def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , mw_atmos, 
                         gravity, kzz, fsed, mh, sig, radius, d_molecule,eps_k,c_p_factor,aggregates,Df,N_mon,r_mon,k0,
-                        tol = 1e-15, refine_TP = True,og_vfall=True, analytical_rg = True):
+                        tol = 1e-15, refine_TP = True,og_vfall=True, analytical_rg = True, dist='lognormal', gamma_A=None):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -41,7 +125,8 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     mh : float 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
     sig : float 
-        Width of the log normal particle distribution
+        Width of the particle size distribution. Used directly for lognormal.
+        For gamma, controls the shape parameter gamma_A upstream.
     radius : ndarray
         Radius bin centers (cm) (just used to provide a sample of radii for calculation of alpha)
     d_molecule : float 
@@ -62,6 +147,10 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     analytical_rg : bool
         Option to use analytical expression for rg, or alternatively deduce rg from calculation
         Calculation option will be most useful for future inclusions of alternative particle size distributions
+    dist : str, optional
+        Particle size distribution, either 'lognormal' or 'gamma'
+    gamma_A : float, optional
+        Gamma distribution shape parameter A. Required when dist='gamma'.
 
     Returns
     -------
@@ -70,7 +159,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
     qt : ndarray 
         gas + condensate mixing ratio (g/g)
     rg : ndarray
-        geometric mean radius of condensate  (cm) 
+        representative particle radius of condensate (cm)
     reff : ndarray
         droplet effective radius (second moment of size distrib, cm)
     ndz : ndarray 
@@ -111,7 +200,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
         qc, qt, rg, reff, ndz, dz, qc_path[i], mixl = calc_qc(z, P_z, T_z, T_P, kz,
             gravity, gas_name, gas_mw[i], gas_mmr[i], rho_p[i], mw_atmos, mh, fsed, sig, radius, 
             d_molecule,eps_k,c_p_factor,aggregates,Df,N_mon,r_mon,k0,
-            tol,og_vfall, analytical_rg)
+            tol,og_vfall, analytical_rg, dist=dist, gamma_A=gamma_A)
 
         # generate qc values for original pressure data
         qc_out[:,i] = interp1d(pres, qc)(pres_out)
@@ -129,7 +218,7 @@ def direct_solver(temperature, pressure, condensibles, gas_mw, gas_mmr, rho_p , 
 def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_atmos, 
                     mh, fsed, sig, radius, d_molecule,eps_k,c_p_factor,
                     aggregates,Df,N_mon,r_mon,k0,
-                    tol, og_vfall=True, analytical_rg=True, supsat=0):
+                    tol, og_vfall=True, analytical_rg=True, supsat=0, dist='lognormal', gamma_A=None):
     """
     Calculate condensate optical depth and effective radius for atmosphere,
     assuming geometric scatterers. 
@@ -161,7 +250,8 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     fsed : float 
         Sedimentation efficiency (unitless)
     sig : float 
-        Width of the log normal particle distrubtion 
+        Width of the particle size distribution. Used directly for lognormal.
+        For gamma, controls the shape parameter gamma_A upstream.
     radius : ndarray
         Radius bin centers (cm) (just used to provide a sample of radii for calculation of alpha)
     d_molecule : float 
@@ -182,6 +272,10 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
         Calculation option will be most useful for future inclusions of alternative particle size distributions
     supsat : float, optional
         Default = 0 , Saturation factor (after condensation)
+    dist : str, optional
+        Particle size distribution, either 'lognormal' or 'gamma'
+    gamma_A : float, optional
+        Gamma distribution shape parameter A. Required when dist='gamma'.
 
     Returns
     -------
@@ -190,7 +284,7 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     qt_out : ndarray 
         gas + condensate mixing ratio (g/g)
     rg : ndarray
-        geometric mean radius of condensate  (cm) 
+        representative particle radius of condensate (cm)
     reff : ndarray
         droplet effective radius (second moment of size distrib, cm)
     ndz : ndarray 
@@ -312,11 +406,6 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
             if og_vfall: rw[i] = rw_temp.root
             else: rw[i] = rw_temp
     
-            #   geometric std dev of lognormal size distribution ** sig is the geometric std dev
-            lnsig2 = 0.5*np.log( sig )**2
-            #   sigma floor for the purpose of alpha calculation
-            sig_alpha = np.max( [1.1, sig] )    
-
             #if fsed > 1 :
             #    #   Bulk of precip at r > rw: exponent between rw and rw*sig
             #    r_ = rw[i]*sig_alpha
@@ -359,36 +448,9 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
                                 bounds=(-np.inf, np.inf))
             alpha = pars[0]
 
-            if analytical_rg:
-                #     EQN. 13 A&M 
-                #   geometric mean radius of lognormal size distribution
-                rg[i] = (fsed**(1./alpha) *
-                        rw[i] * np.exp(-(alpha + 6) * lnsig2))
-
-                #   droplet effective radius (cm)
-                reff[i] = rg[i] * np.exp(5 * lnsig2)
-
-                #      EQN. 14 A&M
-                #   column droplet number concentration (cm^-2)
-                ndz[i] = (3 * rho_atmos(T, P) * qc_out[i] * dz[i] /
-                            ( 4 * np.pi * rho_p * rg[i]**3 ) * np.exp(-9 * lnsig2))
-
-            else:
-                #   range of particle radii to search (cm)
-                rlo = 1.e-10
-                rhi = 1.e2
-                #   geometric mean radius of size distribution
-                rg_temp = optimize.root_scalar(find_rg, bracket=[rlo, rhi], method='brentq', 
-                                                    args=(fsed, rw[i], alpha, np.log(sig)))
-                rg[i] = rg_temp.root
-
-                #   droplet effective radius (cm)
-                #   ratio of third to second moment of size distribution
-                reff[i] = moment(3, np.log(sig), 0., rg[i]) / moment(2, np.log(sig), 0., rg[i])
-
-                #   column droplet number concentration (cm^-2)
-                ndz[i] = (3 * fsed * rw[i]**alpha * qc_out[i] * rho_atmos(T, P) * dz[i] / 
-                            (4 * np.pi * rho_p * moment(3+alpha, np.log(sig), 0., rg[i])))
+            rg[i], reff[i], ndz[i] = _particle_distribution_properties(
+                fsed, rw[i], alpha, qc_out[i], rho_atmos(T, P), dz[i], rho_p,
+                sig, dist=dist, gamma_A=gamma_A, analytical_rg=analytical_rg)
 
 
         if i > 0:   

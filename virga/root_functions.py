@@ -4,6 +4,7 @@ from . import  gas_properties
 from scipy.stats import lognorm
 from scipy.integrate import quad
 from scipy import optimize
+from scipy.special import gammaln
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
         zb=None, b=None, eps=None, param='const'):
@@ -618,21 +619,20 @@ def find_cond_t(t_test, p_test = None, mh=None, mmw=None, gas_name=None, gas_mmr
 
 def moment(n, s, loc, scale, dist="lognormal"):
     """
-    Calculate moment of size distribution.
-    Will be extended to include more than just lognormal
+    Calculate moment of a particle size distribution.
 
     Parameters
     ----------
     n : float
         nth moment to be calculated
     s : float 
-        std dev 
+        Distribution width parameter
     loc : float
-        Shift in distribution
+        Shift in distribution. Only used for lognormal.
     scale: float
-        Scale distribution
+        Scale parameter
     dist: str
-        Continuous random variable for particle size distribution
+        Particle size distribution, either 'lognormal' or 'gamma'
 
     Returns
     -------
@@ -662,16 +662,13 @@ def moment(n, s, loc, scale, dist="lognormal"):
 
 def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
     """
-    Root function used used to find the geometric mean radius of 
-    lognormal size distribution.
-
-    Useful if we consider more complicated size distributions for which
-    analytical expressions for moments are not easily obtained.
+    Root function used to find the representative radius of a particle size
+    distribution from moment ratios.
 
     Parameters
     ----------
     rg : float 
-        Geometric mean radius
+        Representative particle radius.
     fsed : float 
         Sedimentation efficiency
     rw : float 
@@ -679,11 +676,11 @@ def find_rg(rg, fsed, rw, alpha, s, loc=0., dist="lognormal"):
     alpha : float 
         Exponent in power-law approximation for particle fall-speed
     s : float 
-        s = log(sigma) where sigma is the geometric std dev of lognormal distn 
+        Distribution width parameter. 
     loc : float
-        Shift in lognormal distribution
+        Shift in distribution. Only used for lognormal.
     dist: str
-        Continuous random variable for particle size distribution
+        Particle size distribution, either 'lognormal' or 'gamma'
     """
 
     return fsed - moment(3+alpha, s, loc, rg, dist) / rw**alpha / moment(3, s, loc, rg, dist)
