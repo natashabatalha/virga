@@ -612,7 +612,7 @@ def calc_optics_user_r_dist(wave_in, ndz,
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_atmos,
             gravity, kz, mixl, fsed_in, b, eps, scale_h, z_top, z_alpha, z_min, param, mh,
             sig, rmin, nrad, radius, d_molecule, eps_k, c_p_factor, aggregates, Df, N_mon,
-            r_mon, k0, mixed, og_vfall=True, do_virtual=True, supsat=0, verbose=False):
+            r_mon, k0, mixed=False, og_vfall=True, do_virtual=True, supsat=0, verbose=False):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -868,7 +868,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl,
           gravity, mw_atmos, gas_mw, q_below, supsat, fsed, b, eps, z_top, z_bot,
           z_alpha, z_min, param, sig, mh, rmin, nrad, radius, d_molecule, eps_k,
-          c_p_factor, og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, mixed):
+          c_p_factor, og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, mixed=False):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (converging on optical depth over sublayers)
@@ -1139,7 +1139,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
 def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             dz_layer, gravity, mw_atmos, mfp,visc,rho_p,w_convect, fsed, b, eps,
             param, z_bot, z_layer, z_alpha, z_min, sig, mh, rmin, nrad, radius,
-            aggregates, Df, N_mon, r_mon, k0, mixed, og_vfall=True, z_cld=None):
+            aggregates, Df, N_mon, r_mon, k0, mixed=False, og_vfall=True, z_cld=None):
     """
     Calculate condensate number density and effective radius for a layer,
     assuming geometric scatterers. 
