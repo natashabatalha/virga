@@ -36,6 +36,7 @@ def test_basic_virga():
     df_test = pd.read_csv(os.path.dirname(__file__) + '/picaso_format_test.csv')
     pd.testing.assert_frame_equal(df_cl, df_test)
 
+
     # ==== Test mixed clouds with variable fsed =========================================
     # initialise atmosphere
     a = jdi.Atmosphere(['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':1}, mh=1, mmw=2.2, param='exp', b=3)

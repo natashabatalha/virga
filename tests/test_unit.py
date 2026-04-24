@@ -38,6 +38,36 @@ def test_mie_database():
     assert np.isclose(np.sum(qsca), 3720.809396082643)
     assert np.isclose(np.sum(asym), 1905.5623111571579)
 
+def test_sub_functions_in_justdoit():
+    """ Simple calls to sub functions"""
+    radius, rup, dr = jdi.get_r_grid_w_max()
+    assert np.isclose(np.sum(radius), 0.23468046280915072)
+    assert np.isclose(np.sum(rup), 0.26534342122350024)
+    assert np.isclose(np.sum(dr), 0.061325916828698986)
+
+    radius, rup, dr = jdi.get_r_grid_legacy()
+    assert np.isclose(np.sum(radius), 0.23468046282606664)
+    assert np.isclose(np.sum(rup), 0.26096233848538236)
+    assert np.isclose(np.sum(dr), 0.11861924476608288)
+
+    rec = jdi.recommend_gas(np.asarray([1e-2, 1e2]), np.asarray([100, 1000]), 1, 2.34)
+    assert np.asarray([i in rec for i in ['KCl', 'H2O', 'ZnS', 'NH3']]).all()
+
+    p, t = jdi.condensation_t('H2O', 1, 2.34)
+    assert np.isclose(np.sum(p), 161.10038437493023)
+    assert np.isclose(np.sum(t), 4385.122564767833)
+
+def test_sub_functions_in_root():
+    """ Simple calls to sub functions"""
+    from virga.root_functions import advdiff
+    res = advdiff(3, ad_qvs=4, ad_rainf=5, ad_mixl=6, ad_dz=7, ad_qbelow=8)
+    assert np.isclose(np.sum(res), 5.0)
+    res = advdiff(3, ad_qvs=4, ad_rainf=5, ad_mixl=6, ad_dz=7, ad_qbelow=8,
+                  param='exp', b=2, eps=2, zb=9)
+    assert np.isclose(np.sum(res), 1.0)
+
+
+
 def test_gas_properties():
     from virga.gas_properties import (
         TiO2, CH4, NH3, H2O, Fe, KCl, MgSiO3, Mg2SiO4, MnS, ZnS, Cr, Al2O3, Na2S,
