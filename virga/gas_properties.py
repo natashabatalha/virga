@@ -515,6 +515,6 @@ def SiO2(mw_atmos, mh=1, gas_mmr = None):
     if isinstance(gas_mmr, type(None)):
         gas_mmr = 60.3e-6 * mh
     gas_mw = 60
-    gas_mmr = gas_mmr * (gas_mw/mw_atmos) 
+    gas_mmr = gas_mmr * (gas_mw/mw_atmos)
     rho_p =  2.648
     return gas_mw, gas_mmr, rho_p
