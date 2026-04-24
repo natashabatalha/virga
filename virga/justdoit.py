@@ -1,15 +1,14 @@
 import astropy.constants as c
 import astropy.units as u
-import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import os
 from scipy import optimize 
 from pathlib import Path
 
-from .root_functions import (advdiff, vfall,vfall_find_root,qvs_below_model,
+from .root_functions import (vfall,vfall_find_root,qvs_below_model,
                              find_cond_t, solve_force_balance)
-from .calc_mie import fort_mie_calc, calc_new_mieff, calc_new_mieff_optool
+from .calc_mie import calc_new_mieff, calc_new_mieff_optool
 from . import gas_properties
 from . import pvaps
 from .justplotit import plot_format, find_nearest_1d
