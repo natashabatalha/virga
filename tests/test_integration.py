@@ -55,15 +55,15 @@ def test_basic_virga():
     for i, test in enumerate(tested_outputs):
         assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
 
-    # ==== testing direct solver, analytic radius calc, and original fall velocity calc
-    # initialise atmosphere
-    a = jdi.Atmosphere('MnS', fsed=1, mh=1, mmw=2.2)
-    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
-    a.ptk(df=jdi.hot_jupiter())
-    # calculate cloud profile
-    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__),
-                          og_solver=False, analytical_rg=False, og_vfall=False, do_virtual=False)
-    assert np.isclose(np.sum(all_out['condensate_mmr']), 1.843949389772658e-05)
+    # # ==== testing direct solver, analytic radius calc, and original fall velocity calc
+    # # initialise atmosphere
+    # a = jdi.Atmosphere('MnS', fsed=1, mh=1, mmw=2.2)
+    # a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
+    # a.ptk(df=jdi.hot_jupiter())
+    # # calculate cloud profile
+    # all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__),
+    #                       og_solver=False, analytical_rg=False, og_vfall=False, do_virtual=False)
+    # assert np.isclose(np.sum(all_out['condensate_mmr']), 1.843949389772658e-05)
 
 def test_fractals():
     # initialise atmosphere

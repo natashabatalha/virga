@@ -1345,7 +1345,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         material_can_condense[-1] = (material_can_condense[:-1] == True).any()
 
         # calcualte total cloud mass of mixed particles
-        qc_layer[-1] = np.asarray([np.sum(qc_layer)])
+        qc_layer[-1] = np.asarray([np.sum(qc_layer)])[0]
 
         # calculate density of mixed cloud particles
         rho_p[-1] = 0
@@ -2238,7 +2238,7 @@ def get_mie(gas, directory, aggregates=False, Df=None):
         df['cos_qscat'] = flipped_cos_qscat
 
     wave = df['wave'].values.reshape((nradii,nwave)).T
-    qscat = df['qscat'].values.reshape((nradii,nwave)).T
+    qscat = df['qscat'].values.reshape((nradii,nwave)).copy().T
     qext = df['qext'].values.reshape((nradii,nwave)).T
     cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
 
