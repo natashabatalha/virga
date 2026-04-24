@@ -2,7 +2,7 @@ History
 -------
 
 - v2.1.0 (2026-04-14)
-  * Adds gamma particle size distribution following Christie et al. (2022) Appendix B.
+  * Adds gamma particle size distribution following Christie et al. (2022) Appendix B. Contribution by @ELeeAstro
 - v2.0.0 (2025-09-2)
   * Adds fractal aggregates to Virga 
   * Corrects extraneous raise excepts to CH4, Fe, CaTiO3
