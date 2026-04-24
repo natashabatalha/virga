@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Running the Code &mdash; virga v2.0.0 documentation</title>
+  <title>Running the Code &mdash; virga v2.0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -14,7 +14,7 @@
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=aa039f9c"></script>
+      <script src="../_static/documentation_options.js?v=0e7b1b85"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
@@ -149,7 +149,7 @@
 </style>
 <div>
     <a href="https://bokeh.org" target="_blank" class="bk-notebook-logo"></a>
-    <span id="e6f8b2f4-83c5-4f59-85ab-1400a6babf15">Loading BokehJS ...</span>
+    <span id="ec5a2dc6-0b09-4fa8-a73f-9d625110989b">Loading BokehJS ...</span>
 </div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -322,7 +322,7 @@ const JS_MIME_TYPE = 'application/javascript';
      "</div>"}};
 
   function display_loaded(error = null) {
-    const el = document.getElementById("e6f8b2f4-83c5-4f59-85ab-1400a6babf15");
+    const el = document.getElementById("ec5a2dc6-0b09-4fa8-a73f-9d625110989b");
     if (el != null) {
       const html = (() => {
         if (typeof root.Bokeh === "undefined") {
@@ -430,7 +430,7 @@ const JS_MIME_TYPE = 'application/javascript';
     document.body.appendChild(element);
   }
 
-  const js_urls = ["https://cdn.bokeh.org/bokeh/release/bokeh-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-gl-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-tables-3.4.3.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-mathjax-3.4.3.min.js"];
+  const js_urls = ["https://cdn.bokeh.org/bokeh/release/bokeh-3.8.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-gl-3.8.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.8.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-tables-3.8.2.min.js", "https://cdn.bokeh.org/bokeh/release/bokeh-mathjax-3.8.2.min.js"];
   const css_urls = [];
 
   const inline_js = [    function(Bokeh) {
@@ -456,7 +456,7 @@ function(Bokeh) {
       console.log("Bokeh: BokehJS failed to load within specified timeout.");
       root._bokeh_failed_load = true;
     } else if (force !== true) {
-      const cell = $(document.getElementById("e6f8b2f4-83c5-4f59-85ab-1400a6babf15")).parents('.cell').data().cell;
+      const cell = $(document.getElementById("ec5a2dc6-0b09-4fa8-a73f-9d625110989b")).parents('.cell').data().cell;
       cell.output_area.append_execute_result(NB_LOAD_WARNING)
     }
   }
@@ -652,6 +652,8 @@ dict_keys([&#39;pressure&#39;, &#39;pressure_unit&#39;, &#39;temperature&#39;, &
 {&#39;mh&#39;: 1,
  &#39;mmw&#39;: 2.2,
  &#39;sig&#39;: 2.0,
+ &#39;dist&#39;: &#39;lognormal&#39;,
+ &#39;gamma_A&#39;: None,
  &#39;nrad&#39;: 60,
  &#39;rmin&#39;: np.float64(1e-08),
  &#39;rmax&#39;: np.float64(0.0542391310041432),

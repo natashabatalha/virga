@@ -45,7 +45,8 @@ Adding Cloud Complexity
 .. toctree::
    :maxdepth: 2
 
-   Direct solver </notebooks/6_Variable_fsed.ipynb>
+   Variable Fsed </notebooks/6_Variable_fsed.ipynb>
+   Gamma vs. Lognormal Distribution </notebooks/6a_Gamma_Distribution_Example.ipynb>
 
 Switch to Direct Solver
 -----------------------

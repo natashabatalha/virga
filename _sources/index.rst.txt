@@ -13,6 +13,10 @@
 
 ``virga`` computes cloud profiles for exoplanet atmospheres
 
+What's New
+==========
+- v2.1.0 (2026-04-14): Adds gamma particle size distribution following Christie et al. (2022) Appendix B. Contribution by @ELeeAstro
+- v2.0.0 (2025-09-2): Adds functionality to compute fractal aggregates. 
 
 What to Cite
 ============
@@ -32,26 +36,6 @@ Content
    The Tutorials <tutorials>
    Github <https://github.com/natashabatalha/virga>
    The Code <virga>
-
-
-Condensate Species Currently Included
-=====================================
-
-- Al2O3 
-- CH4
-- Cr
-- Fe
-- H2O
-- KCl
-- Mg2SiO4
-- MgSiO3
-- MnS
-- Na2S
-- NH3
-- TiO2
-- SiO2
-
-Don't see what you are looking for? Contact us. 
 
 
 Indices and tables
