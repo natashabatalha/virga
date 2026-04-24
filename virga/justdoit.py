@@ -2238,7 +2238,7 @@ def get_mie(gas, directory, aggregates=False, Df=None):
         df['cos_qscat'] = flipped_cos_qscat
 
     wave = df['wave'].values.reshape((nradii,nwave)).T
-    qscat = df['qscat'].values.reshape((nradii,nwave)).copy().T
+    qscat = df['qscat'].values.reshape((nradii,nwave)).T
     qext = df['qext'].values.reshape((nradii,nwave)).T
     cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
 
