@@ -66,8 +66,6 @@ def test_sub_functions_in_root():
                   param='exp', b=2, eps=2, zb=9)
     assert np.isclose(np.sum(res), 1.0)
 
-
-
 def test_gas_properties():
     from virga.gas_properties import (
         TiO2, CH4, NH3, H2O, Fe, KCl, MgSiO3, Mg2SiO4, MnS, ZnS, Cr, Al2O3, Na2S,
@@ -118,6 +116,10 @@ def test_pvaps():
         for temp in temps:
             result += func(temp, pressure)
         assert np.isclose(result, results_w_p[f])
+
+def test_mie_routines():
+    from virga.calc_mie import calc_new_mieff_optool
+    res = calc_new_mieff_optool
 
 def test_small_things():
     a = jdi.Atmosphere('MnS', fsed=1, mh=1, mmw=2.2)

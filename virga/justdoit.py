@@ -1,9 +1,14 @@
+""" Main functions for the Virga cloud model """
+# pylint: disable=R0912,R0913,R0914,R0915,R0917,C0103
+
 import astropy.constants as c
 import astropy.units as u
 import pandas as pd
 import numpy as np
 import os
-from scipy import optimize 
+
+from numba import threading_layer
+from scipy import optimize
 from pathlib import Path
 
 from .root_functions import (vfall,vfall_find_root,qvs_below_model,
@@ -70,24 +75,26 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     # ===================================================================================
     # if k0 is not left as default parameter and r_mon is prescribed, print warning
     if ((atmo.k0>0) or (atmo.k0<0)) and (atmo.r_mon is not None):
-        print(f"""WARNING: You have prescribed the value k0 when calling VIRGA (k0 = 
-                  {atmo.k0}). If r_mon is prescribed instead of N_mon, this means the 
-                  vfall function may have weird transitions around r=r_mon. Proceed with 
-                  caution, or to avoid this, leave k0 blank and it will be calculated by 
+        print(f"""WARNING: You have prescribed the value k0 when calling VIRGA (k0 =
+                  {atmo.k0}). If r_mon is prescribed instead of N_mon, this means the
+                  vfall function may have weird transitions around r=r_mon. Proceed with
+                  caution, or to avoid this, leave k0 blank and it will be calculated by
                   VIRGA.""")
 
     # warn user if they try to use anything other than default og_vfall with aggregates,
     # and terminate code (this is still under development)
     if atmo.aggregates and not og_vfall:
-        print("WARNING: If using aggregates, you need to set og_vfall=True (the default "
-              "- the other method is still under development).")
-        exit(1)
+        raise ValueError(
+            "WARNING: If using aggregates, you need to set og_vfall=True (the default "
+            "- the other method is still under development)."
+        )
     # warn user if they try to use anything other than default og_vfall with mixed cloud
     # particles, and terminate code (this is still under development)
     if atmo.mixed and not og_vfall:
-        print("WARNING: If using mixed particles, you need to set og_vfall=True (the "
-              "default - the other method is still under development).")
-        exit(1)
+        raise ValueError(
+            "WARNING: If using mixed particles, you need to set og_vfall=True (the "
+            "default - the other method is still under development)."
+        )
 
     # Preparation of variables
     mmw = atmo.mmw  # mean molecular weight
@@ -98,13 +105,15 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     gas_mmr = np.zeros(ngas)  # mass mixing ratio of cloud materials
     rho_p = np.zeros(ngas)  # density of cloud materials
 
-    # scale-height for fsed taken at Teff (default: temp at 1bar) 
+    # scale-height for fsed taken at Teff (default: temp at 1bar)
     H = atmo.r_atmos * atmo.Teff / atmo.g
-    
+
     # ===================================================================================
     # Grab and compute Mie coefficients
     # ===================================================================================
-    for i, igas in zip(range(ngas),condensibles) : 
+    qext, qscat, cos_qscat = None, None, None  # default assignment
+    radius, bin_min, bin_max, dr = None, None, None, None  # default assignment
+    for i, igas in zip(range(ngas),condensibles):
 
         # Get gas properties including gas mean molecular weight, gas mixing ratio,
         # and the density
@@ -118,7 +127,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
         )
 
         # the first Mie data read in defines the structure of the mie grid
-        if i==0: 
+        if i==0:
             nradii = len(radius)  # work our how many radii were in the .mieff file
             rmin = np.min(radius)  # find the min radius
             rmax = np.max(radius)  # find the max radius
@@ -161,10 +170,10 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     if og_solver:
         # here atmo.param describes the parameterization used for the variable fsed
         # methodology
-        if atmo.param == 'exp': 
+        if atmo.param == 'exp':
             #the formalism of this is detailed in Rooney et al. 2021
             atmo.b = 6 * atmo.b * H # using constant scale-height in fsed
-            fsed_in = (atmo.fsed-atmo.eps)
+            fsed_in = atmo.fsed - atmo.eps
         elif atmo.param == 'const':
             fsed_in = atmo.fsed
 
@@ -186,14 +195,14 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     #   run new, direct solver
     else:
         fsed_in = atmo.fsed
-        z_cld = None #temporary fix 
-        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(atmo.t_layer, atmo.p_layer,
-                                             condensibles, gas_mw, gas_mmr, rho_p , mmw, 
-                                             atmo.g, atmo.kz, atmo.fsed, mh,atmo.sig, radius,
-                                             atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
-                                             atmo.aggregates,atmo.Df,atmo.N_mon,atmo.r_mon,atmo.k0, direct_tol,
-                                             refine_TP, og_vfall, analytical_rg)
-            
+        z_cld = None #temporary fix
+        qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(
+            atmo.t_layer, atmo.p_layer, condensibles, gas_mw, gas_mmr, rho_p , mmw,
+            atmo.g, atmo.kz, atmo.fsed, mh, atmo.sig, radius, atmo.d_molecule, atmo.eps_k,
+            atmo.c_p_factor, atmo.aggregates, atmo.Df, atmo.N_mon, atmo.r_mon, atmo.k0,
+            direct_tol, refine_TP, og_vfall, analytical_rg
+        )
+
     # Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
     # albedo, and asymmetry parameter.
     opd, w0, g0, opd_gas = calc_optics(
@@ -204,13 +213,16 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
 
     if as_dict:
         if atmo.param == 'exp':
-            fsed_out = fsed_in[:, np.newaxis] * np.exp((atmo.z[np.newaxis] - atmo.z_alpha) / atmo.b ) + atmo.eps
-        else: 
-            fsed_out = fsed_in 
-        return create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, 
-                           opd_gas,wave_in, pres_out, temp_out, condensibles,
-                           mh,mmw, fsed_out, atmo.sig, nradii,rmin, rmax, log_radii, z_out, atmo.dz_layer, 
-                           mixl, atmo.kz, atmo.scale_h, z_cld, atmo.mixed)
+            fsed_out = (fsed_in[:, np.newaxis]
+                        * np.exp((atmo.z[np.newaxis] - atmo.z_alpha) / atmo.b )
+                        + atmo.eps)
+        else:
+            fsed_out = fsed_in
+        return create_dict(
+            qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave_in, pres_out, temp_out,
+            condensibles, mh,mmw, fsed_out, atmo.sig, nradii,rmin, rmax, log_radii,
+            z_out, atmo.dz_layer, mixl, atmo.kz, atmo.scale_h, z_cld, atmo.mixed
+        )
     else:
         return opd, w0, g0
 
@@ -235,8 +247,10 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "asymmetry": g0, 
         "opd_by_gas": opd_gas,
         "condensibles":gas_names,
-        #"scalar_inputs": {'mh':mh, 'mmw':mmw,'fsed':fsed, 'sig':sig,'nrad':nrad,'rmin':rmin},
-        "scalar_inputs": {'mh':mh, 'mmw':mmw,'sig':sig,'nrad':nrad,'rmin':rmin,'rmax':rmax,'log_radii':log_radii},
+        "scalar_inputs": {
+            'mh':mh, 'mmw':mmw, 'sig':sig, 'nrad':nrad, 'rmin':rmin,
+            'rmax':rmax, 'log_radii':log_radii
+        },
         "fsed": fsed,
         "altitude":z,
         "layer_thickness":dz_layer,
@@ -276,8 +290,9 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
 
     return output
 
-def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat, cos_qscat, sig,
-                rmin, rmax, mixed, rhop, wavelength, gas_name, directory, quick_mix=False, verbose=False):
+def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
+                cos_qscat, sig, rmin, rmax, mixed, rhop, wavelength, gas_name, directory,
+                quick_mix=False, verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -330,7 +345,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
 
     Returns
     -------
-    opd : ndarray 
+    opd : ndarray
         extinction optical depth due to all condensates in layer
     w0 : ndarray 
         single scattering albedo
@@ -380,9 +395,9 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     warning=''
     for iz in range(nz):
         for igas in range(ngas):
-            # Optical depth for conservative geometric scatterers 
+            # Optical depth for conservative geometric scatterers
             if ndz[iz,igas] > 0:
-                
+
                 # precise warning for when particles are either above or below the grid
                 # defined by the .mieff files
                 # if the radius of the particle found by VIRGA is smaller than rmin it
@@ -425,7 +440,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                 opd_layer[iz,igas] = 2. * np.pi * r2 * ndz[iz,igas]
 
                 # Calculate normalization factor (forces lognormal sum = 1.0)
-                rsig = sig #the log normal particle size distribution 
+                rsig = sig #the log normal particle size distribution
                 norm = 0.
                 for irad in range(nrad):
                     rr = radius[irad]
@@ -456,7 +471,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                         #TO DO ADD IN CLOUD SUBLAYER KLUGE LATER
 
                     else:
-                        raise ValueError("Proper cloud mixing is work in progress, please set quick_mix=True")
+                        raise ValueError("Proper cloud mixing is work in progress, "
+                                         "please set quick_mix=True")
 
     for igas in range(ngas):
         for iz in range(nz-1,-1,-1):
@@ -469,7 +485,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
         #print(igas,ibot)
         if ibot >= nz -3:
             print("Not doing sublayer as cloud deck at the bottom of pressure grid")
-            
+
         else:
             opd_layer[ibot+1,igas] = opd_layer[ibot,igas]*0.1
             scat_gas[ibot+1,:,igas] = scat_gas[ibot,:,igas]*0.1
@@ -485,7 +501,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
             cqs_gas[ibot+3,:,igas] = cqs_gas[ibot,:,igas]*0.01
     #Sum over gases and compute spectral optical depth profile etc
     for iz in range(nz):
-        for iwave in range(nwave): 
+        for iwave in range(nwave):
             opd_scat = 0.
             opd_ext = 0.
             cos_qs = 0.
@@ -494,13 +510,13 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                 opd_ext = opd_ext + ext_gas[iz,iwave,igas]
                 cos_qs = cos_qs + cqs_gas[iz,iwave,igas]
 
-                if( opd_scat > 0. ):
+                if opd_scat > 0.:
                     opd[iz,iwave] = opd_ext
                     w0[iz,iwave] = opd_scat / opd_ext
-                    #if w0[iz,iwave]>1: 
+                    #if w0[iz,iwave]>1:
                     #    w0[iz,iwave]=1.
                     g0[iz,iwave] = cos_qs / opd_scat
-                    
+
     #cumulative optical depths for conservative geometric scatterers
     opd_tot = 0.
 
@@ -509,12 +525,13 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
 
         for iz in range(1,nz):
             opd_gas[iz,igas] = opd_gas[iz-1,igas] + opd_layer[iz,igas]
-    if ((warning!='') & (verbose)): print(warning0+warning+' Turn off warnings by setting verbose=False.')
+    if warning != '' and verbose:
+        print(warning0 + warning+' Turn off warnings by setting verbose=False.')
     return opd, w0, g0, opd_gas
 
-def calc_optics_user_r_dist(wave_in, ndz, 
-    radius, radius_unit, r_distribution, 
-    qext, qscat ,cos_qscat,  verbose=False):
+
+def calc_optics_user_r_dist(wave_in, ndz, radius, radius_unit, r_distribution,
+                            qext, qscat ,cos_qscat, verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter for a user-input particle radius distribution
@@ -526,8 +543,8 @@ def calc_optics_user_r_dist(wave_in, ndz,
     ndz : float
         Column density of total particle concentration (#/cm^2) 
             Note: set to whatever, it's your free knob 
-            ---- this does not directly translate to something physical because it's for all particles in your slab
-            May have to use values of 1e8 or so
+            ---- this does not directly translate to something physical because
+            it's for all particles in your slab May have to use values of 1e8 or so
     radius : ndarray
         Radius bin values - the range of particle sizes of interest. Maybe measured in the lab, 
         Ensure radius_unit is specified 
@@ -540,8 +557,8 @@ def calc_optics_user_r_dist(wave_in, ndz,
     cos_qscat : ndarray
         qscat-weighted <cos (scattering angle)>
     r_distribution : ndarray
-        the radius distribution in each bin. Maybe measured from the lab, generated from microphysics, etc.
-        Should integrate to 1. 
+        the radius distribution in each bin. Maybe measured from the lab, generated from
+        microphysics, etc. Should integrate to 1.
     verbose: bool 
         print out warnings or not
 
@@ -558,54 +575,53 @@ def calc_optics_user_r_dist(wave_in, ndz,
 
     radius = (radius*radius_unit).to(u.cm)
     radius = radius.value
-    
+
     wavenumber_grid = 1e4/wave_in
     wavenumber_grid = np.array([item[0] for item in wavenumber_grid])
     nwave = len(wavenumber_grid)
     PI=np.pi
     nrad = len(radius) ## where radius is the radius grid of the particle size distribution
-    
+
     scat= np.zeros((nwave))
     ext = np.zeros((nwave))
     cqs = np.zeros((nwave))
-    
+
     opd = np.zeros((nwave))
     w0 = np.zeros((nwave))
     g0 = np.zeros((nwave))
-    
+
     opd_scat = 0.
     opd_ext = 0.
     cos_qs = 0.
-                    
-        #  Calculate normalization factor 
+
+    #  Calculate normalization factor
     for irad in range(nrad):
-            rr = radius[irad] # the get the radius at each grid point, this is in nanometers 
-    
-            each_r_bin = ndz * (r_distribution[irad]) # weight the radius bin by the distribution 
-            pir2ndz = PI * rr**2 * each_r_bin # find the weighted cross section
-            
-            for iwave in range(nwave): 
-                scat[iwave] = scat[iwave] + qscat[iwave,irad]*pir2ndz 
-                ext[iwave] = ext[iwave] + qext[iwave,irad]*pir2ndz
-                cqs[iwave] = cqs[iwave] + cos_qscat[iwave,irad]*pir2ndz
-                
-                
-                    # calculate the spectral optical depth profile etc
-    for iwave in range(nwave): 
-            opd_scat = 0.
-            opd_ext = 0.
-            cos_qs = 0.
-            
-            opd_scat = opd_scat + scat[iwave]
-            opd_ext = opd_ext + ext[iwave]
-            cos_qs = cos_qs + cqs[iwave]
-   
-                    
-            if( opd_scat > 0. ):
-                            opd[iwave] = opd_ext 
-                            w0[iwave] = opd_scat / opd_ext
-                            g0[iwave] = cos_qs / opd_scat
-                    
+        rr = radius[irad] # the get the radius at each grid point, this is in nanometers
+
+        # weight the radius bin by the distribution
+        each_r_bin = ndz * (r_distribution[irad])
+        pir2ndz = PI * rr**2 * each_r_bin # find the weighted cross section
+
+        for iwave in range(nwave):
+            scat[iwave] = scat[iwave] + qscat[iwave,irad]*pir2ndz
+            ext[iwave] = ext[iwave] + qext[iwave,irad]*pir2ndz
+            cqs[iwave] = cqs[iwave] + cos_qscat[iwave,irad]*pir2ndz
+
+    # calculate the spectral optical depth profile etc
+    for iwave in range(nwave):
+        opd_scat = 0.
+        opd_ext = 0.
+        cos_qs = 0.
+
+        opd_scat = opd_scat + scat[iwave]
+        opd_ext = opd_ext + ext[iwave]
+        cos_qs = cos_qs + cqs[iwave]
+
+        if opd_scat > 0.:
+            opd[iwave] = opd_ext
+            w0[iwave] = opd_scat / opd_ext
+            g0[iwave] = cos_qs / opd_scat
+
     return opd, w0, g0, wavenumber_grid
 
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_atmos,
@@ -799,12 +815,12 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
             # additional material
             if qvs <= q_below[i]:
 
-                #find the pressure at cloud base 
-                #   parameters for finding root 
+                #find the pressure at cloud base
+                #   parameters for finding root
                 p_lo = p_bot
                 p_hi = p_bot * 1e3
 
-                #temperature gradient 
+                #temperature gradient
                 dtdlnp = (t_top[-2] - t_bot) / np.log(p_bot/p_top[-2])
 
                 # try to find the pressure > p_bot at which gas condenses
@@ -820,16 +836,16 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
                         print('Virtual Cloud Found: '+ igas)
 
                     # get values corresponding to the cloud below the layer
-                    p_base = p_base.root 
+                    p_base = p_base.root
                     t_base = t_bot + np.log(p_bot/p_base)*dtdlnp
                     z_base = z_bot + scale_h[-1] * np.log(p_bot/p_base)
-                    
+
                     #   Calculate temperature and pressure below bottom layer
                     #   by adding a virtual layer
                     p_layer_virtual = 0.5*(p_bot + p_base)
                     t_layer_virtual = t_bot + np.log10(p_bot/p_layer_virtual)*dtdlnp
 
-                    #we just need to overwrite 
+                    #we just need to overwrite
                     #q_below from this output for the next routine
                     _, _, _, _, _, q_below[i], _, _ = layer(
                         igas, [rho_p[i]], t_layer_virtual, p_layer_virtual, t_bot,t_base,
@@ -1043,7 +1059,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
     convergence_each = np.asarray([False for i in gas_name])
 
     # loop until convergence is reached
-    while not converge: 
+    while not converge:
 
         # initialise Zero cumulative values
         za = np.zeros(lg)
@@ -1088,7 +1104,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
             mask = reff_sub > 0.
             opd_layer[mask] = (opd_layer[mask] + 1.5 * qc_sub[mask] * dp_sub / gravity /
                                (rho_p_out[mask] * reff_sub[mask]))
-    
+
             # Increment values at bottom of sub-layer
             qt_bot_sub = qt_top
             p_bot_sub = p_top_sub
@@ -1342,7 +1358,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
     # average densities. All other calculations here are identical to pure materials.
     if mixed:
         # check if there is any condensiable material
-        material_can_condense[-1] = (material_can_condense[:-1] == True).any()
+        material_can_condense[-1] = (material_can_condense[:-1]).any()
 
         # calcualte total cloud mass of mixed particles
         qc_layer[-1] = np.asarray([np.sum(qc_layer)])[0]
@@ -1389,7 +1405,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             continue
 
         #   range of particle radii to search (in cm)
-        rlo = 1.e-8 # the minimum particle size to search is 0.1 nm for spheres 
+        rlo = 1.e-8 # the minimum particle size to search is 0.1 nm for spheres
         if aggregates:
             # for aggregates, begin the search with a small initial maximum particle size
             # and only make the search wider if no solution is found (to ensure that the
@@ -1431,7 +1447,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                 # rlo = rlo/10 # MGL and SEM have commented this out, because you could
                 # never form particles smaller than atoms (10^-8 cm)
                 rhi *= 10
-                
+
                 # warning to user that the iterative solver has not found a solution (if
                 # you prescribe N_mon or r_mon, there are some situations where a
                 # solution is just not physically possible i.e. if fluffy aggregates are
@@ -1444,7 +1460,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                 if aggregates:
                     if N_mon is not None:
                         if rhi>1e10:
-                            raise Exception(
+                            raise ValueError(
                                 f"Warning: Could not find a solution that allows "
                                 f"particles of this N_mon ({N_mon}) to balance w_convect "
                                 f"for {Df}.\nPlease try using a smaller value of N_mon, "
@@ -1452,7 +1468,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                             )
                     else:
                         if rhi>1e10:
-                            raise Exception(
+                            raise ValueError(
                                 f"Warning: Could not find a solution that allows "
                                 f"particles of this r_mon ({r_mon} cm) to balance "
                                 f"w_convect for {Df}.\nPlease try using a larger value "
@@ -1460,7 +1476,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                             )
                 else:
                     if rhi>1e10:
-                        raise Exception(
+                        raise ValueError(
                             f"Warning: Could not find a physical solution that balances "
                             f"w_convect (Kzz is so low\nthat particles would need to be "
                             f"smaller than gas atoms to stay in the pressure layer).\n"
@@ -1618,27 +1634,33 @@ class Atmosphere():
         verbose : bool 
             Prints out warning statements throughout
         aggregates : bool, optional
-            set to 'True' if you want fractal aggregates, keep at default 'False' for spherical cloud particles
+            set to 'True' if you want fractal aggregates, keep at default 'False'
+            for spherical cloud particles
         Df : float, optional
             only used if aggregate = True.
             The fractal dimension of an aggregate particle. 
-            Low Df are highly fractal long, lacy chains; large Df are more compact. Df = 3 is a perfect compact sphere.
+            Low Df are highly fractal long, lacy chains; large Df are more compact.
+            Df = 3 is a perfect compact sphere.
         N_mon : float, optional
             only used if aggregate = True. 
-            The number of monomers that make up the aggregate. Either this OR r_mon should be provided (but not both).
+            The number of monomers that make up the aggregate. Either this OR r_mon
+            should be provided (but not both).
         r_mon : float, optional (units: cm)
             only used if aggregate = True. 
-            The size of the monomer radii (sub-particles) that make up the aggregate. Either this OR N_mon should be 
+            The size of the monomer radii (sub-particles) that make up the aggregate.
+            Either this OR N_mon should be
             provided (but not both).
         k0 : float, optional (units: None)
             only used if aggregate = True. 
-            Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user, 
-            but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary 
-            when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).
+            Default = 0, where it will then be calculated in the vfall equation using
+            Tazaki (2021) Eq 2. k0 can also be prescribed by user, but with a warning that
+            when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be
+            consistent between the boundary when spheres grow large enough to become
+            aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead,
+            any value of k0 is fine).
         mixed : bool, optional
-            If true, cloud particles are assumed to mix together rather than form individual particles
-
-    
+            If true, cloud particles are assumed to mix together rather than form individual
+            particles
         """
         if isinstance(condensibles, str):
             self.condensibles = [condensibles]
@@ -1650,7 +1672,7 @@ class Atmosphere():
         self.sig = sig
         self.param = param
         self.eps = eps
-        self.verbose = verbose 
+        self.verbose = verbose
         self.aggregates=aggregates
         self.Df=Df
         self.N_mon=N_mon
@@ -1662,7 +1684,7 @@ class Atmosphere():
         self.supsat = supsat
         if isinstance(gas_mmr, type(None)):
             self.gas_mmr = {igas:None for igas in self.condensibles}
-        else: 
+        else:
             self.gas_mmr = gas_mmr
 
         # set fsed with the same length as condensibles
@@ -1687,8 +1709,17 @@ class Atmosphere():
 
         self.fsed = np.asarray(self.fsed)  # we need to do math with this later
 
+        # ==== Initialise working variable used later
+        self.p_level, self.t_level, self.alpha_pressure = None, None, None
+        self.Teff, self.r_atmos, self.p_layer, self.dtdlnp = None, None, None, None
+        self.t_layer, self.lapse_ratio, self.eho_atmos = None, None, None
+        self.scale_h, self.c_p, self.dz_pmid, self.dz_layer = None, None, None, None
+        self.z_top, self.z, self.z_alpha, self.mixl = None, None, None, None
+        self.chf, self.g, self.gravity_unit = None, None, None
+
+
     def constants(self):
-        #   Depth of the Lennard-Jones potential well for the atmosphere 
+        #   Depth of the Lennard-Jones potential well for the atmosphere
         # Used in the viscocity calculation (units are K) (Rosner, 2000)
         #   (78.6 for air, 71.4 for N2, 59.7 for H2)
         self.eps_k = 59.7
@@ -1696,8 +1727,8 @@ class Atmosphere():
         #   (3.711e-8 for air, 3.798e-8 for N2, 2.827e-8 for H2)
         self.d_molecule = 2.827e-8
 
-        #specific heat factor of the atmosphere 
-        #7/2 comes from ideal gas assumption of permanent diatomic gas 
+        #specific heat factor of the atmosphere
+        #7/2 comes from ideal gas assumption of permanent diatomic gas
         #e.g. h2, o2, n2, air, no, co
         #this technically does increase slowly toward higher temperatures (>~700K)
         self.c_p_factor = 7./2.
@@ -1758,9 +1789,9 @@ class Atmosphere():
             df = pd.read_csv(filename, **pd_kwargs)
             df = df.sort_values('pressure')
 
-        #convert bars to dyne/cm^2 
+        #convert bars to dyne/cm^2
         self.p_level = np.array(df['pressure'])*1e6
-        self.t_level = np.array(df['temperature'])      
+        self.t_level = np.array(df['temperature'])
         if alpha_pressure is None:
             self.alpha_pressure=min(df['pressure'])
         else:
@@ -1788,20 +1819,21 @@ class Atmosphere():
         """
         #   specific gas constant for atmosphere (erg/K/g)
         self.r_atmos = self.R_GAS / self.mmw
-        
-        # pressure thickess 
+
+        # pressure thickess
         dlnp = np.log( self.p_level[1:] / self.p_level[0:-1] ) #USED IN LAYER
         self.p_layer = 0.5*( self.p_level[1:] + self.p_level[0:-1]) #USED IN LAYER
-        
+
         #   temperature gradient - we use this for the sub layering
         self.dtdlnp = ( self.t_level[0:-1] - self.t_level[1:] ) / dlnp #USED IN LAYER
-        
-        # get temperatures at layers
-        self.t_layer = self.t_level[1:] + np.log( self.p_level[1:]/self.p_layer )*self.dtdlnp #USED IN LAYER
 
-        #lapse ratio used for kz calculation if user asks for 
+        # get temperatures at layers
+        self.t_layer = (self.t_level[1:] + np.log( self.p_level[1:]/self.p_layer )
+                        *self.dtdlnp) #USED IN LAYER
+
+        #lapse ratio used for kz calculation if user asks for
         # us ot calculate it based on convective heat flux
-        self.lapse_ratio = ( self.t_level[1:] - self.t_level[0:-1] 
+        self.lapse_ratio = ( self.t_level[1:] - self.t_level[0:-1]
                             ) / dlnp / ( self.t_layer/self.c_p_factor )
 
         #   atmospheric density (g/cm^3)
@@ -1813,7 +1845,7 @@ class Atmosphere():
         #specific heat of atmosphere
         self.c_p = self.c_p_factor * self.r_atmos
 
-        #get altitudes 
+        #get altitudes
         self.dz_pmid = self.scale_h * np.log( self.p_level[1:]/self.p_layer )
 
         self.dz_layer = self.scale_h * dlnp
@@ -1835,8 +1867,10 @@ class Atmosphere():
         1) Input Kz
         2) Input constant kz
         3) Input convective heat flux (supply chf in df)
-        3a) Input convective heat flux, correct for latent heat (supply chf in df and set latent_heat=True)
-        and/or 3b) Input convective heat flux, correct for convective overshoot (supply chf, convective_overshoot=1/3)
+            3a) Input convective heat flux, correct for latent heat (supply chf in df and set
+                latent_heat=True) and/or
+            3b) Input convective heat flux, correct for convective
+                overshoot (supply chf, convective_overshoot=1/3)
         4) Set kz_min to prevent kz from going too low (any of the above and set kz_min~1e5)
 
         Parameters
@@ -1864,7 +1898,7 @@ class Atmosphere():
             Default = 1e5 cm2/s
         """
 
-        #MIXING LENGTH ASSUMPTIONS 
+        #MIXING LENGTH ASSUMPTIONS
         if latent_heat:
             #   convective mixing length scale (cm): no less than 1/10 scale height
             self.mixl = np.array([np.max( [0.1, ilr] ) for ilr in self.lapse_ratio]) * self.scale_h
@@ -1873,14 +1907,16 @@ class Atmosphere():
             self.mixl = 1 * self.scale_h
 
 
-        #KZ OPTIONS 
+        #KZ OPTIONS
 
         #   option 1) the user has supplied it in their file or dictionary
-        if 'kz' in df.keys(): 
+        if 'kz' in df.keys():
             if df.loc[df['kz']<kz_min].shape[0] > 0:
                 df.loc[df['kz']<kz_min] = kz_min
-                if self.verbose: print('Overwriting some Kz values to minimum value set by kz_min \n \
-                    You can always turn off these warnings by setting verbose=False') 
+                if self.verbose: print(
+                    'Overwriting some Kz values to minimum value set by kz_min \n \
+                    You can always turn off these warnings by setting verbose=False'
+                )
             kz_level = np.array(df['kz'])
             self.kz = 0.5*(kz_level[1:] + kz_level[0:-1])
             self.chf = None
@@ -1890,34 +1926,35 @@ class Atmosphere():
             self.kz = np.zeros(df.shape[0]-1) + constant_kz
             self.chf = None
 
-        #   option 3) the user wants to compute kz based on a convective heat flux 
+        #   option 3) the user wants to compute kz based on a convective heat flux
         elif 'chf' in df.keys():
             self.chf =  np.array(df['chf'])
 
 
             #CONVECTIVE OVERSHOOT ON OR OFF
             #     sets the minimum allowed heat flux in a layer by assuming some overshoot
-            #     the default value of 1/3 is arbitrary, allowing convective flux to fall faster than
-            #     pressure scale height
+            #     the default value of 1/3 is arbitrary, allowing convective flux to fall
+            #     faster than pressure scale height
             if not isinstance(convective_overshoot, type(None)):
                 used = False
                 nz = len(self.p_layer)
                 for iz in range(nz-1,-1,-1):
-                    ratio_min = (convective_overshoot)*self.p_level[iz]/self.p_level[iz+1] 
+                    ratio_min = (convective_overshoot)*self.p_level[iz]/self.p_level[iz+1]
                     if self.chf[iz] < ratio_min*self.chf[iz+1]:
                         self.chf[iz] = self.chf[iz+1]*ratio_min
                         used=True
-                if self.verbose: print("""Convective overshoot was turned on. The convective heat flux 
-                    has been adjusted such that it is not allowed to decrease more than {0} 
-                    the pressure. This number is set with the convective_overshoot parameter. 
-                    It can be disabled with convective_overshoot=None. To turn
-                    off these messages set verbose=False in Atmosphere""".format(convective_overshoot)) 
+                if self.verbose: print("""Convective overshoot was turned on. The
+                    convective heat flux has been adjusted such that it is not allowed
+                    to decrease more than {0} the pressure. This number is set with the
+                    convective_overshoot parameter. It can be disabled with
+                    convective_overshoot=None. To turn off these messages set
+                    verbose=False in Atmosphere""".format(convective_overshoot))
 
             #   vertical eddy diffusion coefficient (cm^2/s)
             #   from Gierasch and Conrath (1985)
-            gc_kzz = ((1./3.) * self.scale_h * (self.mixl/self.scale_h)**(4./3.) * 
-                    ( ( self.r_atmos*self.chf[1:] ) / ( self.rho_atmos*self.c_p  ) )**(1./3.)) 
-            
+            gc_kzz = ((1./3.) * self.scale_h * (self.mixl/self.scale_h)**(4./3.) *
+                    ( ( self.r_atmos*self.chf[1:] ) / ( self.rho_atmos*self.c_p  ) )**(1./3.))
+
             self.kz =  [np.max([i, kz_min]) for i in gc_kzz ]
         else:
             raise Exception("Users can define kz by: \n \
@@ -1926,8 +1963,8 @@ class Atmosphere():
             3) Adding 'chf', the conective heat flux as a column to your \
             dataframe, dict or file.")
 
-    def gravity(self, gravity=None, gravity_unit=None, radius=None, 
-        radius_unit=None, mass = None, mass_unit=None):
+    def gravity(self, gravity=None, gravity_unit=None, radius=None,
+                radius_unit=None, mass = None, mass_unit=None):
         """
         Get gravity based on mass and radius, or gravity inputs 
 
@@ -1957,11 +1994,11 @@ class Atmosphere():
             g = g.value
             self.g = g
             self.gravity_unit = 'cm/(s**2)'
-        else: 
+        else:
             raise Exception('Need to specify gravity or radius and mass + additional units')
 
 
-    def kz(self,df = None, constant_kz=None, chf = None, kz_min = 1e5, latent_heat=False): 
+    def kz(self,df = None, constant_kz=None, chf = None, kz_min = 1e5, latent_heat=False):
         """
         Define Kz in CGS. Should be on same grid as pressure. This overwrites whatever was 
         defined in get_pt ! Users can define kz by: 
@@ -1986,15 +2023,15 @@ class Atmosphere():
         """
         return "Depricating this function. Please use ptk instead. It has identical functionality."
         if not isinstance(df, type(None)):
-            #will not need any convective heat flux 
+            #will not need any convective heat flux
             self.chf = None
             #reset to minimun value if specified by the user
             if df.loc[df['kz']<kz_min].shape[0] > 0:
                 df.loc[df['kz']<kz_min] = kz_min
-                print('Overwriting some Kz values to minimum value set by kz_min') 
+                print('Overwriting some Kz values to minimum value set by kz_min')
             self.kz = np.array(df['kz'])
-            #make sure pressure and kz are the same size 
-            if len(self.kz) != len(self.pressure) : 
+            #make sure pressure and kz are the same size
+            if len(self.kz) != len(self.pressure) :
                 raise Exception('Kzz and pressure are not the same length')
 
         elif not isinstance(constant_kz, type(None)):
@@ -2014,14 +2051,14 @@ class Atmosphere():
                     mixl = scale_h
                 #   vertical eddy diffusion coefficient (cm^2/s)
                 #   from Gierasch and Conrath (1985)
-                gc_kzz = ((1./3.) * scale_h * (mixl/scale_h)**(4./3.) * 
-                        ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.)) 
+                gc_kzz = ((1./3.) * scale_h * (mixl/scale_h)**(4./3.) *
+                        ( ( r_atmos*chf ) / ( rho_atmos*c_p ) )**(1./3.))
                 return np.max(gc_kzz, kz_min), mixl
 
             self.kz = g_c_85
             self.chf = chf
 
-    def compute(self,directory = None, as_dict = True): 
+    def compute(self,directory = None, as_dict = True):
         """
         Parameters
         ----------
@@ -2035,7 +2072,8 @@ class Atmosphere():
         Returns 
         -------
         dict 
-            When as_dict=True. Dictionary output that contains full output. See tutorials for explanation of all output.        
+            When as_dict=True. Dictionary output that contains full output. See tutorials
+            for explanation of all output.
         opd, w0, g0
             Extinction per layer, single scattering abledo, asymmetry parameter, 
             All are ndarrays that are nlayer by nwave
@@ -2043,12 +2081,13 @@ class Atmosphere():
         run = compute(self, directory = directory, as_dict = as_dict)
         return run
 
+
 def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax = 5.4239131e-2,
                 nradii = 60, logspace=True, aggregates=False, Df=None, N_mon=None, r_mon=None,
                 k0=0, fort_calc_mie = False):
     """
-    Function that calculations new Mie database using MiePython (for spherical particles) or OPTOOL (for aggregates)
-    Parameters
+    Function that calculations new Mie database using MiePython (for spherical particles)
+    or OPTOOL (for aggregates) Parameters
     ----------
     gas_name : list, str
         List of names of gasses. Or a single gas name. 
@@ -2063,26 +2102,36 @@ def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax
     rmin : float
         (Default=1e-8) Units of cm. The minimum radius to compute Mie parameters for. 
         Usually 0.001 microns is small enough. However, if you notice your mean particle radius 
-        is on the low end, you may compute your grid to even lower particle sizes. 
+        is on the low end, you may compute your grid to even lower particle sizes.
     rmax : float
-        (Default=5.4239131e-2) Units of cm. The maximum radius to compute Mie parameters for. 
-        If your .mieff files take a long time to create, reduce this number. If you get a warning 
-        that your particles are "off the grid" (larger than your maximum grid value), increase this number.
+        (Default=5.4239131e-2) Units of cm. The maximum radius to compute Mie parameters for.
+        If your .mieff files take a long time to create, reduce this number. If you get a
+        warning that your particles are "off the grid" (larger than your maximum grid value),
+        increase this number.
     nradii : int, optional
         (Default=60) number of radii points to compute grid on. 40 grid points for exoplanets/BDs
     logspace : boolean, optional
         (Default = True)
-        Spaces the radii logarithmically (which they generally tend to be in the clouds) if True. Spaces them linearly if False.
+        Spaces the radii logarithmically (which they generally tend to be in the clouds) if
+        True. Spaces them linearly if False.
     aggregates : boolean, optional
         (Default = True)
-        Sets whether particles are aggregates or spheres. If true, we will calculate optical properties using OPTOOL instead of MiePython.
-    Df : If aggregates = True, the fractal dimension of the aggegrate particle. a number between 1 and 3. (3 would be equal to solid spheres with radii of the outer effective radius)
-    N_mon : If aggregates = True, the number of monomers that make up an aggregate. Can set directly or calculate from r_mon.
-    r_mon : If aggregates = True, the monomer radius that makes up an aggregate particle (in cm). Can either set or calculate from N_mon.
+        Sets whether particles are aggregates or spheres. If true, we will calculate optical
+        properties using OPTOOL instead of MiePython.
+    Df : If aggregates = True, the fractal dimension of the aggegrate particle. a number
+        between 1 and 3. (3 would be equal to solid spheres with radii of the outer
+        effective radius)
+    N_mon : If aggregates = True, the number of monomers that make up an aggregate. Can
+        set directly or calculate from r_mon.
+    r_mon : If aggregates = True, the monomer radius that makes up an aggregate particle
+        (in cm). Can either set or calculate from N_mon.
     k0 : only used if aggregate = True. 
-        Default = 0, where it will then be calculated in the vfall equation using Tazaki (2021) Eq 2. k0 can also be prescribed by user, 
-        but with a warning that when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be consistent between the boundary 
-        when spheres grow large enough to become aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any value of k0 is fine).
+        Default = 0, where it will then be calculated in the vfall equation using
+        Tazaki (2021) Eq 2. k0 can also be prescribed by user, but with a warning that
+        when r_mon is fixed, unless d_f = 1 at r= r_mon, the dynamics may not be
+        consistent between the boundary when spheres grow large enough to become
+        aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead,
+        any value of k0 is fine).
     
     Returns 
     -------
@@ -2090,14 +2139,14 @@ def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax
 
     The Q "efficiency factors" are = cross section / geometric cross section of particle
     """
-    
+
     if isinstance(gas_name,str):
         gas_name = [gas_name]
     ngas = len(gas_name)
 
 
-    for i in range(len(gas_name)): 
-        
+    for i in range(len(gas_name)):
+
         if aggregates==False:
             print('\nComputing optical properties for ' + gas_name[i] + ' using MiePython...')
             refrind_dir = virga_dir # use the VIRGA directory
@@ -2105,66 +2154,84 @@ def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax
             print('\nComputing optical properties for ' + gas_name[i] + ' using OPTOOL...')
             refrind_dir = optool_dir # use the optool directory
 
-            # check whether r_mon is ever larger than the smallest particles in the grid, if it is prescribed by the user
+            # check whether r_mon is ever larger than the smallest particles in the grid,
+            # if it is prescribed by the user
             if r_mon is not None:
                 if r_mon>rmin:
+                    print("\n\n------------------------------------------------------------------")
+                    print("                             WARNING!!!!                              ")
+                    print(f"You have prescribed a monomer size that is larger than the smallest"
+                          f"particles in the grid:\n\n "
+                          f"r_mon is {r_mon} cm   >   rmin is {rmin} cm) \n")
+                    print("This is impossible, so for these cases, single spheres will be used, "
+                          "with a radius equal to the bin mean.\nThis is not a problem, but just "
+                          "be aware that these particles are smaller than the r_mon that you have "
+                          "asked for.")
+                    print("--------------------------------------------------------------------\n")
 
-                    print("\n\n-----------------------------------------------------------------------------------------------------------------")
-                    print("                                         WARNING!!!!                                         ")
-                    print(f"You have prescribed a monomer size that is larger than the smallest particles in the grid:\n\n \
-                            r_mon is {r_mon} cm   >   rmin is {rmin} cm) \n")
-                    print("This is impossible, so for these cases, single spheres will be used, with a radius equal to the bin mean.\nThis is not a problem, but just be aware that these particles are smaller than the r_mon that you have asked for.")
-                    print("------------------------------------------------------------------------------------------------------------------\n")
-
-        print('If this function seems to be running a really long time... Check that you gave your rmin (and r_mon if using aggregates) in centimeters and that you are not making tennis balls :)')             
-
+        print('If this function seems to be running a really long time... Check that you gave '
+              'your rmin (and r_mon if using aggregates) in centimeters and that you are not '
+              'making tennis balls :)')
 
         #Setup up a particle size grid on first run and calculate single-particle scattering
-        
+
         #files will be saved in `directory`
         # obtaining refractive index data for each gas
         wave_in,nn,kk = get_refrind(gas_name[i],refrind_dir, aggregates)
         nwave = len(wave_in)
-        print(f'\n{nwave} wavelengths of refractive index data found for {gas_name[i]}. Grid of mean radii (in bins) to calculate extinction and scattering efficiencies for (in cm):')
+        print(f'\n{nwave} wavelengths of refractive index data found for {gas_name[i]}. '
+              f'Grid of mean radii (in bins) to calculate extinction and scattering '
+              f'efficiencies for (in cm):')
 
         if i==0:
-            # create the grid of mean radii (in bins) that we want to find the optical properties for
+            # create the grid of mean radii (in bins) that we want to find the optical
+            # properties for
             radius, bin_min, bin_max, dr = get_r_grid(rmin, rmax, nradii, logspace)
 
             print('\n\t       min             mean             max          bin width (dr) ')
             for j in range (len(radius)):
-                print(f'\t  {bin_min[j]:13.6e}   {radius[j]:13.6e}   {bin_max[j]:13.6e}      {dr[j]:13.6e}') # bins 1 -> n-1
-            print('\nAverages from 6 sub-bins will be used to calculate the properties that represent the mean radius in each bin above.')
+                print(f'\t  {bin_min[j]:13.6e}   {radius[j]:13.6e}   {bin_max[j]:13.6e}      '
+                      f'{dr[j]:13.6e}') # bins 1 -> n-1
+            print('\nAverages from 6 sub-bins will be used to calculate the properties that '
+                  'represent the mean radius in each bin above.')
 
             qext_all=np.zeros(shape=(nwave,nradii,ngas))
             qscat_all = np.zeros(shape=(nwave,nradii,ngas))
             cos_qscat_all=np.zeros(shape=(nwave,nradii,ngas))
 
-        #get extinction, scattering, and asymmetry
-        #all of these are  [nwave by nradii]
-  
-        
+        # ==== get extinction, scattering, and asymmetry all of these are  [nwave by nradii]
         gas = gas_name[i]
 
-        if aggregates==False: # Use MiePython to calculate the optical properties of spherical particles for each radius in the grid, using Mie theory
-            qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(wave_in, nn,kk, radius, bin_min, bin_max, fort_calc_mie = fort_calc_mie)
+        # Use MiePython to calculate the optical properties of spherical particles for
+        # each radius in the grid, using Mie theory
+        if aggregates==False:
+            qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff(
+                wave_in, nn,kk, radius, bin_min, bin_max, fort_calc_mie = fort_calc_mie
+            )
+        # use OPTOOL to calculate the optical properties of aggregates for each radius in
+        # the grid, using Modified Mean Field theory
+        else:
+            qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff_optool(
+                wave_in, radius, bin_min, bin_max, gas, optool_dir, aggregates=True,
+                Df=Df, N_mon=N_mon, r_mon=r_mon, k0=k0
+            )
 
-        else: # use OPTOOL to calculate the optical properties of aggregates for each radius in the grid, using Modified Mean Field theory   
+            # if using the OPTOOL .lnk file, the wavelengths were in reversed into
+            # ascending order (a pre-requisite of OPTOOL). Therefore, to get them back to
+            # descending order, we just need to flip all arrays. Doing this means it
+            # doesn't matter whether OPTOOL or MiePython is used -- the resulting
+            # .mieff files will be saved consistently in order of descending wavelength.
 
-            qext_gas, qscat_gas, cos_qscat_gas = calc_new_mieff_optool(wave_in, radius, bin_min, bin_max, gas, optool_dir, aggregates=True, Df=Df, N_mon=N_mon, r_mon=r_mon, k0=k0)
-            
-            # if using the OPTOOL .lnk file, the wavelengths were in reversed into ascending order (a pre-requisite of OPTOOL). Therefore, to get them back to
-            # descending order, we just need to flip all arrays. Doing this means it doesn't matter whether OPTOOL or MiePython is used -- the resulting .mieff files
-            # will be saved consistently in order of descending wavelength.
-
-            wave_in = np.flipud(wave_in) # remember to reverse the wavelength array into descending order too! (currently in ascending order, from the .lnk file)
+            # remember to reverse the wavelength array into descending order too!
+            # (currently in ascending order, from the .lnk file)
+            wave_in = np.flipud(wave_in)
             qext_gas = np.flipud(qext_gas)
             qscat_gas = np.flipud(qscat_gas)
             cos_qscat_gas = np.flipud(cos_qscat_gas)
 
-
         #add to master matrix that contains the per gas Mie stuff
-        qext_all[:,:,i], qscat_all[:,:,i], cos_qscat_all[:,:,i] = qext_gas, qscat_gas, cos_qscat_gas 
+        qext_all[:,:,i], qscat_all[:,:,i], cos_qscat_all[:,:,i] = (
+            qext_gas, qscat_gas, cos_qscat_gas)
 
         #prepare format for old ass style
         wave = [nwave] + sum([[r]+list(wave_in) for r in radius],[])
@@ -2173,43 +2240,64 @@ def calc_mie_db(gas_name, virga_dir, dir_out, optool_dir=None, rmin = 1e-8, rmax
         cos_qscat = [np.nan]  + sum([[np.nan]+list(icos) for icos in cos_qscat_gas.T],[])
 
         if aggregates==False: # save dataframe as a standard .mieff file
-            pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(os.path.join(dir_out,gas_name[i]+".mieff"),
-                                                                                    sep=' ',
-                                                                                    index=False,header=None)
-            print(f'Optical properties for {gas_name[i]} have been calculated and saved as {dir_out}/{gas_name[i]}.mieff.\n')
-        else: # save dataframe with a unique filename (e.g SiO2_aggregates_Df_1.2.mieff) for aggregate versions of materials
-
-            aggregate_filename = f"{dir_out}/{gas_name[i]}_aggregates_Df_{Df:.6f}.mieff" # the name of the aggregate database file
-
-            pd.DataFrame({'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}).to_csv(aggregate_filename,
-                                                                                    sep=' ',
-                                                                                    index=False,header=None)
-            print(f'Optical properties for {gas_name[i]} have been calculated and saved as {aggregate_filename}.\n')
+            pd.DataFrame(
+                {'wave':wave,'qscat':qscat, 'qext':qext, 'cos_qscat':cos_qscat}
+            ).to_csv(
+                os.path.join(dir_out,gas_name[i]+".mieff"), sep=' ', index=False, header=None
+            )
+            print(f'Optical properties for {gas_name[i]} have been calculated and '
+                  f'saved as {dir_out}/{gas_name[i]}.mieff.\n')
+        # save dataframe with a unique filename (e.g SiO2_aggregates_Df_1.2.mieff) for
+        # aggregate versions of materials
+        else:
+            # the name of the aggregate database file
+            aggregate_filename = f"{dir_out}/{gas_name[i]}_aggregates_Df_{Df:.6f}.mieff"
+            pd.DataFrame(
+                {'wave':wave,'qscat':qscat,'qext':qext,'cos_qscat':cos_qscat}
+            ).to_csv(
+                aggregate_filename, sep=' ', index=False, header=None
+            )
+            print(f'Optical properties for {gas_name[i]} have been calculated and '
+                  f'saved as {aggregate_filename}.\n')
 
     return qext_all, qscat_all, cos_qscat_all, radius,wave_in
 
+
 def get_mie(gas, directory, aggregates=False, Df=None):
     """
-    Get pre-calculated radius-wavelength grid of optical properties, considering the particles as either spheres (gas_name.mieff) 
-    or aggregates (gas_name_aggregates_Df_XXXX.mieff), if aggregates=true and this aggregates file has been created using calc_mie_db function).
+    Get pre-calculated radius-wavelength grid of optical properties, considering the
+    particles as either spheres (gas_name.mieff) or aggregates
+    (gas_name_aggregates_Df_XXXX.mieff), if aggregates=true and this aggregates file
+    has been created using calc_mie_db function).
     
     """
 
     if aggregates==False: # load regular .mieff file of optical properties
-        df = pd.read_csv(os.path.join(directory,gas+".mieff"),names=['wave','qscat','qext','cos_qscat'], sep=r'\s+')
-    else: # load aggregate version of optical properties (this file must be created using the calc_mie_db function with aggregates=True first!)
-        
-        aggregate_filename = f"{directory}/{gas}_aggregates_Df_{Df:.6f}.mieff" # the name of the database file
+        df = pd.read_csv(
+            os.path.join(directory,gas+".mieff"),
+            names=['wave','qscat','qext','cos_qscat'], sep=r'\s+'
+        )
+    # load aggregate version of optical properties (this file must be created using the
+    # calc_mie_db function with aggregates=True first!)
+    else:
 
-        try: # check if database has been created for this particular set of MMF parameters and radii
+        # the name of the database file
+        aggregate_filename = f"{directory}/{gas}_aggregates_Df_{Df:.6f}.mieff"
+
+        # check if database has been created for this particular set of MMF parameters and radii
+        try:
             test_path = Path(aggregate_filename).resolve(strict=True)
-        except FileNotFoundError: # aggregates database does not yet exist (for this particular gas and fractal dimension)
+        except FileNotFoundError: # aggregates database does not yet exist (for this
+            # particular gas and fractal dimension)
             print(f'File not found: {aggregate_filename}.')
             print(f'No optical database has been created for {gas} aggregates with d_f={Df} yet!')
-            print('You need to create a database using the calc_mie_db() function, with the argument aggregates=True (see "aggregates" tutorial for more details).')
+            print('You need to create a database using the calc_mie_db() function, with the '
+                  'argument aggregates=True (see "aggregates" tutorial for more details).')
         else: # database file exists - load data
             print(f'Optics file found. Reading data from: {aggregate_filename}.')
-            df = pd.read_csv(aggregate_filename, names=['wave','qscat','qext','cos_qscat'], sep=r'\s+')
+            df = pd.read_csv(
+                aggregate_filename, names=['wave','qscat','qext','cos_qscat'], sep=r'\s+'
+            )
 
     nwave = int( df.iloc[0,0])
     nradii = int(df.iloc[0,1])
@@ -2219,8 +2307,10 @@ def get_mie(gas, directory, aggregates=False, Df=None):
 
     df = df.dropna()
 
-    assert len(radii) == nradii , "Number of radii specified in header is not the same as number of radii."
-    assert nwave*nradii == df.shape[0] , "Number of wavelength specified in header is not the same as number of waves in file"
+    assert len(radii) == nradii , ("Number of radii specified in header is not the same "
+                                   "as number of radii.")
+    assert nwave*nradii == df.shape[0] , ("Number of wavelength specified in header is not "
+                                          "the same as number of waves in file")
 
     # check if incoming wavegrid is in correct order
     sub_array = df['wave'].values[:196]  # Extract the first 196 values
@@ -2242,15 +2332,19 @@ def get_mie(gas, directory, aggregates=False, Df=None):
     qext = df['qext'].values.reshape((nradii,nwave)).T
     cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
 
-    # if scattering code returns Q_sca <0 (can happen for extreme examples, like very large particles with very low fractal dimensions), set Q_sca = 1e-16 (basically zero, 
-    # but slighty positive so that calc_optics still records opacity in the optical depth array (opd) for purely absorbing cases -- the statement here 
-    # checks for opd_sca>0, so it's important to keep it above 0
+    # if scattering code returns Q_sca <0 (can happen for extreme examples, like very
+    # large particles with very low fractal dimensions), set Q_sca = 1e-16 (basically zero,
+    # but slighty positive so that calc_optics still records opacity in the optical depth
+    # array (opd) for purely absorbing cases -- the statement here checks for opd_sca>0,
+    # so it's important to keep it above 0
 
-    qscat[qscat < 0] = 1e-16 # search for any values that are negative, and set them equal to to a very small positive number (1e-16)
+    # search for any values that are negative, and set them equal to to a
+    # very small positive number (1e-16)
+    qscat[qscat < 0] = 1e-16
 
     return qext,qscat, cos_qscat, nwave, radii,wave
 
-def get_refrind(igas,directory,aggregates=False): 
+def get_refrind(igas,directory,aggregates=False):
     """
     Reads reference files with wavelength, and refractory indicies. The file formats 
     are different for VIRGA and OPTOOL. OPTOOL formats should be created by the user
@@ -2279,50 +2373,72 @@ def get_refrind(igas,directory,aggregates=False):
     if aggregates==False:  # use the VIRGA refractive index database file structure
         filename = os.path.join(directory ,igas+".refrind")
          #put skiprows=1 in loadtxt to skip first line
-        try: 
-            idummy, wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3])#[:-1]
-        except: 
-            wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2], delimiter=',', skiprows=1)
-        # if refractive index list is given in ascending order, flip it upside down so that it is descending here (so that it is consistent with the rest of VIRGA)
-        if (wave_in[0] < wave_in[-1]): # if first element is smaller than the last one (then it is in ascending order)
+        try:
+            idummy, wave_in, nn, kk = np.loadtxt(
+                open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2,3]
+            )#[:-1]
+        except:
+            wave_in, nn, kk = np.loadtxt(
+                open(filename,'rt').readlines(), unpack=True, usecols=[0,1,2],
+                delimiter=',', skiprows=1
+            )
+
+        # if refractive index list is given in ascending order, flip it upside down
+        # so that it is descending here (so that it is consistent with the rest of VIRGA)
+
+        # if first element is smaller than the last one (then it is in ascending order)
+        if wave_in[0] < wave_in[-1]:
             wave_in = np.flipud(wave_in)
             nn = np.flipud(nn) # flip all three arrays to descending order
             kk = np.flipud(kk)
 
         return wave_in,nn,kk
-    
+
     else: # use the OPTOOL refractive index database file structure
-        filename = os.path.join(directory+"/lnk_data",igas+"_VIRGA.lnk") # changed by SEM to .lnk extension for optool use
+        # changed by SEM to .lnk extension for optool use
+        filename = os.path.join(directory+"/lnk_data",igas+"_VIRGA.lnk")
          #put skiprows=1 in loadtxt to skip first line
-        wave_in, nn, kk = np.loadtxt(open(filename,'rt').readlines(), skiprows=1, unpack=True, usecols=[0,1,2])#[:-1]
+        wave_in, nn, kk = np.loadtxt(
+            open(filename,'rt').readlines(), skiprows=1, unpack=True, usecols=[0,1,2]
+        )#[:-1]
         return wave_in,nn,kk
-    
+
+
 def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
     """
-    New version of grid generator - creates lin-spaced or log-spaced radii grids. Updated by MGL 07/01/25.
+    New version of grid generator - creates lin-spaced or log-spaced radii grids.
+    Updated by MGL 07/01/25.
     
     ALGORITHM DESCRIPTION:
 
-    First, VIRGA makes grid of particle sizes and calculates the optical properties for them. Then, when we find the average particle
-    size in a particular layer of cloud, it creates a lognormal distribution of particles (one that has the calculated mean radius),
-    and then finds how many particles fall into each of the 'bins' of the radius 'grid' that we have created. Finally, it weights the
-    contribution from each bin by the number of particles to calculate the total opacity of that layer. Therefore, the same grid needs
-    to be used for making the .mieff files (optical properties) and running VIRGA.
+    First, VIRGA makes grid of particle sizes and calculates the optical properties for
+    them. Then, when we find the average particle size in a particular layer of cloud, it
+    creates a lognormal distribution of particles (one that has the calculated mean
+    radius), and then finds how many particles fall into each of the 'bins' of the radius
+    'grid' that we have created. Finally, it weights the contribution from each bin by the
+    number of particles to calculate the total opacity of that layer. Therefore, the same
+    grid needs to be used for making the .mieff files (optical properties) and running VIRGA.
 
-    This new version simplifies the arrays to represent the mean, minimum and maximum values of radius in each bin. It also uses a consistent
-    function to calculate the radius values and bin widths, as well as correcting an error for the first bin mean.
+    This new version simplifies the arrays to represent the mean, minimum and maximum
+    values of radius in each bin. It also uses a consistent function to calculate the
+    radius values and bin widths, as well as correcting an error for the first bin mean.
     
     Parameters
     ----------
 
     r_min : float
-        minimum radius in grid (in cm). Default is 10^-8 cm (0.0001 um) to match databases in v0.0.
+        minimum radius in grid (in cm). Default is 10^-8 cm (0.0001 um) to match
+        databases in v0.0.
     r_max : float
-        maximum radius in grid (in cm). Default is 5.4239131 x 10^-2 cm (542 um), to match databases in v0.0.
+        maximum radius in grid (in cm). Default is 5.4239131 x 10^-2 cm (542 um),
+        to match databases in v0.0.
     n_radii : int 
-        number of increments (note that each of these increments will be further divided into 6 sub-bins to smooth out any resonance features that occur due to specific particle sizes). Default is 60 to match databases in v0.0.
+        number of increments (note that each of these increments will be further
+        divided into 6 sub-bins to smooth out any resonance features that occur due
+        to specific particle sizes). Default is 60 to match databases in v0.0.
     logspace : boolean
-        Default = True. Spaces the radii logarithmically if True (tends to be the case in the clouds). Spaces them linearly if False.
+        Default = True. Spaces the radii logarithmically if True (tends to be the
+        case in the clouds). Spaces them linearly if False.
         
     Returns
     -------
@@ -2340,17 +2456,21 @@ def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
 
     # calculate mean radii of bins
     if log_space==True:
-        radius = np.logspace(start=np.log10(r_min), stop=np.log10(r_max), num=n_radii) # log-spaced radii is the default. The arguments for np.logspace are the exponents (in base-10) of our r_min and r_max.
+        # log-spaced radii is the default. The arguments for np.logspace are the exponents
+        # (in base-10) of our r_min and r_max.
+        radius = np.logspace(start=np.log10(r_min), stop=np.log10(r_max), num=n_radii)
     else:
         radius = np.linspace(r_min, r_max, n_radii) # linearly-spaced option (not recommended)
 
     # calculate dr values
     # this formula can be derived from the following conditions:
     #    1) Bins are linearly centered about the mean radii calculated above
-    #    2) Bin widths (dr) are logarithmically spaced, such that the ratio dr[1]/dr[0] = dr[2]/dr[1] = dr[n]/dr[n-1] = constant
+    #    2) Bin widths (dr) are logarithmically spaced, such that the ratio
+    #       dr[1]/dr[0] = dr[2]/dr[1] = dr[n]/dr[n-1] = constant
     dr = np.zeros(n_radii)
     for i in range(1,n_radii-1):
-        dr[i] = 2*(radius[i+1]-radius[i])*(radius[i]-radius[i-1])/(radius[i+1]-radius[i-1]) # bins 1 -> n-1
+        # bins 1 -> n-1
+        dr[i] = 2*(radius[i+1]-radius[i])*(radius[i]-radius[i-1])/(radius[i+1]-radius[i-1])
     dr[0]= 2*(radius[1]-radius[0])-dr[1] # bin 0
     dr[-1]= 2*(radius[-1]-radius[-2])-dr[-2] # bin n
 
@@ -2363,7 +2483,7 @@ def get_r_grid(r_min=1e-8, r_max=5.4239131e-2, n_radii=60, log_space=True):
     bin_max = np.zeros(n_radii)
     for i in range(n_radii):
         bin_max[i] = radius[i] + dr[i]/2 # bin max = mean radius + bin width/2
-    
+
     return radius, bin_min, bin_max, dr
 
 def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
@@ -2371,8 +2491,9 @@ def get_r_grid_w_max(r_min=1e-8, r_max=5.4239131e-2, n_radii=60):
     Discontinued function. See 'get_r_grid()'.
 
     ------------------------------------------
-    Warning: This function will not work "out of the box" as a substitute for get_r_grid(), because it calculated the bins
-    in a different way (rups represents bin boundaries, and the first bin is half the size of the others. This is one
+    Warning: This function will not work "out of the box" as a substitute for
+    get_r_grid(), because it calculated the bins in a different way (rups represents
+    bin boundaries, and the first bin is half the size of the others. This is one
     of the reasons it was discontinued.)
     ------------------------------------------
 
@@ -2401,8 +2522,9 @@ def get_r_grid_legacy(r_min=1e-8, n_radii=60):
     Discontinued function. See 'get_r_grid()'.
 
     ------------------------------------------
-    Warning: This function will not work "out of the box" as a substitute for get_r_grid(), because it calculated the bins
-    in a different way (rups represents bin boundaries, and the first bin is half the size of the others. This is one
+    Warning: This function will not work "out of the box" as a substitute for
+    get_r_grid(), because it calculated the bins in a different way (rups represents
+    bin boundaries, and the first bin is half the size of the others. This is one
     of the reasons it was discontinued.)
     ------------------------------------------
 
@@ -2414,7 +2536,7 @@ def get_r_grid_legacy(r_min=1e-8, n_radii=60):
     n_radii : int
         Number of radii to compute 
     """
-    vrat = 2.2 
+    vrat = 2.2
     pw = 1. / 3.
     f1 = ( 2.0*vrat / ( 1.0 + vrat) )**pw
     f2 = (( 2.0 / ( 1.0 + vrat ) )**pw) * (vrat**(pw-1.0))
@@ -2445,10 +2567,10 @@ def picaso_format(opd, w0, g0, pressure=None, wavenumber=None ):
 
     """
     df = pd.DataFrame(
-                dict(opd = opd.flatten(), 
-                     w0 = w0.flatten(), 
+                dict(opd = opd.flatten(),
+                     w0 = w0.flatten(),
                      g0 = g0.flatten()))
-                     
+
     if not isinstance(pressure,type(None)):
         df['pressure'] = np.concatenate([[i]*len(wavenumber) for i in pressure])
     if  not isinstance(wavenumber,type(None)):
@@ -2461,17 +2583,20 @@ def picaso_format_custom_wavenumber_grid(opd, w0, g0, wavenumber_grid ):
     reads in wavenumber grid. 
     Keeping for now, but will discontinue soon. 
     """
-    df = pd.DataFrame(index=[ i for i in range(opd.shape[0]*opd.shape[1])], columns=['pressure','wavenumber','opd','w0','g0'])
-    i = 0 
+    df = pd.DataFrame(
+        index=[ i for i in range(opd.shape[0]*opd.shape[1])],
+        columns=['pressure','wavenumber','opd','w0','g0']
+    )
+    i = 0
     LVL = []
     WV,OPD,WW0,GG0 =[],[],[],[]
     for j in range(opd.shape[0]):
-           for w in range(opd.shape[1]):
-                LVL+=[j+1]
-                WV+=[wavenumber_grid[w]]
-                OPD+=[opd[j,w]]
-                WW0+=[w0[j,w]]
-                GG0+=[g0[j,w]]
+        for w in range(opd.shape[1]):
+            LVL+=[j+1]
+            WV+=[wavenumber_grid[w]]
+            OPD+=[opd[j,w]]
+            WW0+=[w0[j,w]]
+            GG0+=[g0[j,w]]
     df.iloc[:,0 ] = LVL
     df.iloc[:,1 ] = WV
     df.iloc[:,2 ] = OPD
@@ -2479,11 +2604,13 @@ def picaso_format_custom_wavenumber_grid(opd, w0, g0, wavenumber_grid ):
     df.iloc[:,4 ] = GG0
     return df
 
-def picaso_format_slab(p_bottom,  opd, w0, g0, 
-    wavenumber_grid, pressure_grid ,p_top=None,p_decay=None):
+
+def picaso_format_slab(p_bottom,  opd, w0, g0, wavenumber_grid, pressure_grid,
+                       p_top=None,p_decay=None):
     """
-    Sets up a PICASO-readable dataframe that inserts a wavelength dependent aerosol layer at the user's 
-    given pressure bounds, i.e., a wavelength-dependent slab of clouds or haze.
+    Sets up a PICASO-readable dataframe that inserts a wavelength dependent aerosol
+    layer at the user's given pressure bounds, i.e., a wavelength-dependent slab of
+    clouds or haze.
     
     Parameters
     ----------
@@ -2513,39 +2640,44 @@ def picaso_format_slab(p_bottom,  opd, w0, g0,
 
     Returns
     -------
-    Dataframe of aerosol layer with pressure (in levels - non-physical units!), wavenumber, opd, w0, and g0 to be read by PICASO
+    Dataframe of aerosol layer with pressure (in levels - non-physical units!),
+    wavenumber, opd, w0, and g0 to be read by PICASO
     """
-    if (isinstance(p_top, type(None)) & isinstance(p_decay, type(None))): 
-        raise Exception("Must specify cloud top pressure via p_top, or the vertical pressure decay via p_decay")
-    elif (isinstance(p_top, type(None)) & (~isinstance(p_decay, type(None)))): 
+    if isinstance(p_top, type(None)) and isinstance(p_decay, type(None)):
+        raise Exception("Must specify cloud top pressure via p_top, or the vertical "
+                        "pressure decay via p_decay")
+    elif isinstance(p_top, type(None)) and ~isinstance(p_decay, type(None)):
         p_top = 1e-10#arbitarily small pressure to make sure float comparison doest break
 
-
-    df = pd.DataFrame(index=[ i for i in range(pressure_grid.shape[0]*opd.shape[0])], columns=['pressure','wavenumber','opd','w0','g0'])
-    i = 0 
+    df = pd.DataFrame(
+        index=[ i for i in range(pressure_grid.shape[0]*opd.shape[0])],
+        columns=['pressure','wavenumber','opd','w0','g0']
+    )
+    i = 0
     LVL = []
     WV,OPD,WW0,GG0 =[],[],[],[]
-    
-    # this loops the opd, w0, and g0 between p and dp bounds and put zeroes for them everywhere else
+
+    # this loops the opd, w0, and g0 between p and dp bounds and put zeroes for them
+    # everywhere else
     for j in range(pressure_grid.shape[0]):
-           for w in range(opd.shape[0]):
-                #stick in pressure bounds for the aerosol layer:
-                if p_top <= pressure_grid[j] <= p_bottom:
-                    LVL+=[pressure_grid[j]]
-                    WV+=[wavenumber_grid[w]]
-                    if isinstance(p_decay,type(None)):
-                        OPD+=[opd[w]]
-                    else: 
-                        OPD+=[p_decay[j]/np.max(p_decay)*opd[w]]
-                    WW0+=[w0[w]]
-                    GG0+=[g0[w]]
+        for w in range(opd.shape[0]):
+            #stick in pressure bounds for the aerosol layer:
+            if p_top <= pressure_grid[j] <= p_bottom:
+                LVL+=[pressure_grid[j]]
+                WV+=[wavenumber_grid[w]]
+                if isinstance(p_decay,type(None)):
+                    OPD+=[opd[w]]
                 else:
-                    LVL+=[pressure_grid[j]]
-                    WV+=[wavenumber_grid[w]]
-                    OPD+=[opd[w]*0]
-                    WW0+=[w0[w]*0]
-                    GG0+=[g0[w]*0]       
-                    
+                    OPD+=[p_decay[j]/np.max(p_decay)*opd[w]]
+                WW0+=[w0[w]]
+                GG0+=[g0[w]]
+            else:
+                LVL+=[pressure_grid[j]]
+                WV+=[wavenumber_grid[w]]
+                OPD+=[opd[w]*0]
+                WW0+=[w0[w]*0]
+                GG0+=[g0[w]*0]
+
     df.iloc[:,0 ] = LVL
     df.iloc[:,1 ] = WV
     df.iloc[:,2 ] = OPD
@@ -2556,13 +2688,15 @@ def picaso_format_slab(p_bottom,  opd, w0, g0,
 
 def available():
     """
-    Print all available gas condensates 
+    Print all available gas condensates
     """
     pvs = [i for i in dir(pvaps) if i != 'np' and '_' not in i]
     gas_p = [i for i in dir(gas_properties) if i != 'np' and '_' not in i]
     return list(np.intersect1d(gas_p, pvs))
 
-def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False, legend='inside', **plot_kwargs):
+
+def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False,
+                  legend='inside', **plot_kwargs):
     """
     Recommends condensate species for a users calculation. 
 
@@ -2586,11 +2720,11 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
     -------
     ndarray, ndarray
         pressure (bars), condensation temperature (Kelvin)
-    """    
-    if plot: 
+    """
+    if plot:
         from bokeh.plotting import figure, show
         from bokeh.models import Legend
-        from bokeh.palettes import magma   
+        from bokeh.palettes import magma
         plot_kwargs['y_range'] = plot_kwargs.get('y_range',[1e2,1e-3])
         plot_kwargs['height'] = plot_kwargs.get('plot_height',plot_kwargs.get('height',400))
         plot_kwargs['width'] = plot_kwargs.get('plot_width', plot_kwargs.get('width',600))
@@ -2598,7 +2732,7 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
         if 'plot_height' in plot_kwargs.keys() : plot_kwargs.pop('plot_height')
         plot_kwargs['x_axis_label'] = plot_kwargs.get('x_axis_label','Temperature (K)')
         plot_kwargs['y_axis_label'] = plot_kwargs.get('y_axis_label','Pressure (bars)')
-        plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')        
+        plot_kwargs['y_axis_type'] = plot_kwargs.get('y_axis_type','log')
         fig = figure(**plot_kwargs)
 
     all_gases = available()
@@ -2614,21 +2748,27 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
 
         diff_curve = interp_cond_t - temperature
 
-        if ((len(diff_curve[diff_curve>0]) > 0) & (len(diff_curve[diff_curve<0]) > 0)):
+        if (len(diff_curve[diff_curve>0]) > 0) & (len(diff_curve[diff_curve<0]) > 0):
             recommend += [gas_name]
             line_widths +=[5]
-        else: 
-            line_widths +=[1]        
+        else:
+            line_widths +=[1]
 
-    if plot: 
+    if plot:
         legend_it = []
         ngas = len(all_gases)
         cols = magma(ngas)
         if legend == 'inside':
-            fig.line(temperature,pressure, legend_label='User',color='black',line_width=5,line_dash='dashed')
+            fig.line(
+                temperature, pressure, legend_label='User', color='black', line_width=5,
+                line_dash='dashed'
+            )
             for i in range(ngas):
 
-                fig.line(cond_ts[i],cond_p, legend_label=all_gases[i],color=cols[i],line_width=line_widths[i])
+                fig.line(
+                    cond_ts[i], cond_p, legend_label=all_gases[i], color=cols[i],
+                    line_width=line_widths[i]
+                )
         else:
             f = fig.line(temperature,pressure, color='black',line_width=5,line_dash='dashed')
             legend_it.append(('input profile', [f]))
@@ -2640,18 +2780,17 @@ def recommend_gas(pressure, temperature, mh, mmw, plot=False, returnplot = False
         if legend == 'outside':
             legend = Legend(items=legend_it, location=(0, 0))
             legend.click_policy="mute"
-            fig.add_layout(legend, 'right')   
-            
+            fig.add_layout(legend, 'right')
+
         plot_format(fig)
-        
+
         if returnplot:
             return recommend, fig
         else:
             show(fig)
-    
+
     return recommend
 
-    
 
 def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20), gas_mmr=None):
     """
@@ -2682,12 +2821,13 @@ def condensation_t(gas_name, mh, mmw, pressure =  np.logspace(-6, 2, 20), gas_mm
     if isinstance(pressure,(float,int)):
         pressure = [pressure]
     temps = []
-    for p in pressure: 
-        temp = optimize.root_scalar(find_cond_t, 
-                        bracket=[10, 10000], method='brentq', 
+    for p in pressure:
+        temp = optimize.root_scalar(find_cond_t,
+                        bracket=[10, 10000], method='brentq',
                         args=(p, mh, mmw, gas_name, gas_mmr))
         temps += [temp.root]
     return np.array(pressure), np.array(temps)
+
 
 def hot_jupiter():
     directory = os.path.join(os.path.dirname(__file__), "reference",
@@ -2695,10 +2835,13 @@ def hot_jupiter():
 
     df = pd.read_csv(directory,sep=r'\s+', usecols=[1,2,3],
                   names = ['pressure','temperature','kz'],skiprows=1)
-    df.loc[df['pressure']>12.8,'temperature'] = np.linspace(1822,2100,df.loc[df['pressure']>12.8].shape[0])
+    df.loc[df['pressure']>12.8,'temperature'] = np.linspace(
+        1822,2100,df.loc[df['pressure']>12.8].shape[0]
+    )
     return df
 
-def brown_dwarf(): 
+
+def brown_dwarf():
     directory = os.path.join(os.path.dirname(__file__), "reference",
                                    "t1000g100nc_m0.0.dat")
 
@@ -2707,28 +2850,34 @@ def brown_dwarf():
                  names=['pressure','temperature','chf'])
     return df
 
-def warm_neptune(): 
-    directory = os.path.join(os.path.dirname(__file__), "reference",
-                                   "wn.pt")
-def temperate_neptune(): 
-    directory = os.path.join(os.path.dirname(__file__), "reference",
-                                   "temperate_neptune.pt")
 
+def warm_neptune():
+    directory = os.path.join(os.path.dirname(__file__), "reference", "wn.pt")
+
+
+def temperate_neptune():
+    directory = os.path.join(os.path.dirname(__file__), "reference", "temperate_neptune.pt")
     df  = pd.read_csv(directory,skiprows=0,sep=r'\s+',
                  header=None,
                  names=['pressure','temperature','kz'])
     return df
 
+
 def convert_refrind_to_lnk(aggregate_list, virga_dir, optool_dir):
     '''
-    Converts VIRGA's .refrind files into OPTOOL .lnk files. The differences in file format are below:
+    Converts VIRGA's .refrind files into OPTOOL .lnk files. The differences in file
+    format are below:
 
-        VIRGA: [index,  wavelength,  n,  k]     No header, and in order of descending wavelength
+        VIRGA: [index,  wavelength,  n,  k]     No header, and in order of
+                                                descending wavelength
 
-        OPTOOL: [wavelength,  n,  k]     Header (num wavelengths and density, can also include comments), and in order of ascending wavelength
+        OPTOOL: [wavelength,  n,  k]     Header (num wavelengths and density, can also
+                                         include comments), and in order of ascending
+                                         wavelength
 
-    This function converts the XX.refrind file and saves it in the OPTOOL folder as XX_VIRGA.lnk in the optool directory, ready for optool to 
-    use in MMF calculations (see "calc_mie_db").
+    This function converts the XX.refrind file and saves it in the OPTOOL folder as
+    XX_VIRGA.lnk in the optool directory, ready for optool to use in MMF calculations
+    (see "calc_mie_db").
 
     Parameters
     ----------
@@ -2753,14 +2902,24 @@ def convert_refrind_to_lnk(aggregate_list, virga_dir, optool_dir):
         aggregate_species = aggregate_list[i]
 
         # retrieve the density of this species
-        run_gas = getattr(gas_properties, aggregate_species) # find density from the gas_properties.py database
-        gas_mw, gas_mmr, density = run_gas(1,1,1) # run this function with throwaway values just to obtain the density. Ignore the molecular weight and mass mixing ratio obtained here
-        
-        # retrieve the refractive indices for this species from the virga database
-        refrind_data=pd.read_csv(f'{virga_dir}/{aggregate_species}.refrind', names=['index', 'wavelength', 'n', 'k'], header=None, sep=r'\s+') 
-        refrind_data = refrind_data.drop('index', axis=1) # delete the first column (index)
-        refrind_data = refrind_data.sort_values('wavelength') # re-order data so that they are in order of ascending wavelength
+        # find density from the gas_properties.py database
+        run_gas = getattr(gas_properties, aggregate_species)
+        # run this function with throwaway values just to obtain the density.
+        # Ignore the molecular weight and mass mixing ratio obtained here
+        gas_mw, gas_mmr, density = run_gas(1,1,1)
 
-        with open(f'{optool_dir}/lnk_data/{aggregate_species}_VIRGA.lnk', 'w') as file: # save the new file in the optool directory under the same filename but as a .lnk file
-            file.write(f' {len(refrind_data)} {density}\n') # write number of wavelengths and material density at top of file
-            refrind_data.to_string(file, col_space=10, index=False, header=None) # print the rest of the data underneath
+        # retrieve the refractive indices for this species from the virga database
+        refrind_data=pd.read_csv(
+            f'{virga_dir}/{aggregate_species}.refrind',
+            names=['index', 'wavelength', 'n', 'k'], header=None, sep=r'\s+'
+        )
+        refrind_data = refrind_data.drop('index', axis=1) # delete the first column (index)
+        # re-order data so that they are in order of ascending wavelength
+        refrind_data = refrind_data.sort_values('wavelength')
+
+        # save the new file in the optool directory under the same filename but as a .lnk file
+        with open(f'{optool_dir}/lnk_data/{aggregate_species}_VIRGA.lnk', 'w') as file:
+            # write number of wavelengths and material density at top of file
+            file.write(f' {len(refrind_data)} {density}\n')
+            # print the rest of the data underneath
+            refrind_data.to_string(file, col_space=10, index=False, header=None)
