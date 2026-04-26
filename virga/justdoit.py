@@ -367,10 +367,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     opd_gas : ndarray
         cumulative (from top) opd by condensing vapor as geometric conservative scatterers
     """
-    # ndz[:, 0] = 0
-    # ndz[:, 2] = 0
-    # rg[:, -1] = rg[:, 1]
-    # ndz[:, -1] = ndz[:, 1]
     # ===================================================================================
     # Initialisation
     # ===================================================================================
@@ -474,29 +470,6 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                             scat_gas[iz,iwave,igas] += qscat[iwave,irad,igas]*pir2ndz
                             ext_gas[iz,iwave,igas]  += qext[iwave,irad,igas]*pir2ndz
                             cqs_gas[iz,iwave,igas]  += cos_qscat[iwave,irad,igas]*pir2ndz
-
-                for irad in range(nrad):
-                    rr = radius[irad]
-                    # factors for lognormal distribution
-                    arg1 = dr[irad] / (np.sqrt(2. * np.pi) * np.log(sig))
-                    arg2 = - np.log(rr / rg[iz,igas])**2 / (2 * np.log(sig)**2)
-                    # geometric cross-section
-                    pir2ndz = norm * np.pi * rr * arg1 * np.exp(arg2)
-
-                    # if cloud particle are not mixed, evaluate each particle homogenous
-                    # and then mix each material. This is also used if the opacity values
-                    # of mixed particles is approximated.
-                    if not mixed or quick_mix:
-                        for iw in range(nwave):
-                            scat_gas[iz, iw, igas] += qscat[iw, irad, igas] * pir2ndz
-                            ext_gas[iz, iw, igas] += qext[iw, irad, igas] * pir2ndz
-                            cqs_gas[iz, iw, igas] += cos_qscat[iw, irad, igas] * pir2ndz
-
-                        #TO DO ADD IN CLOUD SUBLAYER KLUGE LATER
-
-                    else:
-                        raise ValueError("Proper cloud mixing is work in progress, "
-                                         "please set quick_mix=True")
 
     for igas in range(ngas):
         for iz in range(nz-1,-1,-1):
