@@ -17,6 +17,7 @@ from matplotlib.ticker import FuncFormatter # used to display axes labels as 0.1
 from matplotlib.ticker import FormatStrFormatter
 from statistics import mean
 from scipy.signal import savgol_filter
+from scipy.special import gamma as gamma_func, gammaln
 from matplotlib.legend_handler import HandlerPathCollection
 import matplotlib
 import pandas as pd
@@ -179,8 +180,17 @@ def radii(out,gas=None,at_pressure = 1e-3, compare=False, legend=None,
 
         dndr = {}
         for i in gas_name:
-            dndr[i]= N[nl,gas_name.index(i)]/r/np.sqrt(2*np.pi)*np.log(sig)*np.exp(
-                        - np.log(r/(r_g[nl,gas_name.index(i)]*1e-4))**2/(2*np.log(sig)**2)) #1e-4 is microns to cm
+            if (out[j]['scalar_inputs']['dist'] == 'lognormal'):
+                dndr[i]= N[nl,gas_name.index(i)]/r/np.sqrt(2*np.pi)*np.log(sig)*np.exp(
+                    - np.log(r/(r_g[nl,gas_name.index(i)]*1e-4))**2/(2*np.log(sig)**2)) #1e-4 is microns to cm
+            elif (out[j]['scalar_inputs']['dist'] == 'gamma'):
+                gamma_A = out[j]['scalar_inputs']['gamma_A']
+                r_g_cm = r_g[nl, gas_name.index(i)] * 1e-4  # microns to cm
+                B = gamma_A / r_g_cm
+                # evaluate PDF in log-space to avoid overflow for large A (small sig)
+                log_norm_factor = gamma_A * np.log(B) - gammaln(gamma_A)
+                dndr[i] = N[nl, gas_name.index(i)] * np.exp(
+                    log_norm_factor + (gamma_A - 1) * np.log(r) - B * r)
         dndr['r'] = r*1e4 #convert to microns
 
         if j==0:
@@ -823,7 +833,7 @@ def aggregates_optical_properties(aggregate, mieff_dir, d_f_list, min_wavelength
 
 
     # set axes titles for 3D scatterplot
-    ax.set_xlabel('$\lambda$ ($\mu$m)', fontsize=20)
+    ax.set_xlabel(r'$\lambda$ ($\mu$m)', fontsize=20)
     ax.set_ylabel('$d_f$', fontsize=20)
     ax.set_zlabel('$Q_{ext}$', fontsize=20)
 

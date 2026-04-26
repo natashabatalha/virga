@@ -6,9 +6,11 @@ import astropy.units as u
 import pandas as pd
 import numpy as np
 import os
-
 from numba import threading_layer
 from scipy import optimize
+from scipy import optimize 
+from scipy.special import polygamma, gammaln
+from scipy.optimize import brentq
 from pathlib import Path
 
 from .root_functions import (vfall,vfall_find_root,qvs_below_model,
@@ -183,8 +185,9 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             gas_mmr, rho_p, mmw, atmo.g, atmo.kz, atmo.mixl, fsed_in, atmo.b, atmo.eps,
             atmo.scale_h, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param, mh, atmo.sig,
             rmin, nradii, radius, atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
-            atmo.aggregates, atmo.Df, atmo.N_mon, atmo.r_mon, atmo.k0, atmo.mixed,
-            og_vfall, supsat=atmo.supsat,verbose=atmo.verbose, do_virtual=do_virtual
+            atmo.aggregates, atmo.Df, atmo.N_mon, atmo.r_mon, atmo.k0, atmo.dist,
+            getattr(atmo, 'gamma_A', None), atmo.mixed, og_vfall,
+            supsat=atmo.supsat,verbose=atmo.verbose, do_virtual=do_virtual
         )
 
         # additional parameters needed from the atmopshere class
@@ -195,20 +198,22 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     #   run new, direct solver
     else:
         fsed_in = atmo.fsed
-        z_cld = None #temporary fix
+        z_cld = None #temporary fix 
         qc, qt, rg, reff, ndz, qc_path, pres_out, temp_out, z_out,mixl = direct_solver(
-            atmo.t_layer, atmo.p_layer, condensibles, gas_mw, gas_mmr, rho_p , mmw,
-            atmo.g, atmo.kz, atmo.fsed, mh, atmo.sig, radius, atmo.d_molecule, atmo.eps_k,
-            atmo.c_p_factor, atmo.aggregates, atmo.Df, atmo.N_mon, atmo.r_mon, atmo.k0,
-            direct_tol, refine_TP, og_vfall, analytical_rg
+            atmo.t_layer, atmo.p_layer, condensibles, gas_mw, gas_mmr, rho_p, mmw,
+            atmo.g, atmo.kz, atmo.fsed, mh, atmo.sig, radius, atmo.d_molecule,
+            atmo.eps_k,atmo.c_p_factor, atmo.aggregates, atmo.Df, atmo.N_mon,
+            atmo.r_mon,atmo.k0, direct_tol, refine_TP, og_vfall, analytical_rg,
+            atmo.dist, getattr(atmo, 'gamma_A', None)
         )
 
-    # Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
-    # albedo, and asymmetry parameter.
+    #Finally, calculate spectrally-resolved profiles of optical depth, single-scattering
+    #albedo, and asymmetry parameter.
     opd, w0, g0, opd_gas = calc_optics(
         nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
         cos_qscat, atmo.sig, rmin, rmax, atmo.mixed, rho_p, wave_in, condensibles,
-        directory, quick_mix, verbose=atmo.verbose
+        directory, atmo.dist, getattr(atmo, 'gamma_A', None), quick_mix,
+        verbose=atmo.verbose
     )
 
     if as_dict:
@@ -216,18 +221,20 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             fsed_out = (fsed_in[:, np.newaxis]
                         * np.exp((atmo.z[np.newaxis] - atmo.z_alpha) / atmo.b )
                         + atmo.eps)
-        else:
+        else: 
             fsed_out = fsed_in
         return create_dict(
             qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave_in, pres_out, temp_out,
-            condensibles, mh,mmw, fsed_out, atmo.sig, nradii,rmin, rmax, log_radii,
-            z_out, atmo.dz_layer, mixl, atmo.kz, atmo.scale_h, z_cld, atmo.mixed
+            condensibles, mh,mmw, fsed_out, atmo.sig, atmo.dist, getattr(atmo, 'gamma_A', None),
+            nradii,rmin, rmax, log_radii, z_out, atmo.dz_layer, mixl, atmo.kz, atmo.scale_h,
+            z_cld, atmo.mixed
         )
     else:
         return opd, w0, g0
 
-def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,temperature, gas_names,
-    mh,mmw,fsed,sig,nrad,rmin,rmax,log_radii,z, dz_layer, mixl, kz, scale_h, z_cld, mixed):
+def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas, wave, pressure, temperature,
+                gas_names, mh, mmw, fsed, sig, dist, gamma_A, nrad, rmin, rmax,
+                log_radii, z, dz_layer, mixl, kz, scale_h, z_cld, mixed):
     output = {
         "pressure":pressure/1e6, 
         "pressure_unit":'bar',
@@ -249,7 +256,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
         "condensibles":gas_names,
         "scalar_inputs": {
             'mh':mh, 'mmw':mmw, 'sig':sig, 'nrad':nrad, 'rmin':rmin,
-            'rmax':rmax, 'log_radii':log_radii
+            'rmax':rmax, 'log_radii':log_radii, 'dist':dist,'gamma_A':gamma_A,
         },
         "fsed": fsed,
         "altitude":z,
@@ -292,7 +299,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave,pressure,tempera
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
                 cos_qscat, sig, rmin, rmax, mixed, rhop, wavelength, gas_name, directory,
-                quick_mix=False, verbose=False):
+                dist='lognormal', gamma_A=None, quick_mix=False, verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -306,7 +313,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     qt : ndarray 
         Gas + condensate mixing ratio 
     rg : ndarray 
-        Geometric mean radius of condensate 
+        Representative particle radius of condensate. 
     reff : ndarray
         Effective (area-weighted) radius of condensate (cm)
     ndz : ndarray
@@ -321,8 +328,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
         Extinction efficiency
     cos_qscat : ndarray
         qscat-weighted <cos (scattering angle)>
-    sig : float 
-        Width of the log normal particle distribution
+    sig : float
+        Width of the particle size distribution (geometric standard deviation)
     rmin: float
         Minimum particle radius bin center from the grid (cm)
     rmax: float
@@ -339,7 +346,13 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     quick_mix : bool, optional
         Only used if mixed=True. If quick_mix=True, the opacities are calculated in the
         Batch approximation (see Kiefer et al. 2024b)
-    verbose: bool 
+    dist : str, optional
+        Particle size distribution, either 'lognormal' (default) or 'gamma'
+        (Christie et al. 2022, Appendix B)
+    gamma_A : float, optional
+        Gamma distribution shape parameter A, derived from sig via the trigamma
+        function. Only used when dist='gamma'. None for lognormal.
+    verbose: bool
         print out warnings or not
 
 
@@ -417,39 +430,51 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                               'mieff file is {1} cm) for gas {2} in the {3}th altitude layer'
                               ).format(str(rg[iz,igas]),str(rmin),str(igas),str(iz))
 
-                # if the radius of the particle found by VIRGA is larger than rmax it is
-                # "off the grid". We assume this because even if it was at the top of the
-                # largest bin e.g. r_g = (r_max + dr/2), half the distribution would not
-                # be considered by the number density, so we need to make the grid bigger
-                # to account for this portion of larger particles
-                if rg[iz,igas] > rmax:
-                    warning0 = (f'Take caution in analyzing results. Particle sizes were '
-                                f'predicted by eddysed() that were larger than the '
-                                f'maximum radius in the .mieff file ({rmax} cm). The '
-                                f'optics and number densities for these particles will '
-                                f'therefore not be correct. This can be solved by '
-                                f'recreating the .mieff grids with a larger r_max. The '
-                                f'errors occurred at the following pressure layers:')
-                    warning+=('\nParticles of radius {0} cm were found (where rmax from '
-                              'the mieff file is {1} cm) for gas {2} in the {3}th altitude '
-                              'layer'
-                              ).format(str(rg[iz,igas]),str(rmax),str(igas),str(iz))
+                if dist == 'lognormal':
+                    r2 = rg[iz,igas]**2 * np.exp( 2*np.log(sig)**2 )
+                elif dist == 'gamma':
+                    r2 = rg[iz,igas]**2 * (gamma_A + 1) / gamma_A
+                opd_layer[iz,igas] = 2.*np.pi*r2*ndz[iz,igas]
 
-                # Calculate geometrical optical depth
-                r2 = rg[iz,igas]**2 * np.exp(2 * np.log(sig)**2)
-                opd_layer[iz,igas] = 2. * np.pi * r2 * ndz[iz,igas]
 
-                # Calculate normalization factor (forces lognormal sum = 1.0)
-                rsig = sig #the log normal particle size distribution
-                norm = 0.
-                for irad in range(nrad):
-                    rr = radius[irad]
-                    arg1 = dr[irad] / (np.sqrt(2. * np.pi) * rr * np.log(rsig))
-                    arg2 = -np.log(rr / rg[iz,igas])**2 / (2 * np.log(rsig)**2)
-                    norm = norm + arg1*np.exp( arg2 )
+                #  Calculate normalization factor (forces lognormal sum = 1.0)
+                if dist == 'lognormal':
+                    rsig = sig
+                    norm = 0.
+                    for irad in range(nrad):
+                        rr = radius[irad]
+                        arg1 = dr[irad] / ( np.sqrt(2.*np.pi)*rr*np.log(rsig) )
+                        arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
+                        norm = norm + arg1*np.exp( arg2 )
+                    norm = ndz[iz,igas] / norm
+                    for irad in range(nrad):
+                        rr = radius[irad]
+                        arg1 = dr[irad] / ( np.sqrt(2.*np.pi)*np.log(rsig) )
+                        arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
+                        pir2ndz = norm*np.pi*rr*arg1*np.exp( arg2 )
+                        for iwave in range(nwave):
+                            scat_gas[iz,iwave,igas] += qscat[iwave,irad,igas]*pir2ndz
+                            ext_gas[iz,iwave,igas]  += qext[iwave,irad,igas]*pir2ndz
+                            cqs_gas[iz,iwave,igas]  += cos_qscat[iwave,irad,igas]*pir2ndz
 
-                # normalization
-                norm = ndz[iz,igas] / norm #number density distribution
+                elif dist == 'gamma':
+                    B = gamma_A / rg[iz,igas]
+                    # Use ln_gamma instead of gamma for numerical stability for large gamma_A
+                    log_B = np.log(B)
+                    log_norm_factor = gamma_A * log_B - gammaln(gamma_A)
+                    norm = 0.
+                    for irad in range(nrad):
+                        rr = radius[irad]
+                        norm = norm + dr[irad] * np.exp(log_norm_factor + (gamma_A - 1) * np.log(rr) - B * rr)
+                    norm = ndz[iz,igas] / norm
+                    for irad in range(nrad):
+                        rr = radius[irad]
+                        pdf_rr = np.exp(log_norm_factor + (gamma_A - 1) * np.log(rr) - B * rr)
+                        pir2ndz = norm * PI * rr**2 * dr[irad] * pdf_rr
+                        for iwave in range(nwave):
+                            scat_gas[iz,iwave,igas] += qscat[iwave,irad,igas]*pir2ndz
+                            ext_gas[iz,iwave,igas]  += qext[iwave,irad,igas]*pir2ndz
+                            cqs_gas[iz,iwave,igas]  += cos_qscat[iwave,irad,igas]*pir2ndz
 
                 for irad in range(nrad):
                     rr = radius[irad]
@@ -627,7 +652,8 @@ def calc_optics_user_r_dist(wave_in, ndz, radius, radius_unit, r_distribution,
 def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_atmos,
             gravity, kz, mixl, fsed_in, b, eps, scale_h, z_top, z_alpha, z_min, param, mh,
             sig, rmin, nrad, radius, d_molecule, eps_k, c_p_factor, aggregates, Df, N_mon,
-            r_mon, k0, mixed=False, og_vfall=True, do_virtual=True, supsat=0, verbose=False):
+            r_mon, k0, dist='lognormal', gamma_A=None, mixed=False, og_vfall=True,
+            do_virtual=True, supsat=0, verbose=False):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -676,11 +702,11 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         'const' (constant), 'exp' (exponential density derivation)
     mh : float 
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
-    sig : float 
-        Width of the log normal particle distribution
-    rmin : float 
+    sig : float
+        Width of the particle size distribution (geometric standard deviation)
+    rmin : float
         Minium radius on grid (cm)
-    nrad : int 
+    nrad : int
         Number of radii on Mie grid
     radius : ndarray
         Particle radius bin centers from the grid (cm)
@@ -720,6 +746,12 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         consistent between the boundary when spheres grow large enough to become
         aggregates (this applies only when r_mon is fixed. If N_mon is fixed instead, any
         value of k0 is fine).
+    dist : str, optional
+        Particle size distribution, either 'lognormal' (default) or 'gamma'
+        (Christie et al. 2022, Appendix B)
+    gamma_A : float, optional
+        Gamma distribution shape parameter A, derived from sig via the trigamma
+        function. Only used when dist='gamma'. None for lognormal.
     mixed: bool
         If True, cloud particles are considered to mix together rather than form
         individual particles.
@@ -741,7 +773,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
     qt : ndarray 
         gas + condensate mixing ratio (g/g)
     rg : ndarray
-        geometric mean radius of condensate  cm 
+        representative particle radius of condensate (cm)
     reff : ndarray
         droplet effective radius (second moment of size distrib, cm)
     ndz : ndarray 
@@ -852,7 +884,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
                         p_bot, p_base, kz[-1], mixl[-1], gravity, mw_atmos, [gas_mw[i]],
                         [q_below[i]], supsat, fsed_in[i], b, eps, z_bot, z_base, z_alpha, z_min,
                         param, sig, mh, rmin, nrad, radius, d_molecule, eps_k, c_p_factor,
-                        og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, mixed
+                        og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, dist, gamma_A, mixed
                     )
 
                 # no cloud was found below computational domain
@@ -870,7 +902,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
             p_top[iz+1], kz[iz], mixl[iz], gravity, mw_atmos, gas_mw, q_below,
             supsat, fsed_in, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
             sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
-            og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, mixed
+            og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, dist, gamma_A, mixed
         )
 
         qc_path += qc[iz] * (p_top[iz + 1] - p_top[iz]) / gravity
@@ -883,7 +915,8 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl,
           gravity, mw_atmos, gas_mw, q_below, supsat, fsed, b, eps, z_top, z_bot,
           z_alpha, z_min, param, sig, mh, rmin, nrad, radius, d_molecule, eps_k,
-          c_p_factor, og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, mixed=False):
+          c_p_factor, og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, dist, gamma_A,
+          mixed=False):
     """
     Calculate layer condensate properties by iterating on optical depth
     in one model layer (converging on optical depth over sublayers)
@@ -933,11 +966,16 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
     param : str
         fsed parameterisation
         'const' (constant), 'exp' (exponential density derivation)
-    sig : float 
-        Width of the log normal particle distribution 
-    mh : float 
+    sig : float
+        Width of the particle size distribution (geometric standard deviation)
+    dist : str
+        Particle size distribution, either 'lognormal' or 'gamma'
+        (Christie et al. 2022, Appendix B)
+    gamma_A : float or None
+        Gamma distribution shape parameter A. None for lognormal.
+    mh : float
         Metallicity NON log soar (1=1xSolar)
-    rmin : float 
+    rmin : float
         Minium radius on grid (cm)
     nrad : int 
         Number of radii on Mie grid
@@ -991,7 +1029,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
     qt_layer : ndarray 
         gas + condensate mixing ratio (g/g)
     rg_layer : ndarray
-        geometric mean radius of condensate  cm 
+        representative particle radius of condensate (cm)
     reff_layer : ndarray
         droplet effective radius (second moment of size distrib, cm)
     ndz_layer : ndarray 
@@ -1085,14 +1123,14 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
             z_top_sub = z_bot_sub + dz_sub  # top altitude
             z_sub = z_bot_sub + scale_h * np.log( p_bot_sub/p_sub ) # midpoint of layer
             ################################################
-            t_sub = t_bot + np.log(p_bot / p_sub) * dtdlnp  # midpoint temperature
+            t_sub = t_bot + np.log(p_bot / p_sub) * dtdlnp
 
             # calculate cloud porperties of current sublayer
             qt_top, qc_sub, qt_sub, rg_sub, reff_sub, ndz_sub, z_cld, fsed_layer, rho_p_out = calc_qc(
                 gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud, qt_below, mixl, dz_sub,
                 gravity, mw_atmos, mfp, visc, rho_p, w_convect, fsed, b, eps, param,
                 z_bot_sub, z_sub, z_alpha, z_min, sig, mh, rmin, nrad, radius,
-                aggregates, Df, N_mon, r_mon, k0, mixed, og_vfall, z_cld
+                aggregates, Df, N_mon, r_mon, k0, dist, gamma_A, mixed, og_vfall, z_cld
             )
 
             # vertical sums
@@ -1141,8 +1179,11 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
     # Get layer averages where odp is not 0
     mask = opd_layer > 0
     reff_layer[mask] = 1.5 * qc_layer[mask] / (rho_p_out[mask] * opd_layer[mask])
-    lnsig2 = 0.5 * np.log(sig) ** 2
-    rg_layer[mask] = reff_layer[mask] * np.exp(-5 * lnsig2)
+    if dist == 'lognormal':
+        lnsig2 = 0.5 * np.log(sig) ** 2
+        rg_layer[mask] = reff_layer[mask] * np.exp(-5 * lnsig2)
+    elif dist == 'gamma':
+        rg_layer[mask] = reff_layer[mask] * gamma_A / (gamma_A + 2)
 
     # readjust for averaging weight
     qc_layer = qc_layer * gravity / dp_layer
@@ -1154,7 +1195,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
 def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             dz_layer, gravity, mw_atmos, mfp,visc,rho_p,w_convect, fsed, b, eps,
             param, z_bot, z_layer, z_alpha, z_min, sig, mh, rmin, nrad, radius,
-            aggregates, Df, N_mon, r_mon, k0, mixed=False, og_vfall=True, z_cld=None):
+            aggregates, Df, N_mon, r_mon, k0, dist='lognormal', gamma_A=None,
+            mixed=False, og_vfall=True, z_cld=None):
     """
     Calculate condensate number density and effective radius for a layer,
     assuming geometric scatterers. 
@@ -1204,11 +1246,16 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
     param : str
         fsed parameterisation
         'const' (constant), 'exp' (exponential density derivation)
-    sig : float 
-        Width of the log normal particle distrubtion 
-    mh : float 
+    sig : float
+        Width of the particle size distribution (geometric standard deviation)
+    dist : str, optional
+        Particle size distribution, either 'lognormal' (default) or 'gamma'
+        (Christie et al. 2022, Appendix B)
+    gamma_A : float, optional
+        Gamma distribution shape parameter A. None for lognormal.
+    mh : float
         Metallicity NON log solar (1 = 1x solar)
-    rmin : float 
+    rmin : float
         Minium radius on grid (cm)
     nrad : int 
         Number of radii on Mie grid
@@ -1255,9 +1302,9 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         condenstate mixing ratio (g/g)
     qt_layer : ndarray
         gas + condensate mixing ratio (g/g)
-    rg_layer : ndarray
-        geometric mean radius of condensate  cm 
-    reff_layer : ndarray
+    rg_layer : float
+        representative particle radius of condensate (cm)
+    reff_layer : float
         droplet effective radius (second moment of size distrib, cm)
     ndz_layer : ndarray
         number column density of condensate (cm^-3)
@@ -1268,6 +1315,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
     rho_p_out : ndarray
         output densities, only differ from input if mixed=True
     """
+
     # ===================================================================================
     # Initialisation
     # ===================================================================================
@@ -1494,113 +1542,133 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         # would give better results for aggregates, but there was little difference so
         # the code is unchanged here. The method is as follows:
         #
-        # 1) Find vfall values for each of the radii in the .mieff grid, using the vfall
-        #    equation for spheres.
-        # 2) Calculate the constant of proportionality (alpha) that links this array of
-        #    vfall values to the convective velocity x ratio of("grid radius" / "radius
-        #    of particles with vfall equal to w_convect in this layer"), using the
-        #    properties (pressure, temp, gravity) in this layer exclusively.
-        #    Note: This is a way of seeing how particle sizes would scale if the
-        #    conditions were the same everywhere. Alpha is a single value, and often
-        #    simply = 1.
-        # 3) Use this alpha to find r_g (geometric mean radii) and droplet effective
-        #    radius in the layer, assuming a lognormal distribution.
+        # 1) Find vfall values for each of the radii in the .mieff grid, using the vfall equation for spheres.
+        # 2) Calculate the constant of proportionality (alpha) that links this array of vfall values to the convective velocity x ratio of("grid radius" / "radius of particles with vfall equal to w_convect in this layer"), using the properties (pressure, temp, gravity) in this layer exclusively.
+        # Note: This is a way of seeing how particle sizes would scale if the conditions were the same everywhere. Alpha is a single value, and often simply = 1.
+        # 3) Use this alpha to find r_g (geometric mean radii) and droplet effective radius in the layer, assuming a lognormal distribution.
+        #
 
-        # find value of r_w that would exist for spherical particles -- this is needed in
-        # the calculation of alpha, no matter what the particle shape is, because we
-        # calcualte alpha based on the spherical version
-        find_root = True
-        while find_root:
-            try:
-                # use aggregates = False so that we are just using the spherical
-                # version of v_fall
-                rw_temp_spheres = optimize.root_scalar(
-                    vfall_find_root, bracket=[rlo, rhi], method='brentq',
-                    args=(gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p[i],
-                          w_convect, False, 0, 0, 0, 0)
-                )
-                find_root = False
-                rw_layer_spheres = rw_temp_spheres.root
-            except ValueError:
-                # rlo = rlo/10 # MGL and SEM have commented this out, because you could
-                # never form particles smaller than atoms (10^-8 cm)
-                rhi = rhi*10
+        if (dist == 'lognormal'):
 
-                if rhi>1e10:
-                    raise Exception(
-                        f"Warning: Could not find a physical solution for SPHERES (needed"
-                        f" in the alpha calculation)\nthat balances w_convect (Kzz is so "
-                        f"low that particles would need to be smaller than gas\natoms to "
-                        f"stay in the pressure layer). Please try using a higher value Kzz."
-                    )
+            #   geometric std dev of lognormal size distribution
+            lnsig2 = 0.5*np.log( sig )**2
+            #   sigma floor for the purpose of alpha calculation
+            sig_alpha = np.max( [1.1, sig] )
 
-        # calculate vfall for each radius in the .mieff file, assuming spherical particles
-        vfall_temp = []
-        for j in range(len(radius)):
-            if og_vfall:
-                # this calculates vfall for each of the radii in the .mieff grid for
-                # SPHERES. We then assume the same link between r_w and r_g holds for all
-                # shapes fractal dimensions as it does for spheres. This is to avoid
-                # issues with v_fall being much more complex than the original A+M model,
-                # and to make a fairer comparison between different shapes.
-                vfall_temp.append(
-                    vfall(
-                        radius[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer,
-                        rho_p[i], aggregates=False, Df=0, N_mon=0, r_mon=0, k0=0
-                    )
-                )
-            else:
-                # balance forces to arrive at solution
-                vlo = 1e0; vhi = 1e6
-                find_root = True
-                while find_root:
-                    try:
-                        vfall_temp.append(
-                            solve_force_balance(
-                                "vfall", radius[j], gravity, mw_atmos, mfp, visc,
-                                t_layer, p_layer, rho_p[i], vlo, vhi
-                            )
-                        )
-                        find_root = False
-                    # if failed, expand search domain
-                    except ValueError:
-                        vlo /= 10
-                        vhi *= 10
+            # find value of r_w that would exist for spherical particles -- this is needed in the calculation of alpha, no matter what the particle shape is, because we calcualte alpha based on the spherical version
+
+            find_root = True
+            while find_root:
+                try:
+                    rw_temp_spheres = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq',
+                            args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p[i],w_convect, False, 0, 0, 0, 0)) # use aggregates = False so that we are just using the spherical version of v_fall
+                    find_root = False
+                except ValueError:
+                    #rlo = rlo/10 # MGL and SEM have commented this out, because you could never form particles smaller than atoms (10^-8 cm)
+                    rhi = rhi*10
+
+                    if rhi>1e10 : raise Exception(f"Warning: Could not find a physical solution for SPHERES (needed in the alpha calculation) \
+                                                    \n that balances w_convect (Kzz is so low that particles would need to be smaller than gas \
+                                                    \n atoms to stay in the pressure layer). Please try using a higher value Kzz.")
+            rw_layer_spheres = rw_temp_spheres.root
 
 
-        # sigma floor for the purpose of alpha calculation
-        sig_alpha = np.max( [1.1, sig] )
+            # calculate vfall for each radius in the .mieff file, assuming spherical particles
+            vfall_temp = []
+            for j in range(len(radius)):
+                if og_vfall:
+                    vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p[i], aggregates=False, Df=0, N_mon=0, r_mon=0, k0=0)) # this calculates vfall for each of the radii in the .mieff grid for SPHERES. We then assume the same link between r_w and r_g holds for all shapes fractal dimensions as it does for spheres. This is to avoid issues with v_fall being much more complex than the original A+M model, and to make a fairer comparison between different shapes.
+                else:
+                    vlo = 1e0; vhi = 1e6
+                    find_root = True
+                    while find_root:
+                        try:
+                            vfall_temp.append(solve_force_balance("vfall", radius[j], gravity, mw_atmos,
+                                mfp, visc, t_layer, p_layer, rho_p[i], vlo, vhi))
+                            find_root = False
+                        except ValueError:
+                            vlo = vlo/10
+                            vhi = vhi*10
 
-        #   find alpha for power law fit vf = w(r/rw)^alpha
-        def pow_law(r, alpha_pl):
-            """ use spherical version of r_w, calculated below """
-            return np.log(w_convect) + alpha_pl * np.log (r / rw_layer_spheres)
+            #   find alpha for power law fit vf = w(r/rw)^alpha
+            def pow_law(r, alpha_pl):
+                """ use spherical version of r_w, calculated below """
+                return np.log(w_convect) + alpha_pl * np.log(r / rw_layer_spheres)
 
-        # determine alpha, assuming spherical particles
-        # this code finds alpha (a constant of proportionality) for each of the radius
-        # values in the .mieff grid, assuming that they scale with v_fall in a power law
-        pars, cov = optimize.curve_fit(
-            f=pow_law, xdata=radius, ydata=np.log(vfall_temp).ravel(), p0=[0],
-            bounds=(-np.inf, np.inf)
-        )
-        alpha = pars[0]
+            # determine alpha, assuming spherical particles
+            # this code finds alpha (a constant of proportionality) for each of the radius
+            # values in the .mieff grid, assuming that they scale with v_fall in a power law
+            pars, cov = optimize.curve_fit(
+                f=pow_law, xdata=radius, ydata=np.log(vfall_temp).ravel(), p0=[0],
+                bounds=(-np.inf, np.inf)
+            )
+            alpha = pars[0]
 
-        # EQN. 13 A&M
-        # geometric mean radius of lognormal size distribution
-        rg_layer[i] = (fsed_mid[i]**(1./alpha) *
-                       rw_layer * np.exp(-(alpha + 6) * lnsig2))
+            #     EQN. 13 A&M
+            #   geometric mean radius of lognormal size distribution
+            rg_layer[i] = (fsed_mid[i]**(1./alpha) *
+                        rw_layer * np.exp( -(alpha+6)*lnsig2 ))
 
-        # droplet effective radius (cm)
-        reff_layer[i] = rg_layer[i]*np.exp(5 * lnsig2)
+            #   droplet effective radius (cm)
+            reff_layer[i] = rg_layer[i]*np.exp( 5*lnsig2 )
 
-    # ===================================================================================
-    # Calculate the cloud particle number densities
-    # ===================================================================================
-    # EQN. 14 A&M
-    # column droplet number concentration (cm^-2)
-    rgs = rg_layer > 0  # select only non zero rg values, rest of ndz is zero
-    ndz_layer[rgs] = ((3 * rho_atmos * qc_layer * dz_layer)[rgs] /
-                      (4 * np.pi * rho_p * rg_layer**3)[rgs] * np.exp(-9*lnsig2))
+            #      EQN. 14 A&M
+            #   column droplet number concentration (cm^-2)
+            ndz_layer[i] = (3*rho_atmos*qc_layer[i]*dz_layer /
+                        ( 4*np.pi*rho_p[i]*rg_layer[i]**3 ) * np.exp( -9*lnsig2 ))
+            
+        elif (dist == 'gamma'):
+
+            #   find alpha for power law fit vf = w(r/rw)^alpha — same as lognormal
+            def pow_law(r, alpha):
+                return np.log(w_convect) + alpha * np.log(r / rw_layer_spheres)
+
+            find_root = True
+            while find_root:
+                try:
+                    rw_temp_spheres = optimize.root_scalar(vfall_find_root, bracket=[rlo, rhi], method='brentq',
+                            args=(gravity,mw_atmos,mfp,visc,t_layer,p_layer, rho_p[i],w_convect, False, 0, 0, 0, 0))
+                    find_root = False
+                except ValueError:
+                    rhi = rhi*10
+                    if rhi>1e10 : raise Exception(f"Warning: Could not find a physical solution for SPHERES ...")
+            rw_layer_spheres = rw_temp_spheres.root
+
+            vfall_temp = []
+            for j in range(len(radius)):
+                if og_vfall:
+                    vfall_temp.append(vfall(radius[j], gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p[i], aggregates=False, Df=0, N_mon=0, r_mon=0, k0=0))
+                else:
+                    vlo = 1e0; vhi = 1e6
+                    find_root = True
+                    while find_root:
+                        try:
+                            vfall_temp.append(solve_force_balance("vfall", radius[j], gravity, mw_atmos,
+                                mfp, visc, t_layer, p_layer, rho_p[i], vlo, vhi))
+                            find_root = False
+                        except ValueError:
+                            vlo = vlo/10
+                            vhi = vhi*10
+
+
+            pars, cov = optimize.curve_fit(f=pow_law, xdata=radius, ydata=np.log(vfall_temp).ravel(), p0=[0],
+                                bounds=(-np.inf, np.inf))
+            alpha = pars[0]
+
+            #   Christie et al. (2022) Eq. B6 — rate parameter B (using ln_gamma for large gamma_A)
+            B = (1.0 / rw_layer) * np.exp((gammaln(gamma_A + 3 + alpha) - gammaln(gamma_A + 3) - np.log(fsed_mid[i])) / alpha)
+
+            #   mean radius = A/B  (Christie et al. 2022)
+            rg_layer = gamma_A / B
+
+            #   I (Elspeth) changed to the 3rd/2nd moment effective radius convention, 
+            #   as opposed to the Christie et al. (2022) RMS equation (commented out below)
+            #reff_layer = np.sqrt(gamma_A * (gamma_A + 1)) / B 
+            reff_layer = (gamma_A + 2) / B
+
+            #   column number density — Eq. B9
+            ndz_layer[i] = (3 * rho_atmos * qc_layer[i] * dz_layer * B**3 /
+                        (4 * np.pi * rho_p[i] * gamma_A * (gamma_A + 1) * (gamma_A + 2)))
 
     return (qt_top, qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, z_cld,
             fsed_mid, rho_p)
@@ -1609,7 +1677,7 @@ class Atmosphere():
     def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,
                     param='const', verbose=False, supsat=0, gas_mmr=None,
                     aggregates=False, Df=None, N_mon=None, r_mon=None, k0=0,
-                    mixed=False):
+                    dist='lognormal', mixed=False):
         """
         Parameters
         ----------
@@ -1627,7 +1695,11 @@ class Atmosphere():
         mmw : float 
             MMW of the atmosphere 
         sig : float 
-            Width of the log normal distribution for the particle sizes 
+            Geometric standard deviation controlling the width of the particle size
+            distribution. Used directly for lognormal. For gamma, controls the shape
+            parameter A using the trigamma equation.
+        dist : str
+            Particle size distribution ('lognormal' or 'gamma')
         param : str
             fsed parameterisation
             'const' (constant), 'exp' (exponential density derivation)
@@ -1670,6 +1742,11 @@ class Atmosphere():
         self.mmw = mmw
         self.b = b
         self.sig = sig
+        self.dist = dist
+        if self.dist not in ('lognormal', 'gamma'):
+            raise ValueError("dist must be 'lognormal' or 'gamma'.")
+        if dist == 'gamma':
+            self.gamma_A = brentq(lambda A: polygamma(1, A) - np.log(sig)**2, 1e-6, 1e6)
         self.param = param
         self.eps = eps
         self.verbose = verbose
@@ -2303,7 +2380,7 @@ def get_mie(gas, directory, aggregates=False, Df=None):
     nradii = int(df.iloc[0,1])
 
     #get the radii (all the rows where there the last three rows are nans)
-    radii = df.loc[np.isnan(df['qscat'])]['wave'].values
+    radii = df.loc[np.isnan(df['qscat'])]['wave'].values.copy()
 
     df = df.dropna()
 
@@ -2327,10 +2404,10 @@ def get_mie(gas, directory, aggregates=False, Df=None):
         df['qext'] = flipped_qext
         df['cos_qscat'] = flipped_cos_qscat
 
-    wave = df['wave'].values.reshape((nradii,nwave)).T
-    qscat = df['qscat'].values.reshape((nradii,nwave)).copy().T
-    qext = df['qext'].values.reshape((nradii,nwave)).T
-    cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T
+    wave = df['wave'].values.reshape((nradii,nwave)).T.copy()
+    qscat = df['qscat'].values.reshape((nradii,nwave)).T.copy()
+    qext = df['qext'].values.reshape((nradii,nwave)).T.copy()
+    cos_qscat = df['cos_qscat'].values.reshape((nradii,nwave)).T.copy()
 
     # if scattering code returns Q_sca <0 (can happen for extreme examples, like very
     # large particles with very low fractal dimensions), set Q_sca = 1e-16 (basically zero,
