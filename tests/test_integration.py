@@ -66,6 +66,27 @@ def test_basic_virga():
     #                       og_solver=False, analytical_rg=False, og_vfall=False, do_virtual=False)
     # assert np.isclose(np.sum(all_out['condensate_mmr']), 1.843949389772658e-05)
 
+def test_gamma():
+    # ==== Basic run ====================================================================
+    # initialise atmosphere
+    a = jdi.Atmosphere(['MnS'], fsed=1, mh=1, mmw=2.2, dist='gamma')
+    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
+    a.ptk(df=jdi.hot_jupiter())
+    # calculate cloud profile
+    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__))
+    # test the output
+    tested_outputs = [
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
+        'single_scattering', 'asymmetry', 'opd_by_gas', 'mixing_length', 'altitude',
+    ]
+    expected_outputs = [
+        6.163946287910695e-05, 514.7395678038475, 919.6026299769981, 981.9688907809427,
+        5932.982016478914, 3376.784125780101, 0.6933963285465201, 3400236589.2062654,
+        36062700139.00066,
+    ]
+    for i, test in enumerate(tested_outputs):
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
+
 def test_fractals():
     # initialise atmosphere
     a = jdi.Atmosphere(['MnS'], fsed=1, mh=1, mmw=2.2, aggregates=True, Df=2, N_mon=100)

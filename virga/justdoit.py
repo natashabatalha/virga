@@ -439,18 +439,17 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
 
                 #  Calculate normalization factor (forces lognormal sum = 1.0)
                 if dist == 'lognormal':
-                    rsig = sig
                     norm = 0.
                     for irad in range(nrad):
                         rr = radius[irad]
-                        arg1 = dr[irad] / ( np.sqrt(2.*np.pi)*rr*np.log(rsig) )
-                        arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
+                        arg1 = dr[irad] / ( np.sqrt(2.*np.pi)*rr*np.log(sig) )
+                        arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(sig)**2 )
                         norm = norm + arg1*np.exp( arg2 )
                     norm = ndz[iz,igas] / norm
                     for irad in range(nrad):
                         rr = radius[irad]
-                        arg1 = dr[irad] / ( np.sqrt(2.*np.pi)*np.log(rsig) )
-                        arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(rsig)**2 )
+                        arg1 = dr[irad] / ( np.sqrt(2.*np.pi)*np.log(sig) )
+                        arg2 = -np.log( rr/rg[iz,igas] )**2 / ( 2*np.log(sig)**2 )
                         pir2ndz = norm*np.pi*rr*arg1*np.exp( arg2 )
                         for iwave in range(nwave):
                             scat_gas[iz,iwave,igas] += qscat[iwave,irad,igas]*pir2ndz
@@ -470,7 +469,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                     for irad in range(nrad):
                         rr = radius[irad]
                         pdf_rr = np.exp(log_norm_factor + (gamma_A - 1) * np.log(rr) - B * rr)
-                        pir2ndz = norm * PI * rr**2 * dr[irad] * pdf_rr
+                        pir2ndz = norm * np.pi * rr**2 * dr[irad] * pdf_rr
                         for iwave in range(nwave):
                             scat_gas[iz,iwave,igas] += qscat[iwave,irad,igas]*pir2ndz
                             ext_gas[iz,iwave,igas]  += qext[iwave,irad,igas]*pir2ndz
@@ -479,8 +478,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                 for irad in range(nrad):
                     rr = radius[irad]
                     # factors for lognormal distribution
-                    arg1 = dr[irad] / (np.sqrt(2. * np.pi) * np.log(rsig))
-                    arg2 = - np.log(rr / rg[iz,igas])**2 / (2 * np.log(rsig)**2)
+                    arg1 = dr[irad] / (np.sqrt(2. * np.pi) * np.log(sig))
+                    arg2 = - np.log(rr / rg[iz,igas])**2 / (2 * np.log(sig)**2)
                     # geometric cross-section
                     pir2ndz = norm * np.pi * rr * arg1 * np.exp(arg2)
 
