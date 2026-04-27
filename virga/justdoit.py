@@ -414,12 +414,33 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     g0 = np.zeros((nz, nwave))  # asymmetry parameter
 
     # Mixed particle working array
-    ndr_mixed = np.zeros((nz, nrad, len(gas_name[:-1])))  # number density of mixed part.
+    ndr_mixed = np.zeros((nz, nrad, ngas-1))  # number density of mixed part.
     vmr_test = np.ones((2, nrad, ngas-1)) * 2  # check if mixed opacities need recalc.
     qextm = np.zeros((nz, nw, nrad))  # mixed cloud particle extinction coefficient
     qscam = np.zeros((nz, nw, nrad))  # mixed cloud particle scattering coefficient
     cos_qscam = np.zeros((nz, nw, nrad)) # mixed cloud particle asymmetry coefficient
     qet, qst, cqt = None, None, None  # default assignment
+
+    # default value for mixed opacity
+    if mixed_opacity_type is None:
+        mixed_opacity_type = 'multi_modal'
+
+    ma = Mieai(use_ai=False)  # set up mieai class
+    for g, gas in enumerate(gas_name):
+        if gas =='mixed':
+            continue
+        vmr2 = {}
+        for v, gas2 in enumerate(gas_name):
+            if gas2 =='mixed':
+                continue
+            if gas2 == gas:
+                vmr2[gas2] = np.ones((len(radius),))
+            else:
+                vmr2[gas2] = np.zeros((len(radius),))
+        qet, qst, cqt = ma.grid_efficiencies(wave, radius * 1e4, vmr2)
+        qext[:, :, g] = qet.T
+        qscat[:, :, g] = qst.T
+        cos_qscat[:, :, g] = cqt.T
 
     # ===================================================================================
     # Mixed opacity precalculation
@@ -433,7 +454,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     if mixed:
 
         # ==== Check if MieAi is loaded and can be used
-        if mixed_opacity_type in [None, 'multi_modal', 'single_model'] and not mieai_loaded:
+        if mixed_opacity_type in ['multi_modal', 'single_model'] and not mieai_loaded:
             print('WARNING: MieAi not loaded, change opacity mixing to "quick".')
             mixed_opacity_type = 'quick'
         else:
@@ -447,14 +468,14 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
             ngas -= 1  # remove 'mixed' entry which is always the last one
 
         # ==== Mixed particles
-        elif mixed_opacity_type in ['single_model', 'multi_model']:
+        elif mixed_opacity_type in ['single_modal', 'multi_modal']:
             for z in range(nz):
                 # reset working variables
                 vmr = {}  # VMR dict for mieai
                 vmr_tot = 0  # check if there are any cloud partilces
 
                 # ==== Calculate size distributions for each material (including mixed)
-                for g, gas in enumerate(gas_name):
+                for g, gas in enumerate(gas_name[:-1]):
                     # get size distribution of particles
                     if dist == 'lognormal':
                         arg1 = dr / (np.sqrt(2. * np.pi) * radius * np.log(sig))
@@ -464,19 +485,19 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                         B = gamma_A / rg[z, g]
                         lf = gamma_A * np.log(B) - gammaln(gamma_A)
                         vl = dr * np.exp(lf + (gamma_A - 1) * np.log(radius) - B * radius)
-                    dist = vl / np.sum(vl)  # normalisation
-                    ndr_mixed[z, :, g] = np.nan_to_num(ndz[z, g] * dist)
+                    ndist = vl / np.sum(vl)  # normalisation
+                    ndr_mixed[z, :, g] = np.nan_to_num(ndz[z, g] * ndist)
 
-                    for g, gas in enumerate(gas_name[:-1]):
-                        if mixed_opacity_type == 'multi_modal':
-                            # get fraction from the number density VMR per bin
-                            val = ndr_mixed[z, :, g] / np.sum(ndr_mixed[z, :, :-1], axis=1)
-                        else: # mixed_opacity_type == 'single_modal'
-                            # get fraction from the total VMR
-                            val = np.ones((nrad,)) * ndz[z, g] / np.sum(ndz[z, :-1], axis=1)
-                        vmr[gas] = np.nan_to_num(val)
-                        vmr_test[0, :, g] = vmr[gas]  # remember values for next loop
-                        vmr_tot += np.sum(vmr[gas])  # check if some values are non-zero
+                for g, gas in enumerate(gas_name[:-1]):
+                    if mixed_opacity_type == 'multi_modal':
+                        # get fraction from the number density VMR per bin
+                        val = ndr_mixed[z, :, g] / np.sum(ndr_mixed[z, :], axis=1)
+                    else: # mixed_opacity_type == 'single_modal'
+                        # get fraction from the total VMR
+                        val = np.ones((nrad,)) * ndz[z, g] / np.sum(ndz[z, :-1], axis=1)
+                    vmr[gas] = np.nan_to_num(val)
+                    vmr_test[0, :, g] = vmr[gas]  # remember values for next loop
+                    vmr_tot += np.sum(vmr[gas])  # check if some values are non-zero
 
                 # ==== Check if VMRs have changed, and only then re-calculate opacity
                 if np.any(np.abs((vmr_test[0] - vmr_test[1]) / vmr_test[0]) > 1e-4):
@@ -486,17 +507,18 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
 
                     # calcualte opacity using MieAi library
                     else:
-                        qet, qst, asym = ma.grid_efficiencies(wave, radius * 1e4, vmr)
-                        cqt = qet * asym  # qcos according to Virga syntax
+                        qeti, qsti, asym = ma.grid_efficiencies(wave, radius * 1e4, vmr)
+                        cqti = qeti * asym  # qcos according to Virga syntax
+                        qet, qst, cqt = qeti.T, qsti.T, cqti.T  # change format
                         # remeber the vmrs for the next run
                         vmr_test[1] = vmr_test[0]
 
                 # set values (these are the old values if vmrs have not changed)
-                qextm[z], qscam[z], cos_qscam[z] = qet.T, qst.T, cqt.T
+                qextm[z], qscam[z], cos_qscam[z] = qet, qst, cqt
 
         else:
-            raise ValueError('mixed_opacity_type not recognized (' +
-                             mixed_opacity_type + ')')
+            raise ValueError('mixed_opacity_type "' + mixed_opacity_type
+                             + '" not recognized ')
 
     # ===================================================================================
     # Calculate opacity of each cloud particle material
@@ -536,7 +558,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
 
                 if mixed and mixed_opacity_type in ['single_modal', 'multi_modal']:
                     # only mixed entry should be considered
-                    if igas != 'mixed':
+                    if gas_name[igas] != 'mixed':
                         continue
                     for irad in range(nrad):
                         for iw in range(nwave):
@@ -632,8 +654,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                 opd_ext = opd_ext + ext_gas[iz, iwave, igas]
                 cos_qs = cos_qs + cqs_gas[iz, iwave, igas]
 
+                opd[iz, iwave] = opd_ext
                 if opd_scat > 0.:
-                    opd[iz,iwave] = opd_ext
                     w0[iz,iwave] = opd_scat / opd_ext
                     g0[iz,iwave] = cos_qs / opd_scat
 
