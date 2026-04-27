@@ -45,7 +45,8 @@ Adding Cloud Complexity
 .. toctree::
    :maxdepth: 2
 
-   Direct solver </notebooks/6_Variable_fsed.ipynb>
+   Variable Fsed </notebooks/6_Variable_fsed.ipynb>
+   Gamma vs. Lognormal Distribution </notebooks/6a_Gamma_Distribution_Example.ipynb>
 
 Switch to Direct Solver
 -----------------------
@@ -72,4 +73,4 @@ Fractal Aggregates
 
    Running Virga with Aggregates </notebooks/10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter.ipynb>
    Creating spectra via PICASO with Aggregates </notebooks/11_Fractal_Aggregate_spectra_in_PICASO.ipynb>
-   Greating Custom Fractal Optical Properties </notebooks/12_Custom_Fractal_Aggregate_Aerosols.ipynb>
+   Creating Custom Fractal Optical Properties </notebooks/12_Custom_Fractal_Aggregate_Aerosols.ipynb>
