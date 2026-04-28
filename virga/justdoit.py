@@ -25,7 +25,7 @@ try:
     mieai_loaded = True
 except:
     # Virga can be run without MieAi, but mixed opacities are not available
-    raise Warning('MieAi not found, mixed cloud particles cannot be calculated')
+    print('[WARNING] MieAi not found, mixed cloud particles cannot be calculated')
 
 # ==== Local imports
 from .root_functions import (vfall,vfall_find_root,qvs_below_model,
