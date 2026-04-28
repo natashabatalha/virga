@@ -426,11 +426,11 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
         mixed_opacity_type = 'multi_modal'
 
     ma = Mieai(use_ai=False)  # set up mieai class
-    for g, gas in enumerate(gas_name[:-1]):
+    for g, gas in enumerate(gas_name):
         if gas =='mixed':
             continue
         vmr2 = {}
-        for v, gas2 in enumerate(gas_name[:-1]):
+        for v, gas2 in enumerate(gas_name):
             if gas2 =='mixed':
                 continue
             if gas2 == gas:
