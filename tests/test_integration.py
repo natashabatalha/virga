@@ -39,7 +39,9 @@ def test_basic_virga():
 
     # ==== Test mixed clouds with variable fsed =========================================
     # initialise atmosphere
-    a = jdi.Atmosphere(['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':1}, mh=1, mmw=2.2, param='exp', b=3)
+    a = jdi.Atmosphere(
+        ['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':1}, mh=1, mmw=2.2, param='exp', b=3
+    )
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
@@ -63,7 +65,8 @@ def test_basic_virga():
     # a.ptk(df=jdi.hot_jupiter())
     # # calculate cloud profile
     # all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__),
-    #                       og_solver=False, analytical_rg=False, og_vfall=False, do_virtual=False)
+    #                       og_solver=False, analytical_rg=False, og_vfall=False,
+    #                       do_virtual=False)
     # assert np.isclose(np.sum(all_out['condensate_mmr']), 1.843949389772658e-05)
 
 def test_gamma():
@@ -114,11 +117,13 @@ def test_mixed_clouds():
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
-    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__), quick_mix=True)
+    all_out = jdi.compute(
+        a, as_dict=True, directory=os.path.dirname(__file__), mixed_opacity_type='quick'
+    )
     # test the output
     tested_outputs = [
-        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density', 'mixing_length',
-        'altitude',
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
+        'mixing_length', 'altitude',
     ]
     expected_outputs = [
         0.004800222240714903, 261.57706522293745, 869.4505664824956, 11291.153198839147,
@@ -130,11 +135,15 @@ def test_mixed_clouds():
 
     # ==== Test mixed clouds with variable fsed =========================================
     # initialise atmosphere
-    a = jdi.Atmosphere(['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':2, 'mixed': 3}, mh=1, mmw=2.2, mixed=True)
+    a = jdi.Atmosphere(
+        ['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':2, 'mixed': 3}, mh=1, mmw=2.2, mixed=True
+    )
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
-    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__), quick_mix=True)
+    all_out = jdi.compute(
+        a, as_dict=True, directory=os.path.dirname(__file__), mixed_opacity_type='quick'
+    )
     # test the output
     tested_outputs = [
         'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
