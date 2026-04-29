@@ -6,6 +6,7 @@ from scipy.integrate import quad
 from scipy import optimize
 from . import  pvaps
 from . import  gas_properties
+from .stage_deprecated import sdep_vfall_legacy
 
 def advdiff(qt, ad_qbelow=None,ad_qvs=None, ad_mixl=None,ad_dz=None ,ad_rainf=None,
         zb=None, b=None, eps=None, param='const'):
@@ -250,119 +251,14 @@ def vfall(r, grav, mw_atmos, mfp, visc, t, p, rhop, aggregates, Df, N_mon, r_mon
 
     return vfall_r
 
-def vfall_legacy(r, grav,mw_atmos,mfp,visc,
-              t,p, rhop):
-    """
-    Calculate fallspeed for a spherical particle at one layer in an
-    atmosphere, depending on Reynolds number for Stokes flow.
-
-    For Re_Stokes < 1, use Stokes velocity with slip correction
-    For Re_Stokes > 1, use fit to Re = exp( b1*x + b2*x^2 )
-     where x = log( Cd Re^2 / 24 )
-     where b2 = -0.1 (curvature term) and
-     b1 from fit between Stokes at Re=1, Cd=24 and Re=1e3, Cd=0.45
-
-    and Precipitation, Reidel, Holland, 1978) and Carlson, Rossow, and
-    Orton (J. Atmos. Sci. 45, p. 2066, 1988)
-
-    all units are cgs
-
-    A. Ackerman Feb-2000
-
-    Parameters
-    ----------
-    r : float
-        particle radius (cm)
-    grav : float
-        acceleration of gravity (cm/s^2)
-    mw_atmos : float
-        atmospheric molecular weight (g/mol)
-    mfp : float
-        atmospheric molecular mean free path (cm)
-    visc : float
-        atmospheric dynamic viscosity (dyne s/cm^2) see Eqn. B2 in A&M
-    t : float
-        atmospheric temperature (K)
-    p  : float
-        atmospheric pressure (dyne/cm^2)
-    rhop : float
-        density of particle (g/cm^3)
-    """
-
-    # the drag coefficient for a reynolds number of 1000
-    # which is appropriate for oblate spheroids
-    # Fig. 10-36 in Pruppacher & Klett 1978
-    cdrag = 0.45
-
-    #In order to solve the drag problem we fit y=log(reynolds)
-    #as a function of x=log(cdrag * reynolds**2)
-    #if you assume that at reynolds= 1, cdrag=24 and
-    #reynolds=1000, cdrag=0.45 you get the following fit:
-    # y = 0.8 * x - 0.1 * x**2
-    #Full explanation: see A & M Appendix B between eq. B2 and B3
-    #Simply though, this allows us to get terminal fall velocity from
-    #reynolds number
-    b1 = 0.8
-    b2 = -0.01
-
-
-
-    R_GAS = 8.3143e7
-
-    #calculate constants need to get Knudsen and Reynolds numbers
-    knudsen = mfp / r
-    rho_atmos = p / ( (R_GAS/mw_atmos) * t )
-    drho = rhop - rho_atmos
-
-    # Cunningham correction (slip factor for gas kinetic effects)
-    # Cunningham, E., "On the velocity of steady fall of spherical particles through fluid
-    # medium," Proc. Roy. Soc. A 83(1910)357
-    # Cunningham derived a value of 1.26 in the stone ages. In reality, this number is
-    # a function of the knudsen number. Various studies have derived
-    # different value for this number (see this citation
-    # https://www.researchgate.net/publication/242470948_A_Novel_Slip_Correction_Factor_for_Spherical_Aerosol_Particles
-    # Within the range of studied values, this 1.26 number changes particle sizes by a few
-    # microns
-    # That is A OKAY for the level of accuracy we need.
-    beta_slip = 1. + 1.26*knudsen
-
-    #Stokes terminal velocity (low Reynolds number)
-    #EQN B1 in A&M
-    #visc is eqn. B2 in A&M but is computed in `calc_qc`
-    #also eqn 10-104 in Pruppacher & klett 1978
-    vfall_r = beta_slip*(2.0/9.0)*drho*grav*r**2 / visc
-
-    #compute reynolds number for low reynolds number case
-    reynolds = 2.0*r*rho_atmos*vfall_r / visc
-
-    #if reynolds number is between 1-1000 we are in turbulent flow
-    #limit
-    if 1 < reynolds <= 1e3:
-        #OLD METHODLOGY
-        #correct drag coefficient for turbulence (x = Cd Re^2 / 24)
-        #x = np.log( reynolds )
-        #y = b1*x + b2*x**2
-
-        #compute cd * N_re^2 by equating drag and gravitational force
-        cd_nre2 = 32.0 * r**3.0 * drho * rho_atmos * grav / (3.0 * visc ** 2 )
-        #coefficients from EQN 10-111 in Pruppachar & Klett 1978
-        #they are an empirical fit to Figure 10-9
-        xx = np.log(cd_nre2)
-        b0,b1,b2,b3,b4,b5,b6 = (-0.318657e1, 0.992696, -.153193e-2, -.987059e-3, -.578878e-3,
-                                0.855176e-4, -0.327815e-5)
-        y = b0 + b1*xx**1 + b2*xx**2 + b3*xx**3 + b4*xx**4 + b5*xx**5 + b6*xx**6
-
-        reynolds = np.exp(y)
-        vfall_r = visc*reynolds / (2.*r*rho_atmos)
-
-    if reynolds >1e3 :# 300
-        #when Reynolds is greater than 1000, we can just use
-        #an asymptotic value that is independent of Reynolds number
-        #Eqn. B3 from A&M 01
-        vfall_r = beta_slip*np.sqrt( 8.*drho*r*grav / (3.*cdrag*rho_atmos) )
-
-    return vfall_r
-
+def vfall_legacy(r, grav, mw_atmos, mfp, visc, t, p, rhop):
+    """ Deprecated function """
+    print(
+        '[WARNING] "vfall_legacy" will be fully deprecated in v4. if you are an active '
+        'user of this function and there is a rationale we are not aware of for keeping '
+        'it please email the developers."'
+    )
+    return sdep_vfall_legacy(r, grav, mw_atmos, mfp, visc, t, p, rhop)
 
 def vfall_aggregates(r, grav, mw_atmos, t, p, rhop, D=2, Ragg=None):
     """

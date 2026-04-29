@@ -1503,6 +1503,11 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             #   Find total condensate mixing ratio
             qc_layer[i] = np.max([0., qt_layer[i] - qvs])
 
+    # if no cloud material can condense, return here, otherwise, continue
+    if not material_can_condense.all():
+        return (qt_top, qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, z_cld,
+                fsed_mid, rho_p)
+
     # if cloud particles are mixed, add the total mass mixing ratio
     # NOTE SK: Here we assume that cloud particles of all sizes have the same density.
     # This is an approximation as cloud particle of different sizes might have different
@@ -1518,11 +1523,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         rho_p[-1] = 0
         if qc_layer[-1] > 0:
             rho_p[-1] = np.sum(qc_layer[:-1]) / np.sum(qc_layer[:-1] / rho_p[:-1])
-
-    # if no cloud material can condense, return here, otherwise, continue
-    if not material_can_condense.all():
-        return (qt_top, qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, z_cld,
-                fsed_mid, rho_p)
+        rho_p[:] = rho_p[-1]
 
     # ===================================================================================
     # Calculate the radius of cloud particles by balancing the fall out rate
