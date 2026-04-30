@@ -66,7 +66,7 @@ def test_virtual_cloud_and_og_vfall():
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
     test = jdi.hot_jupiter()
     test['temperature'] /= 100
-    a.ptk(df=jdi.hot_jupiter())
+    a.ptk(df=test)
     # calculate cloud profile
     all_out = jdi.compute(
         a, as_dict=True, directory=os.path.dirname(__file__), og_vfall=False
@@ -77,9 +77,9 @@ def test_virtual_cloud_and_og_vfall():
         'single_scattering', 'asymmetry', 'opd_by_gas', 'mixing_length', 'altitude',
     ]
     expected_outputs = [
-        6.163947994805619e-05, 231.49187048194747, 769.4510134330098,
-        783.8442617174335, 5959.096548181797, 3435.2784716202495,
-        1.019735536864796, 3400236589.2062654, 36062700139.00066
+        6.21733257330643e-05, 1320688.476214182, 4389808.9567320105,
+        0.16073295909273821, 9633.44498928589, 6579.989951588848, 1.0269292661864409,
+        34002365.89206266, 360627001.39000654
     ]
     for i, test in enumerate(tested_outputs):
         assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
