@@ -28,7 +28,9 @@ def test_sub_functions_in_justdoit():
     assert np.isclose(np.sum(rup), 0.26096233848538236)
     assert np.isclose(np.sum(dr), 0.11861924476608288)
 
-    rec = jdi.recommend_gas(np.asarray([1e-2, 1e2]), np.asarray([100, 1000]), 1, 2.34)
+    rec = jdi.recommend_gas(
+        np.asarray([1e-2, 1e2]), np.asarray([100, 1000]), 1, 2.34, plot=True
+    )
     assert np.asarray([i in rec for i in ['KCl', 'H2O', 'ZnS', 'NH3']]).all()
 
     p, t = jdi.condensation_t('H2O', 1, 2.34)
@@ -37,12 +39,19 @@ def test_sub_functions_in_justdoit():
 
 def test_sub_functions_in_root():
     """ Simple calls to sub functions"""
-    from virga.root_functions import advdiff
+    from virga.root_functions import (
+        advdiff, vfall_aggregates, vfall_aggregrates_ohno, moment
+    )
     res = advdiff(3, ad_qvs=4, ad_rainf=5, ad_mixl=6, ad_dz=7, ad_qbelow=8)
     assert np.isclose(np.sum(res), 5.0)
     res = advdiff(3, ad_qvs=4, ad_rainf=5, ad_mixl=6, ad_dz=7, ad_qbelow=8,
                   param='exp', b=2, eps=2, zb=9)
     assert np.isclose(np.sum(res), 1.0)
+    res = vfall_aggregates(1, 2, 3, 4, 5, 6)
+    assert np.isclose(np.sum(res), 9728.468844212115)
+    res = vfall_aggregrates_ohno(1, 2, 3, 4, 5, 6, 7, 8, 9)
+    assert np.isclose(np.sum(res), -194922909.6159394)
+
 
 def test_gas_properties():
     from virga.gas_properties import (
