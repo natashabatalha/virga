@@ -1,33 +1,10 @@
 """ This file contains all tests for subfunctions of virga """
 import os
 import numpy as np
-from astropy.units import temperature
 
 from virga import justdoit as jdi
 
 def test_mie_database():
-
-    # # ==== Fortran (this one thakes way to long to calcualte, but it works)
-    # qext, qsca, asym, radii, wave = jdi.calc_mie_db(
-    #     ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 2, fort_calc_mie=True
-    # )
-    #
-    # assert np.isclose(np.sum(qext), 795.2903509450259)
-    # assert np.isclose(np.sum(qsca), 3324.2373085461054)
-    # assert np.isclose(np.sum(asym), 1154.4167919503002)
-
-    # # ==== Fractals, takes forever
-    # qext, qsca, asym, radii, wave = jdi.calc_mie_db(
-    #     ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 2,
-    #     aggregates=os.path.dirname(__file__), Df=2, N_mon=100,
-    #     optool_dir='/home/kiefersv/Documents/work/not_my_code/optool'
-    # )
-    # print(np.sum(qext))
-    # print(np.sum(qsca))
-    # print(np.sum(asym))
-    # assert np.isclose(np.sum(qext), 3902.080488782566)
-    # assert np.isclose(np.sum(qsca), 3720.809396082643)
-    # assert np.isclose(np.sum(asym), 1905.5623111571579)
 
     # ==== Basic
     qext, qsca, asym, radii, wave = jdi.calc_mie_db(
@@ -37,6 +14,7 @@ def test_mie_database():
     assert np.isclose(np.sum(qext), 3902.080488782566)
     assert np.isclose(np.sum(qsca), 3720.809396082643)
     assert np.isclose(np.sum(asym), 1905.5623111571579)
+
 
 def test_sub_functions_in_justdoit():
     """ Simple calls to sub functions"""

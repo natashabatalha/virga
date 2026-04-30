@@ -69,6 +69,28 @@ def test_basic_virga():
     #                       do_virtual=False)
     # assert np.isclose(np.sum(all_out['condensate_mmr']), 1.843949389772658e-05)
 
+def test_direct_solver():
+    # ==== Basic run ====================================================================
+    # initialise atmosphere
+    a = jdi.Atmosphere(['MnS'], fsed=1, mh=1, mmw=2.2)
+    a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
+    a.ptk(df=jdi.hot_jupiter())
+    # calculate cloud profile
+    all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__),
+                          og_solver=False, og_vfall=False)
+    # test the output
+    tested_outputs = [
+        'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
+        'single_scattering', 'asymmetry', 'opd_by_gas', 'mixing_length', 'altitude',
+    ]
+    expected_outputs = [
+        1.843949389772658e-05, 732.9302063055602, 2436.1714683257405,
+        56.98667503728258, 5958.077421399466, 3776.112042191915, 0.2717684171959098,
+        681615970.0850405, 35075608885.320946
+    ]
+    for i, test in enumerate(tested_outputs):
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
+
 def test_gamma():
     # ==== Basic run ====================================================================
     # initialise atmosphere

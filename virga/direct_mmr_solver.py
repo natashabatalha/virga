@@ -61,7 +61,7 @@ def _particle_distribution_properties(fsed, rw, alpha, qc, rho_atmos_val, dz, rh
             reff = rg * np.exp(5 * lnsig2)
             ndz = (3 * rho_atmos_val * qc * dz /
                    (4 * np.pi * rho_p * rg**3) * np.exp(-9 * lnsig2))
-            return rg, reff, ndz
+            return rg[0], reff[0], ndz[0]
 
         moment_s = np.log(sig)
 
@@ -372,8 +372,8 @@ def calc_qc(z, P_z, T_z, T_P, kz, gravity, gas_name, gas_mw, gas_mmr, rho_p, mw_
     qt_out = np.zeros(len(z))
     p_out = np.zeros(len(z))
     for i in range(len(z)):
-        p_out[i] = P_z(z[i])
-        qt_out[i] = qt(z[i])
+        p_out[i] = float(P_z(z[i]))
+        qt_out[i] = qt(z[i])[0]
         T = T_z(z[i]); P = P_z(z[i])
         qc_out[i] = max([0., qt_out[i] - qvs(T, P)])
         mixl_out[i] =  mixl(T, P)
