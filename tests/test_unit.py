@@ -37,6 +37,16 @@ def test_sub_functions_in_justdoit():
     assert np.isclose(np.sum(p), 161.10038437493023)
     assert np.isclose(np.sum(t), 4385.122564767833)
 
+    from virga.justdoit import brown_dwarf
+    test_val = ['pressure', 'temperature', 'chf']
+    df_list = [brown_dwarf(),]
+    vals = [
+        [480.6105653, 97878.52, 771743669.0],
+    ]
+    for f, df in enumerate(df_list):
+        for t, test in enumerate(test_val):
+            assert np.isclose(np.sum(df[test]), vals[f][t])
+
 def test_sub_functions_in_root():
     """ Simple calls to sub functions"""
     from virga.root_functions import (
