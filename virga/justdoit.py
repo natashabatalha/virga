@@ -1876,6 +1876,12 @@ class Atmosphere():
             If true, cloud particles are assumed to mix together rather than form individual
             particles
         """
+
+        # ==== Check validity of inputs
+        if aggregates and mixed:
+            raise ValueError('Mixed clouds and fractal aggregates are not supported together yet.')
+
+        # ==== Set variables
         if isinstance(condensibles, str):
             self.condensibles = [condensibles]
         else:
