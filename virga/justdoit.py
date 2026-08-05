@@ -18,10 +18,10 @@ from scipy.optimize import brentq
 # ==== Load in MieAi to calculate mixed cloud opacities
 mieai_loaded = False
 try:
-    from mieai import Mieai
+    from mienet import MieNet
     # Mie Class is setup here since setup can take a while, while execution is
     # much faster. This prevents reimport during itarative use of Virga
-    ma = Mieai(use_ai=False)
+    ma = MieNet(use_ai=True)
     mieai_loaded = True
 except:
     # Virga can be run without MieAi, but mixed opacities are not available
@@ -39,7 +39,7 @@ from .direct_mmr_solver import direct_solver
 
 def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15,
             refine_TP=True, og_vfall=True, analytical_rg=True, do_virtual=True,
-            mixed_opacity_type=None):
+            mixed_opacity_type=None, use_ai=False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class
     before running this.
@@ -236,7 +236,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
         nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
         cos_qscat, atmo.sig, rmin, rmax, rho_p, wave_in, condensibles, directory,
         atmo.dist, getattr(atmo, 'gamma_A', None), atmo.mixed, mixed_opacity_type,
-        verbose=atmo.verbose
+        use_ai, verbose=atmo.verbose
     )
 
     # ===================================================================================
@@ -326,7 +326,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas, wave, pressure, temp
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
                 cos_qscat, sig, rmin, rmax, rhop, wavelength, gas_name, directory,
-                dist='lognormal', gamma_A=None, mixed=False, mixed_opacity_type='quick',
+                dist='lognormal', gamma_A=None, mixed=False, mixed_opacity_type='quick', use_ai=False,
                 verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
@@ -489,7 +489,13 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                         qet, qst, cqt = 0, 0, 0
                     # calcualte opacity using MieAi library
                     else:
-                        qeti, qsti, asym = ma.grid_efficiencies(wave, radius * 1e4, vmr)
+                        if use_ai:
+                            qeti, qsti, asym = ma.ai_efficiencies(wave, radius * 1e4, vmr)
+                            qeti = qeti.T
+                            qsti = qsti.T
+                            asym = asym.T
+                        else:
+                            qeti, qsti, asym = ma.grid_efficiencies(wave, radius * 1e4, vmr)
                         cqti = qeti * asym  # qcos according to Virga syntax
                         qet, qst, cqt = qeti.T, qsti.T, cqti.T  # change format
                         vmr_test[1] = vmr_test[0]  # remeber the vmrs for the next run
@@ -1504,7 +1510,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             qc_layer[i] = np.max([0., qt_layer[i] - qvs])
 
     # if no cloud material can condense, return here, otherwise, continue
-    if not material_can_condense.all():
+    if not material_can_condense.any():
         return (qt_top, qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, z_cld,
                 fsed_mid, rho_p)
 
@@ -1520,10 +1526,14 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         qc_layer[-1] = np.asarray([np.sum(qc_layer)])[0]
 
         # calculate density of mixed cloud particles
-        rho_p[-1] = 0
+        _rho_p = rho_p.copy()
+        _rho_p[-1] = 0
         if qc_layer[-1] > 0:
             rho_p[-1] = np.sum(qc_layer[:-1]) / np.sum(qc_layer[:-1] / rho_p[:-1])
-        rho_p[:] = rho_p[-1]
+        _rho_p[:] = rho_p[-1]
+    else:
+        # if not mixed, use homogenouse values
+        _rho_p = rho_p
 
     # ===================================================================================
     # Calculate the radius of cloud particles by balancing the fall out rate
@@ -1579,7 +1589,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                 if og_vfall:
                     rw_temp = optimize.root_scalar(
                         vfall_find_root, bracket=[rlo, rhi], method='brentq',
-                        args=(gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p[i],
+                        args=(gravity, mw_atmos, mfp, visc, t_layer, p_layer, _rho_p[i],
                               w_convect, aggregates, Df, N_mon, r_mon, k0)
                     )
                     rw_layer = rw_temp.root
@@ -1587,7 +1597,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                 else:
                     rw_temp = solve_force_balance(
                         "rw", w_convect, gravity, mw_atmos, mfp, visc, t_layer, p_layer,
-                        rho_p[i], rlo, rhi
+                        _rho_p[i], rlo, rhi
                     )
                     rw_layer = rw_temp
 
@@ -1672,7 +1682,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                     rw_temp_spheres = optimize.root_scalar(
                         vfall_find_root, bracket=[rlo, rhi], method='brentq',
                         args=(gravity, mw_atmos, mfp, visc, t_layer, p_layer,
-                              rho_p[i], w_convect, False, 0, 0, 0, 0)
+                              _rho_p[i], w_convect, False, 0, 0, 0, 0)
                     )
                     find_root = False
                 except ValueError:
@@ -1700,7 +1710,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                     # and to make a fairer comparison between different shapes.
                     vfall_temp.append(
                         vfall(rad, gravity, mw_atmos, mfp, visc, t_layer, p_layer,
-                              rho_p[i], aggregates=False, Df=0, N_mon=0, r_mon=0, k0=0)
+                              _rho_p[i], aggregates=False, Df=0, N_mon=0, r_mon=0, k0=0)
                     )
                 else:
                     vlo = 1e0
@@ -1710,7 +1720,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                         try:
                             vfall_temp.append(
                                 solve_force_balance("vfall", rad, gravity, mw_atmos,
-                                mfp, visc, t_layer, p_layer, rho_p[i], vlo, vhi))
+                                mfp, visc, t_layer, p_layer, _rho_p[i], vlo, vhi))
                             find_root = False
                         except ValueError:
                             vlo = vlo / 10
@@ -1739,7 +1749,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 
             # EQN. 14 A&M: column droplet number concentration (cm^-2)
             ndz_layer[i] = (3 * rho_atmos * qc_layer[i] * dz_layer /
-                        (4 * np.pi * rho_p[i] * rg_layer[i]**3) * np.exp(-9 * lnsig2))
+                        (4 * np.pi * _rho_p[i] * rg_layer[i]**3) * np.exp(-9 * lnsig2))
 
         elif dist == 'gamma':
 
@@ -1752,7 +1762,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                 try:
                     rw_temp_spheres = optimize.root_scalar(
                         vfall_find_root, bracket=[rlo, rhi], method='brentq',
-                        args=(gravity, mw_atmos, mfp, visc, t_layer, p_layer, rho_p[i],
+                        args=(gravity, mw_atmos, mfp, visc, t_layer, p_layer, _rho_p[i],
                               w_convect, False, 0, 0, 0, 0)
                     )
                     find_root = False
@@ -1769,7 +1779,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                 if og_vfall:
                     vfall_temp.append(
                         vfall(rad, gravity, mw_atmos, mfp, visc, t_layer,
-                              p_layer, rho_p[i], aggregates=False, Df=0, N_mon=0,
+                              p_layer, _rho_p[i], aggregates=False, Df=0, N_mon=0,
                               r_mon=0, k0=0)
                     )
                 else:
@@ -1780,7 +1790,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
                         try:
                             vfall_temp.append(solve_force_balance(
                                 "vfall", rad, gravity, mw_atmos,
-                                mfp, visc, t_layer, p_layer, rho_p[i], vlo, vhi)
+                                mfp, visc, t_layer, p_layer, _rho_p[i], vlo, vhi)
                             )
                             find_root = False
                         except ValueError:
@@ -1809,7 +1819,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 
             # column number density — Eq. B9
             ndz_layer[i] = (3 * rho_atmos * qc_layer[i] * dz_layer * B**3 /
-                        (4 * np.pi * rho_p[i] * gamma_A * (gamma_A + 1) * (gamma_A + 2)))
+                        (4 * np.pi * _rho_p[i] * gamma_A * (gamma_A + 1) * (gamma_A + 2)))
 
     return (qt_top, qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, z_cld,
             fsed_mid, rho_p)
