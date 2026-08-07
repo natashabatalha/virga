@@ -281,8 +281,9 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas, wave, pressure, temp
         "asymmetry": g0,
         "opd_by_gas": opd_gas,
         "condensibles": gas_names,
+        "sig": sig,
         "scalar_inputs": {
-            'mh': mh, 'mmw': mmw, 'sig': sig, 'nrad': nrad, 'rmin': rmin,
+            'mh': mh, 'mmw': mmw, 'nrad': nrad, 'rmin': rmin,
             'rmax': rmax, 'log_radii': log_radii, 'dist': dist,'gamma_A': gamma_A,
         },
         "fsed": fsed,
@@ -356,7 +357,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
         Extinction efficiency
     cos_qscat : ndarray
         qscat-weighted <cos (scattering angle)>
-    sig : float
+    sig : float or ndarray
         Width of the particle size distribution (geometric standard deviation)
     rmin: float
         Minimum particle radius bin center from the grid (cm)
@@ -538,9 +539,9 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                 # ==== Radius distribution for different distributions
                 r2 = None  # default assignment
                 if dist == 'lognormal':
-                    r2 = rg[iz, igas]**2 * np.exp(2*np.log(sig)**2)
+                    r2 = rg[iz, igas]**2 * np.exp(2*np.log(sig[igas])**2)
                 elif dist == 'gamma':
-                    r2 = rg[iz, igas]**2 * (gamma_A + 1) / gamma_A
+                    r2 = rg[iz, igas]**2 * (gamma_A[igas] + 1) / gamma_A[igas]
                 opd_layer[iz, igas] = 2.*np.pi*r2*ndz[iz, igas]
 
                 if mixed and mixed_opacity_type in ['single_modal', 'multi_modal']:
@@ -560,15 +561,15 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                     # ==== Calculate normalization factor (forces lognormal sum = 1.0)
                     for irad in range(nrad):
                         rr = radius[irad]
-                        arg1 = dr[irad] / (np.sqrt(2.*np.pi) * rr * np.log(sig))
-                        arg2 = -np.log(rr / rg[iz, igas])**2 / (2 * np.log(sig)**2)
+                        arg1 = dr[irad] / (np.sqrt(2.*np.pi) * rr * np.log(sig[igas]))
+                        arg2 = -np.log(rr / rg[iz, igas])**2 / (2 * np.log(sig[igas])**2)
                         norm = norm + arg1 * np.exp(arg2)
                     norm = ndz[iz, igas] / norm
                     # ==== Calculate opacity
                     for irad in range(nrad):
                         rr = radius[irad]
-                        arg1 = dr[irad] / (np.sqrt(2. * np.pi) * np.log(sig))
-                        arg2 = -np.log(rr / rg[iz, igas])**2 / (2 * np.log(sig)**2)
+                        arg1 = dr[irad] / (np.sqrt(2. * np.pi) * np.log(sig[igas]))
+                        arg2 = -np.log(rr / rg[iz, igas])**2 / (2 * np.log(sig[igas])**2)
                         pir2ndz = norm * np.pi * rr * arg1 * np.exp(arg2)
                         for iwave in range(nwave):
                             scat_gas[iz, iwave, igas] += qscat[iwave, irad, igas] * pir2ndz
@@ -577,20 +578,20 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
 
                 elif dist == 'gamma':
                     # ==== Calculate normalization factor (forces lognormal sum = 1.0)
-                    B = gamma_A / rg[iz, igas]
+                    B = gamma_A[igas] / rg[iz, igas]
                     # Use ln_gamma instead of gamma for numerical stability for large gamma_A
                     log_B = np.log(B)
-                    log_norm_factor = gamma_A * log_B - gammaln(gamma_A)
+                    log_norm_factor = gamma_A[igas] * log_B - gammaln(gamma_A[igas])
                     norm = 0.
                     for irad in range(nrad):
                         rr = radius[irad]
                         norm = (norm + dr[irad] * np.exp(log_norm_factor
-                                + (gamma_A - 1) * np.log(rr) - B * rr))
+                                + (gamma_A[igas] - 1) * np.log(rr) - B * rr))
                     norm = ndz[iz,igas] / norm
                     # ==== Calculate opacity
                     for irad in range(nrad):
                         rr = radius[irad]
-                        pdf_rr = np.exp(log_norm_factor + (gamma_A - 1) * np.log(rr) - B * rr)
+                        pdf_rr = np.exp(log_norm_factor + (gamma_A[igas] - 1) * np.log(rr) - B * rr)
                         pir2ndz = norm * np.pi * rr**2 * dr[irad] * pdf_rr
                         for iwave in range(nwave):
                             scat_gas[iz, iwave, igas] += qscat[iwave, irad, igas] * pir2ndz
@@ -805,7 +806,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         'const' (constant), 'exp' (exponential density derivation)
     mh : float
         Atmospheric metallicity in NON log units (e.g. 1 for 1x solar)
-    sig : float
+    sig : float or ndarray
         Width of the particle size distribution (geometric standard deviation)
     rmin : float
         Minium radius on grid (cm)
@@ -1069,7 +1070,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
     param : str
         fsed parameterisation
         'const' (constant), 'exp' (exponential density derivation)
-    sig : float
+    sig : float or ndarray
         Width of the particle size distribution (geometric standard deviation)
     dist : str
         Particle size distribution, either 'lognormal' or 'gamma'
@@ -1290,9 +1291,9 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
     reff_layer[mask] = 1.5 * qc_layer[mask] / (rho_p_out[mask] * opd_layer[mask])
     if dist == 'lognormal':
         lnsig2 = 0.5 * np.log(sig) ** 2
-        rg_layer[mask] = reff_layer[mask] * np.exp(-5 * lnsig2)
+        rg_layer[mask] = reff_layer[mask] * np.exp(-5 * lnsig2[mask])
     elif dist == 'gamma':
-        rg_layer[mask] = reff_layer[mask] * gamma_A / (gamma_A + 2)
+        rg_layer[mask] = reff_layer[mask] * gamma_A[mask] / (gamma_A[mask] + 2)
 
     # readjust for averaging weight
     qc_layer = qc_layer * gravity / dp_layer
@@ -1356,7 +1357,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
     param : str
         fsed parameterisation
         'const' (constant), 'exp' (exponential density derivation)
-    sig : float
+    sig : float or ndarray
         Width of the particle size distribution (geometric standard deviation)
     dist : str, optional
         Particle size distribution, either 'lognormal' (default) or 'gamma'
@@ -1669,7 +1670,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 
         if dist == 'lognormal':
             #   geometric std dev of lognormal size distribution
-            lnsig2 = 0.5 * np.log(sig)**2
+            lnsig2 = 0.5 * np.log(sig[i])**2
 
             # find value of r_w that would exist for spherical particles -- this is
             # needed in the calculation of alpha, no matter what the particle shape
@@ -1806,20 +1807,20 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 
             # Christie et al. (2022) Eq. B6 — rate parameter B
             # (using ln_gamma for large gamma_A)
-            B = ((1.0 / rw_layer) * np.exp((gammaln(gamma_A + 3 + alpha)
-                - gammaln(gamma_A + 3) - np.log(fsed_mid[i])) / alpha))
+            B = ((1.0 / rw_layer) * np.exp((gammaln(gamma_A[i] + 3 + alpha)
+                - gammaln(gamma_A[i] + 3) - np.log(fsed_mid[i])) / alpha))
 
             # mean radius = A/B  (Christie et al. 2022)
-            rg_layer = gamma_A / B
+            rg_layer = gamma_A[i] / B
 
             # I (Elspeth) changed to the 3rd/2nd moment effective radius convention,
             # as opposed to the Christie et al. (2022) RMS equation (commented out below)
             #reff_layer = np.sqrt(gamma_A * (gamma_A + 1)) / B
-            reff_layer = (gamma_A + 2) / B
+            reff_layer = (gamma_A[i] + 2) / B
 
             # column number density — Eq. B9
             ndz_layer[i] = (3 * rho_atmos * qc_layer[i] * dz_layer * B**3 /
-                        (4 * np.pi * _rho_p[i] * gamma_A * (gamma_A + 1) * (gamma_A + 2)))
+                        (4 * np.pi * _rho_p[i] * gamma_A[i] * (gamma_A[i] + 1) * (gamma_A[i] + 2)))
 
     return (qt_top, qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, z_cld,
             fsed_mid, rho_p)
@@ -1846,7 +1847,7 @@ class Atmosphere():
             metalicity
         mmw : float
             MMW of the atmosphere
-        sig : float
+        sig : float, dict, or ndarray
             Geometric standard deviation controlling the width of the particle size
             distribution. Used directly for lognormal. For gamma, controls the shape
             parameter A using the trigamma equation.
@@ -1892,21 +1893,10 @@ class Atmosphere():
             raise ValueError('Mixed clouds and fractal aggregates are not supported together yet.')
 
         # ==== Set variables
-        if isinstance(condensibles, str):
-            self.condensibles = [condensibles]
-        else:
-            self.condensibles = condensibles
         self.mh = mh
         self.mmw = mmw
         self.b = b
-        self.sig = sig
         self.dist = dist
-        if self.dist not in ('lognormal', 'gamma'):
-            raise ValueError("dist must be 'lognormal' or 'gamma'.")
-        if dist == 'gamma':
-            self.gamma_A = brentq(
-                lambda A: polygamma(1, A) - np.log(sig)**2, 1e-6, 1e6
-            )
         self.param = param
         self.eps = eps
         self.verbose = verbose
@@ -1919,19 +1909,65 @@ class Atmosphere():
         #grab constants
         self.constants()
         self.supsat = supsat
+
+
+        # ==== Variables with variable input types
+        # condensibles can be single species or lists
+        if isinstance(condensibles, str):
+            self.condensibles = [condensibles]
+        else:
+            self.condensibles = condensibles
+
+        # condensation leng
+        cond_len = len(condensibles)
+        if self.mixed:
+            cond_len += 1
+
+        # sig can be as float, dict, ndarray or list
+        if isinstance(sig, float):
+            self.sig = np.ones(cond_len) * sig
+        elif isinstance(sig, dict):
+            self.sig = np.ones(cond_len)
+            for c, cond in enumerate(self.condensibles):
+                self.sig[c] = sig[cond]
+            if self.mixed:
+                self.sig[-1] = sig['mixed']
+        elif isinstance(sig, np.ndarray):
+            if cond_len != len(sig):
+                if self.mixed:
+                    raise ValueError("Length of sigmas does not match number of species. "
+                                     "Did you Forget the mixed entry?")
+                else:
+                    raise ValueError("Length of sigmas does not match number of species")
+            self.sig = sig
+        elif isinstance(sig, list):
+            if cond_len != len(sig):
+                if self.mixed:
+                    raise ValueError("Length of sigmas does not match number of species. "
+                                     "Did you Forget the mixed entry?")
+                else:
+                    raise ValueError("Length of sigmas does not match number of species")
+            self.sig = np.asarray(sig)
+
+        # gas_mmr can be a single value or a list
         if isinstance(gas_mmr, type(None)):
             self.gas_mmr = {igas: None for igas in self.condensibles}
         else:
             self.gas_mmr = gas_mmr
 
+        # size distribution changes
+        if self.dist not in ('lognormal', 'gamma'):
+            raise ValueError("dist must be 'lognormal' or 'gamma'.")
+        if dist == 'gamma':
+            self.gamma_A = np.ones(len(condensibles))
+            for c, cond in enumerate(self.condensibles):
+                self.gamma_A[c] = brentq(
+                    lambda A: polygamma(1, A) - np.log(self.sig[c])**2, 1e-6, 1e6
+                )
+
         # set fsed with the same length as condensibles
         if isinstance(fsed, (int, float)):
-            # if only one value is given, use the same for all species
-            fsed_len = len(self.condensibles)
-            if self.mixed:
-                # if mixed, add the mixed species as well
-                fsed_len += 1
-            self.fsed = [fsed] * fsed_len
+            self.fsed = [fsed] * cond_len
         else:
             # if multiple values are given, assign them in the correct order
             self.fsed = []
@@ -1943,7 +1979,6 @@ class Atmosphere():
             if mixed:
                 # add the mixed species fsed
                 self.fsed.append(fsed['mixed'])
-
         self.fsed = np.asarray(self.fsed)  # we need to do math with this later
 
         # ==== Initialise working variable used later

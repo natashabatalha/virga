@@ -37,10 +37,11 @@ def test_basic_virga():
     pd.testing.assert_frame_equal(df_cl, df_test)
 
 
-    # ==== Test mixed clouds with variable fsed =========================================
+    # ==== Test clouds with variable fsed and sigma =========================================
     # initialise atmosphere
     a = jdi.Atmosphere(
-        ['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':1}, mh=1, mmw=2.2, param='exp', b=3
+        ['MnS', 'SiO2'], fsed={'MnS':1, 'SiO2':1}, mh=1, mmw=2.2, param='exp', b=3,
+        sig=[1, 4]
     )
     a.gravity(gravity=7.460, gravity_unit=u.Unit('m/(s**2)'))
     a.ptk(df=jdi.hot_jupiter())
@@ -52,8 +53,8 @@ def test_basic_virga():
         'mixing_length', 'altitude',
     ]
     expected_outputs = [
-        0.007420224549370982, 385.37988982782247, 1280.956200178287, 94307.79521654578,
-        3400236589.2062654, 36062700139.00066,
+        0.007420042794346001, 913.4590758525817, 1144.685910887268, 322829560621.1157,
+        3400236589.2062654, 36062700139.00066
     ]
     for i, test in enumerate(tested_outputs):
         assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
@@ -164,14 +165,12 @@ def test_mixed_clouds():
         'mixing_length', 'altitude',
     ]
     expected_outputs = [
-        0.0003867951944018425, 268.24896426722853, 891.6271529451845, 10214.326891755005,
+        0.004797725874827489, 457.4281311886753, 1520.435851086795, 4349822.742474344,
         3400236589.2062654, 36062700139.00066
     ]
 
     for i, test in enumerate(tested_outputs):
-        print(np.sum(all_out[test]))
-        # assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
-    print('-----------')
+        assert np.isclose(np.sum(all_out[test]), expected_outputs[i])
 
     # ==== Test mixed clouds with variable fsed =========================================
     # initialise atmosphere
@@ -190,7 +189,7 @@ def test_mixed_clouds():
         'mixing_length', 'altitude',
     ]
     expected_outputs = [
-        8.105264074369921e-05, 654.6334777482392, 2175.922600788865, 139.0021437756558,
+        0.0024403823704852393, 943.2559217922122, 3135.2687394104623, 501618.68059201626,
         3400236589.2062654, 36062700139.00066
     ]
     for i, test in enumerate(tested_outputs):
@@ -210,7 +209,7 @@ def test_mixed_clouds():
         'mixing_length', 'altitude',
     ]
     expected_outputs = [
-        0.004800222240714903, 479.5232340104981, 1593.8773037942406, 12144.145061051053,
+        0.00479764116888752, 674.8984205851, 2243.280822788288, 4350662.838922345,
         3400236589.2062654, 36062700139.00066
     ]
     for i, test in enumerate(tested_outputs):
