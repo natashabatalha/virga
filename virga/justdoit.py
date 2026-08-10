@@ -117,6 +117,12 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             "WARNING: If using mixed particles, you need to set og_vfall=True (the "
             "default - the other method is still under development)."
         )
+    # warn user if they want to use mixed particles and aggregates, which is currently
+    # not supported
+    if atmo.mixed and atmo.aggregates:
+        raise ValueError(
+            "WARNING: Mixed aggregates are currently not supported."
+        )
 
     # Preparation of variables
     mmw = atmo.mmw  # mean molecular weight
@@ -206,7 +212,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             atmo.scale_h, atmo.z_top, atmo.z_alpha, min(atmo.z), atmo.param, mh, atmo.sig,
             rmin, nradii, radius, atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
             atmo.aggregates, atmo.Df, atmo.N_mon, atmo.r_mon, atmo.k0, atmo.dist,
-            getattr(atmo, 'gamma_A', None), atmo.mixed, og_vfall,
+            atmo.gamma_A, atmo.mixed, og_vfall,
             supsat=atmo.supsat,verbose=atmo.verbose, do_virtual=do_virtual
         )
 
@@ -224,7 +230,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             atmo.g, atmo.kz, atmo.fsed, mh, atmo.sig, radius, atmo.d_molecule,
             atmo.eps_k, atmo.c_p_factor, atmo.aggregates, atmo.Df, atmo.N_mon,
             atmo.r_mon, atmo.k0, direct_tol, refine_TP, og_vfall, analytical_rg,
-            atmo.dist, getattr(atmo, 'gamma_A', None)
+            atmo.dist, atmo.gamma_A
         )
 
     # ===================================================================================
@@ -235,7 +241,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     opd, w0, g0, opd_gas = calc_optics(
         nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
         cos_qscat, atmo.sig, rmin, rmax, rho_p, wave_in, condensibles, directory,
-        atmo.dist, getattr(atmo, 'gamma_A', None), atmo.mixed, mixed_opacity_type,
+        atmo.dist, atmo.gamma_A, atmo.mixed, mixed_opacity_type,
         use_ai, verbose=atmo.verbose
     )
 
@@ -251,7 +257,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             fsed_out = fsed_in
         return create_dict(
             qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas,wave_in, pres_out, temp_out,
-            condensibles, mh,mmw, fsed_out, atmo.sig, atmo.dist, getattr(atmo, 'gamma_A', None),
+            condensibles, mh,mmw, fsed_out, atmo.sig, atmo.dist, atmo.gamma_A,
             nradii,rmin, rmax, log_radii, z_out, atmo.dz_layer, mixl, atmo.kz, atmo.scale_h,
             z_cld, atmo.mixed
         )
@@ -282,9 +288,10 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas, wave, pressure, temp
         "opd_by_gas": opd_gas,
         "condensibles": gas_names,
         "sig": sig,
+        'gamma_A': gamma_A,
         "scalar_inputs": {
             'mh': mh, 'mmw': mmw, 'nrad': nrad, 'rmin': rmin,
-            'rmax': rmax, 'log_radii': log_radii, 'dist': dist,'gamma_A': gamma_A,
+            'rmax': rmax, 'log_radii': log_radii, 'dist': dist,
         },
         "fsed": fsed,
         "altitude": z,
@@ -462,13 +469,13 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                 for g, gas in enumerate(gas_name[:-1]):
                     # get size distribution of particles
                     if dist == 'lognormal':
-                        arg1 = dr / (np.sqrt(2. * np.pi) * radius * np.log(sig))
-                        arg2 = -np.log(radius / rg[z, g])**2 / (2 * np.log(sig)**2)
+                        arg1 = dr / (np.sqrt(2. * np.pi) * radius * np.log(sig[g]))
+                        arg2 = -np.log(radius / rg[z, g])**2 / (2 * np.log(sig[g])**2)
                         vl = arg1 * np.exp(arg2)
                     else:  # dist == 'gamma':
-                        B = gamma_A / rg[z, g]
-                        lf = gamma_A * np.log(B) - gammaln(gamma_A)
-                        vl = dr * np.exp(lf + (gamma_A - 1) * np.log(radius) - B * radius)
+                        B = gamma_A[g] / rg[z, g]
+                        lf = gamma_A[g] * np.log(B) - gammaln(gamma_A[g])
+                        vl = dr * np.exp(lf + (gamma_A[g] - 1) * np.log(radius) - B * radius)
                     ndist = vl / np.sum(vl)  # normalisation
                     ndr_mixed[z, :, g] = np.nan_to_num(ndz[z, g] * ndist)
 
@@ -496,7 +503,7 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                             qsti = qsti.T
                             asym = asym.T
                         else:
-                            qeti, qsti, asym = ma.grid_efficiencies(wave, radius * 1e4, vmr)
+                            qeti, qsti, asym = ma.efficiencies(wave, radius * 1e4, vmr)
                         cqti = qeti * asym  # qcos according to Virga syntax
                         qet, qst, cqt = qeti.T, qsti.T, cqti.T  # change format
                         vmr_test[1] = vmr_test[0]  # remeber the vmrs for the next run
@@ -1005,7 +1012,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
             condensibles, rho_p, t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz],
             p_top[iz+1], kz[iz], mixl[iz], gravity, mw_atmos, gas_mw, q_below,
             supsat, fsed_in, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
-            sig,mh, rmin, nrad, radius, d_molecule,eps_k,c_p_factor,
+            sig, mh, rmin, nrad, radius, d_molecule, eps_k, c_p_factor,
             og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, dist, gamma_A, mixed
         )
 
@@ -1533,7 +1540,7 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             rho_p[-1] = np.sum(qc_layer[:-1]) / np.sum(qc_layer[:-1] / rho_p[:-1])
         _rho_p[:] = rho_p[-1]
     else:
-        # if not mixed, use homogenouse values
+        # if not mixed, use homogenous values
         _rho_p = rho_p
 
     # ===================================================================================
@@ -1924,7 +1931,7 @@ class Atmosphere():
             cond_len += 1
 
         # sig can be as float, dict, ndarray or list
-        if isinstance(sig, float):
+        if isinstance(sig, float) or isinstance(sig, int):
             self.sig = np.ones(cond_len) * sig
         elif isinstance(sig, dict):
             self.sig = np.ones(cond_len)
@@ -1956,6 +1963,7 @@ class Atmosphere():
             self.gas_mmr = gas_mmr
 
         # size distribution changes
+        self.gamma_A = None  # default value
         if self.dist not in ('lognormal', 'gamma'):
             raise ValueError("dist must be 'lognormal' or 'gamma'.")
         if dist == 'gamma':
