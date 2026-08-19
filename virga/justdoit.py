@@ -1503,6 +1503,8 @@ def calc_qc(gas_name, supsat, cfrac, t_layer, p_layer, r_atmos, r_cloud, q_below
         # Cloudy layer: first calculate qt and qc at top of layer, then calculate the
         # additional cloud properties of the layer
         else:
+            qvs+= (q_below[i] - qvs) * (1-cfrac)
+            
             # if no cloud layer was found up until now, remember the altitude
             if isinstance(z_cld[i], type(None)):
                 z_cld[i] = z_bot
@@ -1510,12 +1512,12 @@ def calc_qc(gas_name, supsat, cfrac, t_layer, p_layer, r_atmos, r_cloud, q_below
             # solution for exponentially parametrisation
             if param == "exp":
                 fs = fsed[i] / np.exp(z_alpha / b)
-                qt_top[i] = (qvs + cfrac*(q_below[i] - qvs)
+                qt_top[i] = (qvs + (q_below[i] - qvs)
                              * np.exp(-b * fs / mixl * np.exp(z_bot / b)
                              * (np.exp(dz_layer / b) - 1) + eps * dz_layer / mixl))
             # solution for constant fsed
             else:
-                qt_top[i] = qvs + cfrac*(q_below[i] - qvs) * np.exp(-fsed[i] * dz_layer / mixl)
+                qt_top[i] = qvs + (q_below[i] - qvs) * np.exp(-fsed[i] * dz_layer / mixl)
 
             # Use trapezoid rule to calculate layer averages
             qt_layer[i] = 0.5 * (q_below[i] + qt_top[i])
