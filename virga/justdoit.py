@@ -213,7 +213,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             rmin, nradii, radius, atmo.d_molecule,atmo.eps_k,atmo.c_p_factor,
             atmo.aggregates, atmo.Df, atmo.N_mon, atmo.r_mon, atmo.k0, atmo.dist,
             atmo.gamma_A, atmo.mixed, og_vfall,
-            supsat=atmo.supsat,verbose=atmo.verbose, do_virtual=do_virtual
+            supsat=atmo.supsat, cfrac=atmo.cfrac, verbose=atmo.verbose, do_virtual=do_virtual
         )
 
         # additional parameters needed from the atmopshere class
@@ -764,7 +764,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
             gravity, kz, mixl, fsed_in, b, eps, scale_h, z_top, z_alpha, z_min, param, mh,
             sig, rmin, nrad, radius, d_molecule, eps_k, c_p_factor, aggregates, Df, N_mon,
             r_mon, k0, dist='lognormal', gamma_A=None, mixed=False, og_vfall=True,
-            do_virtual=True, supsat=0, verbose=False):
+            do_virtual=True, supsat=0, cfrac=1,  verbose=False):
     """
     Given an atmosphere and condensates, calculate size and concentration
     of condensates in balance between eddy diffusion and sedimentation.
@@ -876,6 +876,8 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         species condenses below the model domain.
     supsat : float, optional
         Default = 0 , Saturation factor (after condensation)
+    cfrac : float, optional
+        Default = 1 , fraction of gas-phase which can condense
 
     Returns
     -------
@@ -993,8 +995,8 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
                     _, _, _, _, _, q_below[i], _, _ = layer(
                         igas, [rho_p[i]], t_layer_virtual, p_layer_virtual, t_bot,t_base,
                         p_bot, p_base, kz[-1], mixl[-1], gravity, mw_atmos, [gas_mw[i]],
-                        [q_below[i]], supsat, fsed_in[i], b, eps, z_bot, z_base, z_alpha, z_min,
-                        param, sig, mh, rmin, nrad, radius, d_molecule, eps_k, c_p_factor,
+                        [q_below[i]], supsat, cfrac, fsed_in[i], b, eps, z_bot, z_base, z_alpha,
+                        z_min, param, sig, mh, rmin, nrad, radius, d_molecule, eps_k, c_p_factor,
                         og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, dist, gamma_A, mixed
                     )
 
@@ -1011,7 +1013,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
         qc[iz], qt[iz], rg[iz], reff[iz],ndz[iz], q_below, z_cld, _  = layer(
             condensibles, rho_p, t_mid[iz], p_mid[iz], t_top[iz], t_top[iz+1], p_top[iz],
             p_top[iz+1], kz[iz], mixl[iz], gravity, mw_atmos, gas_mw, q_below,
-            supsat, fsed_in, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
+            supsat, cfrac, fsed_in, b, eps, z_top[iz], z_top[iz+1], z_alpha, z_min, param,
             sig, mh, rmin, nrad, radius, d_molecule, eps_k, c_p_factor,
             og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, dist, gamma_A, mixed
         )
@@ -1024,7 +1026,7 @@ def eddysed(t_top, p_top,t_mid, p_mid, condensibles, gas_mw, gas_mmr, rho_p, mw_
     return qc, qt, rg, reff, ndz, qc_path,mixl, z_cld_out
 
 def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl,
-          gravity, mw_atmos, gas_mw, q_below, supsat, fsed, b, eps, z_top, z_bot,
+          gravity, mw_atmos, gas_mw, q_below, supsat, cfrac, fsed, b, eps, z_top, z_bot,
           z_alpha, z_min, param, sig, mh, rmin, nrad, radius, d_molecule, eps_k,
           c_p_factor, og_vfall, z_cld, aggregates, Df, N_mon, r_mon, k0, dist, gamma_A,
           mixed=False):
@@ -1062,6 +1064,8 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
         total mixing ratio (vapor+condensate) below layer (g/g)
     supsat : float
         Super saturation factor
+    cfrac : float, optional
+        fraction of gas-phase which can condense
     fsed : float
         Sedimentation efficiency coefficient (unitless)
     b : float
@@ -1238,7 +1242,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
 
             # calculate cloud porperties of current sublayer
             qt_top, qc_sub, qt_sub, _, reff_sub, ndz_sub, z_cld, fsed_layer, rho_p_out = calc_qc(
-                gas_name, supsat, t_sub, p_sub,r_atmos, r_cloud, qt_below, mixl, dz_sub,
+                gas_name, supsat, cfrac, t_sub, p_sub,r_atmos, r_cloud, qt_below, mixl, dz_sub,
                 gravity, mw_atmos, mfp, visc, rho_p, w_convect, fsed, b, eps, param,
                 z_bot_sub, z_sub, z_alpha, z_min, sig, mh, rmin, nrad, radius,
                 aggregates, Df, N_mon, r_mon, k0, dist, gamma_A, mixed, og_vfall, z_cld
@@ -1310,7 +1314,7 @@ def layer(gas_name,rho_p, t_layer, p_layer, t_top, t_bot, p_top, p_bot, kz, mixl
     return (qc_layer, qt_layer, rg_layer, reff_layer, ndz_layer, q_below, z_cld,
             fsed_layer)
 
-def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
+def calc_qc(gas_name, supsat, cfrac, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             dz_layer, gravity, mw_atmos, mfp,visc,rho_p,w_convect, fsed, b, eps,
             param, z_bot, z_layer, z_alpha, z_min, sig, mh, rmin, nrad, radius,
             aggregates, Df, N_mon, r_mon, k0, dist='lognormal', gamma_A=None,
@@ -1323,6 +1327,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
         Name of condensate
     supsat : float
         Super saturation factor
+    cfrac : float, optional
+        fraction of gas-phase which can condense
     t_layer : float
         Temperature of layer mid-pt (K)
     p_layer : float
@@ -1504,12 +1510,12 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
             # solution for exponentially parametrisation
             if param == "exp":
                 fs = fsed[i] / np.exp(z_alpha / b)
-                qt_top[i] = (qvs + (q_below[i] - qvs)
+                qt_top[i] = (qvs + cfrac*(q_below[i] - qvs)
                              * np.exp(-b * fs / mixl * np.exp(z_bot / b)
                              * (np.exp(dz_layer / b) - 1) + eps * dz_layer / mixl))
             # solution for constant fsed
             else:
-                qt_top[i] = qvs + (q_below[i] - qvs) * np.exp(-fsed[i] * dz_layer / mixl)
+                qt_top[i] = qvs + cfrac*(q_below[i] - qvs) * np.exp(-fsed[i] * dz_layer / mixl)
 
             # Use trapezoid rule to calculate layer averages
             qt_layer[i] = 0.5 * (q_below[i] + qt_top[i])
@@ -1835,8 +1841,8 @@ def calc_qc(gas_name, supsat, t_layer, p_layer, r_atmos, r_cloud, q_below, mixl,
 class Atmosphere():
     """ Atmospher class to handle the atmospheric structure during Virga runs """
     def __init__(self,condensibles, fsed=0.5, b=1, eps=1e-2, mh=1, mmw=2.2, sig=2.0,
-                    param='const', verbose=False, supsat=0, gas_mmr=None,
-                    aggregates=False, Df=None, N_mon=None, r_mon=None, k0=0,
+                    param='const', verbose=False, supsat=0, condensation_fraction=1,
+                    gas_mmr=None, aggregates=False, Df=None, N_mon=None, r_mon=None, k0=0,
                     dist='lognormal', mixed=False):
         """
         Parameters
@@ -1865,6 +1871,10 @@ class Atmosphere():
             'const' (constant), 'exp' (exponential density derivation)
         verbose : bool
             Prints out warning statements throughout
+        supsat : float, optional
+            Default = 0 , Saturation factor (after condensation)
+        condensation_fraction : float, optional
+            Default = 1 , fraction of gas-phase which can condense
         aggregates : bool, optional
             set to 'True' if you want fractal aggregates, keep at default 'False'
             for spherical cloud particles
@@ -1916,6 +1926,7 @@ class Atmosphere():
         #grab constants
         self.constants()
         self.supsat = supsat
+        self.cfrac = condensation_fraction
 
 
         # ==== Variables with variable input types
