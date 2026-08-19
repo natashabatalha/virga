@@ -1,2 +1,3 @@
 ignore:
   - "virga/justplotit.py"
+  - "virga/stage_deprecated.py"

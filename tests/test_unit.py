@@ -1,33 +1,10 @@
 """ This file contains all tests for subfunctions of virga """
 import os
 import numpy as np
-from astropy.units import temperature
 
 from virga import justdoit as jdi
 
 def test_mie_database():
-
-    # # ==== Fortran (this one thakes way to long to calcualte, but it works)
-    # qext, qsca, asym, radii, wave = jdi.calc_mie_db(
-    #     ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 2, fort_calc_mie=True
-    # )
-    #
-    # assert np.isclose(np.sum(qext), 795.2903509450259)
-    # assert np.isclose(np.sum(qsca), 3324.2373085461054)
-    # assert np.isclose(np.sum(asym), 1154.4167919503002)
-
-    # # ==== Fractals, takes forever
-    # qext, qsca, asym, radii, wave = jdi.calc_mie_db(
-    #     ['MnS'], os.path.dirname(__file__), '.', rmin = 1e-5, nradii = 2,
-    #     aggregates=os.path.dirname(__file__), Df=2, N_mon=100,
-    #     optool_dir='/home/kiefersv/Documents/work/not_my_code/optool'
-    # )
-    # print(np.sum(qext))
-    # print(np.sum(qsca))
-    # print(np.sum(asym))
-    # assert np.isclose(np.sum(qext), 3902.080488782566)
-    # assert np.isclose(np.sum(qsca), 3720.809396082643)
-    # assert np.isclose(np.sum(asym), 1905.5623111571579)
 
     # ==== Basic
     qext, qsca, asym, radii, wave = jdi.calc_mie_db(
@@ -37,6 +14,7 @@ def test_mie_database():
     assert np.isclose(np.sum(qext), 3902.080488782566)
     assert np.isclose(np.sum(qsca), 3720.809396082643)
     assert np.isclose(np.sum(asym), 1905.5623111571579)
+
 
 def test_sub_functions_in_justdoit():
     """ Simple calls to sub functions"""
@@ -50,21 +28,40 @@ def test_sub_functions_in_justdoit():
     assert np.isclose(np.sum(rup), 0.26096233848538236)
     assert np.isclose(np.sum(dr), 0.11861924476608288)
 
-    rec = jdi.recommend_gas(np.asarray([1e-2, 1e2]), np.asarray([100, 1000]), 1, 2.34)
+    rec = jdi.recommend_gas(
+        np.asarray([1e-2, 1e2]), np.asarray([100, 1000]), 1, 2.34, plot=True
+    )
     assert np.asarray([i in rec for i in ['KCl', 'H2O', 'ZnS', 'NH3']]).all()
 
     p, t = jdi.condensation_t('H2O', 1, 2.34)
     assert np.isclose(np.sum(p), 161.10038437493023)
     assert np.isclose(np.sum(t), 4385.122564767833)
 
+    from virga.justdoit import brown_dwarf
+    test_val = ['pressure', 'temperature', 'chf']
+    df_list = [brown_dwarf(),]
+    vals = [
+        [480.6105653, 97878.52, 771743669.0],
+    ]
+    for f, df in enumerate(df_list):
+        for t, test in enumerate(test_val):
+            assert np.isclose(np.sum(df[test]), vals[f][t])
+
 def test_sub_functions_in_root():
     """ Simple calls to sub functions"""
-    from virga.root_functions import advdiff
+    from virga.root_functions import (
+        advdiff, vfall_aggregates, vfall_aggregrates_ohno, moment
+    )
     res = advdiff(3, ad_qvs=4, ad_rainf=5, ad_mixl=6, ad_dz=7, ad_qbelow=8)
     assert np.isclose(np.sum(res), 5.0)
     res = advdiff(3, ad_qvs=4, ad_rainf=5, ad_mixl=6, ad_dz=7, ad_qbelow=8,
                   param='exp', b=2, eps=2, zb=9)
     assert np.isclose(np.sum(res), 1.0)
+    res = vfall_aggregates(1, 2, 3, 4, 5, 6)
+    assert np.isclose(np.sum(res), 9728.468844212115)
+    res = vfall_aggregrates_ohno(1, 2, 3, 4, 5, 6, 7, 8, 9)
+    assert np.isclose(np.sum(res), -194922909.6159394)
+
 
 def test_gas_properties():
     from virga.gas_properties import (
