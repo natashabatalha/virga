@@ -528,3 +528,59 @@ def SiO2(temp, mh = 1 ):
     return pvap_sio2
 
 
+def H2SO4(temp,mh = 1 ):
+	"""Computes vapor pressure curve
+	
+	Parameters 
+	----------
+	temp : float, ndarray 
+		Temperature (K)
+	mh : float 
+		NON log metallicity relative to solar (1=1Xsolar)
+
+	Returns
+	-------
+	vapor pressure in dyne/cm^2
+	"""
+	mh = np.log10(mh)
+	# copied from CARMA, assume weight percentage = 80%, Giauque1959, Ayers+1980, Kulmala+1990
+	wtpct = 80.
+	en = 4.184 * (23624.8 - 1.14208e8 / ((wtpct - 105.318)**2 + 4798.69))
+	en = max(en,0.)
+	t0_kulm = 340.
+	t_crit_kulm = 905.
+	fk0 = -10156./t0_kulm + 16.259
+	fk2 = 1./t0_kulm
+	fk3 = 0.38/(t_crit_kulm - t0_kulm)
+	fk1 = -1./temp
+	fk4_1 = np.log(t0_kulm/temp)
+	fk4_2 = t0_kulm/temp
+	fk4 = 1. + fk4_1 - fk4_2
+	factor_kulm = fk1 + fk2 + fk3*fk4
+	sulfeq = fk0 + 10156.*factor_kulm
+	sulfeq = sulfeq - en/(8.3143*temp)
+	sulfeq = np.exp(sulfeq)
+	pvap_h2so4 = sulfeq*1.01325e6
+	return pvap_h2so4
+
+def S8(temp,mh = 1 ):
+	"""Computes vapor pressure curve
+	
+	Parameters 
+	----------
+	temp : float, ndarray 
+		Temperature (K)
+	mh : float 
+		NON log metallicity relative to solar (1=1Xsolar)
+
+	Returns
+	-------
+	vapor pressure in dyne/cm^2
+	"""
+	mh = np.log10(mh)
+	#calculated from Zahnle+2016
+	if temp < 413.:
+		pvap_s8 = 1e6 * np.exp(20. - 11800./temp) 
+	else: 
+		pvap_s8 = 1e6 * np.exp(9.6 - 7510./temp) 
+	return pvap_s8

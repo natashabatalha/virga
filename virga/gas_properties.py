@@ -518,3 +518,60 @@ def SiO2(mw_atmos, mh=1, gas_mmr = None):
     gas_mmr = gas_mmr * (gas_mw/mw_atmos)
     rho_p =  2.648
     return gas_mw, gas_mmr, rho_p
+
+
+def H2SO4(mw_atmos, mh = 1, gas_mmr = None):
+	"""Defines properties for H2SO4 as condensible
+	
+	Parameters 
+	----------
+	mw_atmos : float 
+		Mean molecular weight of the atmosphere amu
+	gas_mmr : float , optional
+		Gas mass mixing ratio
+		None points to the default H2O value of : 7.54e-4
+	mh : float , optional
+		Metallicity, Default is 1=1xSolar
+	
+	Returns
+	-------
+	mean molecular weight of gas,
+	gas mass mixing ratio 
+	density of gas cgs
+	"""
+	if isinstance(gas_mmr, type(None)): 
+		print("Alert: Using H2O gas_mmr by default for H2SO4; user input gas_mmr suggested")
+		gas_mmr = 7.54e-4 * mh
+	gas_mw = 98.
+	#Lodders(2003)
+	gas_mmr = gas_mmr * (gas_mw/mw_atmos)  
+	rho_p =  1.7272   # 80% weight percent at 20 deg C, CRC Handbook of Chemistry and Physics, Ed. Lide D. R. (2009)
+	return gas_mw, gas_mmr, rho_p
+
+def S8(mw_atmos, mh = 1, gas_mmr = None):
+	"""Defines properties for S8 as condensible
+	
+	Parameters 
+	----------
+	mw_atmos : float 
+		Mean molecular weight of the atmosphere amu
+	gas_mmr : float , optional
+		Gas mass mixing ratio
+		None points to the default H2O value of : 7.54e-4
+	mh : float , optional
+		Metallicity, Default is 1=1xSolar
+	
+	Returns
+	-------
+	mean molecular weight of gas,
+	gas mass mixing ratio 
+	density of gas cgs
+	"""
+	if isinstance(gas_mmr, type(None)): 
+		print("Alert: Using H2O gas_mmr by default for S8; user input gas_mmr suggested")
+		gas_mmr = 7.54e-4 * mh
+	gas_mw = 256.
+	#Lodders(2003)
+	gas_mmr = gas_mmr * (gas_mw/mw_atmos)  
+	rho_p =  2.069   # Orthorhombic alpha-S8 at STP, Meyer (1976) Chemical Reviews 76, 3
+	return gas_mw, gas_mmr, rho_p

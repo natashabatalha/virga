@@ -219,7 +219,19 @@ def configure_ior_choices():
                 "sep":r"\s+",
                 "stacked":[8191, 8194,'00%']
             }
-        }
+        },
+    "S8":{
+            "inhouse_file":"S8.dat",
+            "reference":r"\\cite{palik1991Vol2}",
+             "url":"https://raw.githubusercontent.com/ELeeAstro/gCMCRT/refs/heads/main/data/nk_tables/S8%5Bs%5D.dat", 
+            "usr_note":"Data source from gCMCRT,Lee et al",
+            "pandas_kwargs":
+                {
+                    "sep":r"\s+", 
+                    "skiprows":5, 
+                    "names":['um','n','k']
+                }
+                }
 }
 
 
