@@ -191,7 +191,7 @@ def test_mixed_clouds():
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
     all_out = jdi.compute(
-        a, as_dict=True, directory=os.path.dirname(__file__), mixed_opacity_type='multi_modal'
+        a, as_dict=True, directory=os.path.dirname(__file__), mixed_opacity_type='quick'
     )
     # test the output
     tested_outputs = [
@@ -212,7 +212,7 @@ def test_mixed_clouds():
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
     all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__),
-                          mixed_opacity_type='single_modal')
+                          mixed_opacity_type='quick')
     # test the output
     tested_outputs = [
         'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',
