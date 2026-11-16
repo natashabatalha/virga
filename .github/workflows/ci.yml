@@ -29,8 +29,10 @@ jobs:
         shell: bash -l {0}
         run: |
           python3 -m pip install --upgrade numpy scipy bokeh pytest-cov matplotlib
-          python3 -m pip install --upgrade pandas astropy miepython
+          python3 -m pip install --upgrade pandas astropy miepython requests
           python3 -m pip install -e .
+          git clone https://github.com/MieNet-org/MieNet.git
+          python -m pip install -e ./MieNet
       - run: pwd
       - name: Run Tests
         shell: bash -l {0}

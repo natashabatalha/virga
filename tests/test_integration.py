@@ -3,6 +3,7 @@ import os
 import numpy as np
 import astropy.units as u
 import pandas as pd
+import unittest
 
 from virga import justdoit as jdi
 
@@ -32,10 +33,19 @@ def test_basic_virga():
         all_out['opd_per_layer'], all_out['single_scattering'], all_out['asymmetry'],
         pressure=all_out['pressure'], wavenumber=1/all_out['wave']/1e-4,
     )
+    assert np.isclose(np.sum(df_cl['opd']), 7.729844191571506)
+    assert len(df_cl) == 10192
     df_cl.to_csv(os.path.dirname(__file__) + '/picaso_format_test.csv', index=False)
     df_test = pd.read_csv(os.path.dirname(__file__) + '/picaso_format_test.csv')
     pd.testing.assert_frame_equal(df_cl, df_test)
 
+    df_cl = jdi.picaso_format_slab(
+        1e2,all_out['opd_per_layer'], all_out['single_scattering'], all_out['asymmetry'],
+        pressure_grid=all_out['pressure'], wavenumber_grid=1/all_out['wave']/1e-4, p_top=1e-2
+    )
+    print(np.sum(np.sum(df_cl['opd'])))
+    assert np.isclose(np.sum(np.sum(df_cl['opd'])), 200.9759489808592)
+    assert len(df_cl) == 2704
 
     # ==== Test clouds with variable fsed and sigma =========================================
     # initialise atmosphere

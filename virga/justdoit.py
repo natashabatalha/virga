@@ -15,18 +15,6 @@ from scipy import optimize
 from scipy.special import polygamma, gammaln
 from scipy.optimize import brentq
 
-# ==== Load in MieAi to calculate mixed cloud opacities
-mieai_loaded = False
-try:
-    from mienet import MieNet
-    # Mie Class is setup here since setup can take a while, while execution is
-    # much faster. This prevents reimport during itarative use of Virga
-    ma = MieNet(use_ai=True)
-    mieai_loaded = True
-except:
-    # Virga can be run without MieAi, but mixed opacities are not available
-    print('[WARNING] MieAi not found, mixed cloud particles cannot be calculated')
-
 # ==== Local imports
 from .root_functions import (vfall,vfall_find_root,qvs_below_model,
                              find_cond_t, solve_force_balance)
@@ -36,10 +24,27 @@ from . import pvaps
 from .justplotit import plot_format, find_nearest_1d
 from .direct_mmr_solver import direct_solver
 
+# ==== Load in MieAi to calculate mixed cloud opacities
+ma = None
+mieai_loaded = False
+try:
+    # Mie Class is setup here since setup can take a while, while execution is
+    # much faster. This prevents reimport during itarative use of Virga
+    from mienet import MieNet
+    # check if ai is available
+    try:
+        ma = MieNet(use_ai=True)
+    # else use grid and core functionalities only
+    except Exception:
+        ma = MieNet(use_ai=False)
+    mieai_loaded = True
+except ImportError:
+    pass
+
 
 def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15,
             refine_TP=True, og_vfall=True, analytical_rg=True, do_virtual=True,
-            mixed_opacity_type=None, use_ai=False):
+            mixed_opacity_type=None, use_ai=False, use_grid=False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class
     before running this.
@@ -81,6 +86,10 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             similar to 'multi_modal')
          - 'quick': assumes islands of material (see Kiefer et al. 2024b).
             Opacity calculation are the same as for non-mixed particles.
+    use_ai : bool, optional
+        If true use AI functionalities of MieNet
+    use_grid : bool, optional
+        If true and use AI is false, use grid functionalities of MieNet
 
     Returns
     -------
@@ -224,7 +233,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
     # ==== run new, direct solver
     else:
         fsed_in = atmo.fsed
-        z_cld = None #temporary fix
+        z_cld = None  # temporary fix
         qc, qt, rg, reff, ndz, _, pres_out, temp_out, z_out,mixl = direct_solver(
             atmo.t_layer, atmo.p_layer, condensibles, gas_mw, gas_mmr, rho_p, mmw,
             atmo.g, atmo.kz, atmo.fsed, mh, atmo.sig, radius, atmo.d_molecule,
@@ -242,7 +251,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
         nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
         cos_qscat, atmo.sig, rmin, rmax, rho_p, wave_in, condensibles, directory,
         atmo.dist, atmo.gamma_A, atmo.mixed, mixed_opacity_type,
-        use_ai, verbose=atmo.verbose
+        use_ai, use_grid, verbose=atmo.verbose
     )
 
     # ===================================================================================
@@ -334,8 +343,8 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas, wave, pressure, temp
 
 def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
                 cos_qscat, sig, rmin, rmax, rhop, wavelength, gas_name, directory,
-                dist='lognormal', gamma_A=None, mixed=False, mixed_opacity_type='quick', use_ai=False,
-                verbose=False):
+                dist='lognormal', gamma_A=None, mixed=False, mixed_opacity_type='quick',
+                use_ai=False, use_grid=False, verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -388,6 +397,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     gamma_A : float, optional
         Gamma distribution shape parameter A, derived from sig via the trigamma
         function. Only used when dist='gamma'. None for lognormal.
+    use_ai : bool, optional
+        If true use AI functionalities of MieNet
+    use_grid : bool, optional
+        If true and use AI is false, use grid functionalities of MieNet
     verbose: bool
         print out warnings or not
 
@@ -499,9 +512,8 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                     else:
                         if use_ai:
                             qeti, qsti, asym = ma.ai_efficiencies(wave, radius * 1e4, vmr)
-                            qeti = qeti.T
-                            qsti = qsti.T
-                            asym = asym.T
+                        elif use_grid:
+                            qeti, qsti, asym = ma.grid_efficiencies(wave, radius * 1e4, vmr)
                         else:
                             qeti, qsti, asym = ma.efficiencies(wave, radius * 1e4, vmr)
                         cqti = qeti * asym  # qcos according to Virga syntax
@@ -1948,8 +1960,8 @@ class Atmosphere():
             self.sig = np.ones(cond_len) * sig
         elif isinstance(sig, dict):
             self.sig = np.ones(cond_len)
-            for c, cond in enumerate(self.condensibles):
-                self.sig[c] = sig[cond]
+            for cc, cond in enumerate(self.condensibles):
+                self.sig[cc] = sig[cond]
             if self.mixed:
                 self.sig[-1] = sig['mixed']
         elif isinstance(sig, np.ndarray):
@@ -1957,16 +1969,14 @@ class Atmosphere():
                 if self.mixed:
                     raise ValueError("Length of sigmas does not match number of species. "
                                      "Did you Forget the mixed entry?")
-                else:
-                    raise ValueError("Length of sigmas does not match number of species")
+                raise ValueError("Length of sigmas does not match number of species")
             self.sig = sig
         elif isinstance(sig, list):
             if cond_len != len(sig):
                 if self.mixed:
                     raise ValueError("Length of sigmas does not match number of species. "
                                      "Did you Forget the mixed entry?")
-                else:
-                    raise ValueError("Length of sigmas does not match number of species")
+                raise ValueError("Length of sigmas does not match number of species")
             self.sig = np.asarray(sig)
 
         # gas_mmr can be a single value or a list
@@ -1981,9 +1991,9 @@ class Atmosphere():
             raise ValueError("dist must be 'lognormal' or 'gamma'.")
         if dist == 'gamma':
             self.gamma_A = np.ones(len(condensibles))
-            for c, cond in enumerate(self.condensibles):
-                self.gamma_A[c] = brentq(
-                    lambda A: polygamma(1, A) - np.log(self.sig[c])**2, 1e-6, 1e6
+            for ci, cond in enumerate(self.condensibles):
+                self.gamma_A[ci] = brentq(
+                    lambda A: polygamma(1, A) - np.log(self.sig[ci])**2, 1e-6, 1e6
                 )
 
         # set fsed with the same length as condensibles
@@ -2817,25 +2827,8 @@ def picaso_format_custom_wavenumber_grid(opd, w0, g0, wavenumber_grid ):
     reads in wavenumber grid.
     Keeping for now, but will discontinue soon.
     """
-    df = pd.DataFrame(
-        index=[i for i in range(opd.shape[0]*opd.shape[1])],
-        columns=['pressure', 'wavenumber', 'opd', 'w0', 'g0']
-    )
-    LVL = []
-    WV, OPD, WW0, GG0 =[], [], [], []
-    for j in range(opd.shape[0]):
-        for w in range(opd.shape[1]):
-            LVL+=[j+1]
-            WV+=[wavenumber_grid[w]]
-            OPD+=[opd[j, w]]
-            WW0+=[w0[j, w]]
-            GG0+=[g0[j, w]]
-    df.iloc[:, 0] = LVL
-    df.iloc[:, 1] = WV
-    df.iloc[:, 2] = OPD
-    df.iloc[:, 3] = WW0
-    df.iloc[:, 4] = GG0
-    return df
+    raise ValueError("picaso_format_custom_wavenumber_grid is deprecated. "
+                     "Please use picaso_format")
 
 
 def picaso_format_slab(p_bottom, opd, w0, g0, wavenumber_grid, pressure_grid,

@@ -1,8 +1,11 @@
 """ This file contains all tests for subfunctions of virga """
 import os
 import numpy as np
+import unittest
 
 from virga import justdoit as jdi
+
+testcase = unittest.TestCase()
 
 def test_mie_database():
 
@@ -121,3 +124,11 @@ def test_mie_routines():
 def test_small_things():
     a = jdi.Atmosphere('MnS', fsed=1, mh=1, mmw=2.2)
     assert a.condensibles[0] == 'MnS'
+
+    from virga.root_functions import moment
+    a = moment(1, 1, -1, 1)
+    assert np.isclose(a, 1.3871429788349987)
+
+def test_deprecated():
+    with testcase.assertRaises(ValueError):
+        jdi.picaso_format_custom_wavenumber_grid(0, 0, 0, 0)
