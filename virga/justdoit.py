@@ -26,6 +26,11 @@ try:
 except:
     # Virga can be run without MieAi, but mixed opacities are not available
     pass
+from mienet import MieNet
+# Mie Class is setup here since setup can take a while, while execution is
+# much faster. This prevents reimport during itarative use of Virga
+ma = MieNet(use_ai=True)
+mieai_loaded = True
 
 # ==== Local imports
 from .root_functions import (vfall,vfall_find_root,qvs_below_model,
