@@ -16,20 +16,25 @@ from scipy.special import polygamma, gammaln
 from scipy.optimize import brentq
 
 # ==== Load in MieAi to calculate mixed cloud opacities
+ma = None
 mieai_loaded = False
 try:
-    from mienet import MieNet
     # Mie Class is setup here since setup can take a while, while execution is
     # much faster. This prevents reimport during itarative use of Virga
-    ma = MieNet(use_ai=True)
+    from mienet import MieNet
+    # check if ai is available
+    try:
+        ma = MieNet(use_ai=True)
+    # else use grid and core functionalities only
+    except Exception:
+        ma = MieNet(use_ai=False)
     mieai_loaded = True
-except:
-    # Virga can be run without MieAi, but mixed opacities are not available
+except ImportError:
     pass
 from mienet import MieNet
 # Mie Class is setup here since setup can take a while, while execution is
 # much faster. This prevents reimport during itarative use of Virga
-ma = MieNet(use_ai=True)
+ma = MieNet(use_ai=False)
 mieai_loaded = True
 
 # ==== Local imports
