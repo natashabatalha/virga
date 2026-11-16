@@ -47,8 +47,6 @@ def test_basic_virga():
     assert np.isclose(np.sum(np.sum(df_cl['opd'])), 200.9759489808592)
     assert len(df_cl) == 2704
 
-
-
     # ==== Test clouds with variable fsed and sigma =========================================
     # initialise atmosphere
     a = jdi.Atmosphere(
@@ -193,7 +191,7 @@ def test_mixed_clouds():
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
     all_out = jdi.compute(
-        a, as_dict=True, directory=os.path.dirname(__file__), mixed_opacity_type='quick'
+        a, as_dict=True, directory=os.path.dirname(__file__), mixed_opacity_type='multi_modal'
     )
     # test the output
     tested_outputs = [
@@ -214,7 +212,7 @@ def test_mixed_clouds():
     a.ptk(df=jdi.hot_jupiter())
     # calculate cloud profile
     all_out = jdi.compute(a, as_dict=True, directory=os.path.dirname(__file__),
-                          mixed_opacity_type='quick')
+                          mixed_opacity_type='single_modal')
     # test the output
     tested_outputs = [
         'condensate_mmr', 'mean_particle_r', 'droplet_eff_r', 'column_density',

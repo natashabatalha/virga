@@ -39,7 +39,7 @@ from .direct_mmr_solver import direct_solver
 
 def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15,
             refine_TP=True, og_vfall=True, analytical_rg=True, do_virtual=True,
-            mixed_opacity_type=None, use_ai=False):
+            mixed_opacity_type=None, use_ai=False, use_grid=False):
     """
     Top level program to run eddysed. Requires running `Atmosphere` class
     before running this.
@@ -81,6 +81,10 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
             similar to 'multi_modal')
          - 'quick': assumes islands of material (see Kiefer et al. 2024b).
             Opacity calculation are the same as for non-mixed particles.
+    use_ai : bool, optional
+        If true use AI functionalities of MieNet
+    use_grid : bool, optional
+        If true and use AI is false, use grid functionalities of MieNet
 
     Returns
     -------
@@ -335,7 +339,7 @@ def create_dict(qc, qt, rg, reff, ndz,opd, w0, g0, opd_gas, wave, pressure, temp
 def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
                 cos_qscat, sig, rmin, rmax, rhop, wavelength, gas_name, directory,
                 dist='lognormal', gamma_A=None, mixed=False, mixed_opacity_type='quick',
-                use_ai=False, verbose=False):
+                use_ai=False, use_grid=False, verbose=False):
     """
     Calculate spectrally-resolved profiles of optical depth, single-scattering
     albedo, and asymmetry parameter.
@@ -388,6 +392,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
     gamma_A : float, optional
         Gamma distribution shape parameter A, derived from sig via the trigamma
         function. Only used when dist='gamma'. None for lognormal.
+    use_ai : bool, optional
+        If true use AI functionalities of MieNet
+    use_grid : bool, optional
+        If true and use AI is false, use grid functionalities of MieNet
     verbose: bool
         print out warnings or not
 
@@ -499,8 +507,10 @@ def calc_optics(nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext
                     else:
                         if use_ai:
                             qeti, qsti, asym = ma.ai_efficiencies(wave, radius * 1e4, vmr)
-                        else:
+                        elif use_grid:
                             qeti, qsti, asym = ma.grid_efficiencies(wave, radius * 1e4, vmr)
+                        else:
+                            qeti, qsti, asym = ma.efficiencies(wave, radius * 1e4, vmr)
                         cqti = qeti * asym  # qcos according to Virga syntax
                         qet, qst, cqt = qeti.T, qsti.T, cqti.T  # change format
                         vmr_test[1] = vmr_test[0]  # remeber the vmrs for the next run
