@@ -15,6 +15,15 @@ from scipy import optimize
 from scipy.special import polygamma, gammaln
 from scipy.optimize import brentq
 
+# ==== Local imports
+from .root_functions import (vfall,vfall_find_root,qvs_below_model,
+                             find_cond_t, solve_force_balance)
+from .calc_mie import calc_new_mieff, calc_new_mieff_optool
+from . import gas_properties
+from . import pvaps
+from .justplotit import plot_format, find_nearest_1d
+from .direct_mmr_solver import direct_solver
+
 # ==== Load in MieAi to calculate mixed cloud opacities
 ma = None
 mieai_loaded = False
@@ -31,20 +40,6 @@ try:
     mieai_loaded = True
 except ImportError:
     pass
-from mienet import MieNet
-# Mie Class is setup here since setup can take a while, while execution is
-# much faster. This prevents reimport during itarative use of Virga
-ma = MieNet(use_ai=False)
-mieai_loaded = True
-
-# ==== Local imports
-from .root_functions import (vfall,vfall_find_root,qvs_below_model,
-                             find_cond_t, solve_force_balance)
-from .calc_mie import calc_new_mieff, calc_new_mieff_optool
-from . import gas_properties
-from . import pvaps
-from .justplotit import plot_format, find_nearest_1d
-from .direct_mmr_solver import direct_solver
 
 
 def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15,
@@ -256,7 +251,7 @@ def compute(atmo, directory=None, as_dict=True, og_solver=True, direct_tol=1e-15
         nwave, qc, qt, rg, reff, ndz, radius, dr, bin_min, bin_max, qext, qscat,
         cos_qscat, atmo.sig, rmin, rmax, rho_p, wave_in, condensibles, directory,
         atmo.dist, atmo.gamma_A, atmo.mixed, mixed_opacity_type,
-        use_ai, verbose=atmo.verbose
+        use_ai, use_grid, verbose=atmo.verbose
     )
 
     # ===================================================================================
@@ -1963,8 +1958,8 @@ class Atmosphere():
             self.sig = np.ones(cond_len) * sig
         elif isinstance(sig, dict):
             self.sig = np.ones(cond_len)
-            for c, cond in enumerate(self.condensibles):
-                self.sig[c] = sig[cond]
+            for cc, cond in enumerate(self.condensibles):
+                self.sig[cc] = sig[cond]
             if self.mixed:
                 self.sig[-1] = sig['mixed']
         elif isinstance(sig, np.ndarray):
@@ -1972,16 +1967,14 @@ class Atmosphere():
                 if self.mixed:
                     raise ValueError("Length of sigmas does not match number of species. "
                                      "Did you Forget the mixed entry?")
-                else:
-                    raise ValueError("Length of sigmas does not match number of species")
+                raise ValueError("Length of sigmas does not match number of species")
             self.sig = sig
         elif isinstance(sig, list):
             if cond_len != len(sig):
                 if self.mixed:
                     raise ValueError("Length of sigmas does not match number of species. "
                                      "Did you Forget the mixed entry?")
-                else:
-                    raise ValueError("Length of sigmas does not match number of species")
+                raise ValueError("Length of sigmas does not match number of species")
             self.sig = np.asarray(sig)
 
         # gas_mmr can be a single value or a list
@@ -1996,9 +1989,9 @@ class Atmosphere():
             raise ValueError("dist must be 'lognormal' or 'gamma'.")
         if dist == 'gamma':
             self.gamma_A = np.ones(len(condensibles))
-            for c, cond in enumerate(self.condensibles):
-                self.gamma_A[c] = brentq(
-                    lambda A: polygamma(1, A) - np.log(self.sig[c])**2, 1e-6, 1e6
+            for ci, cond in enumerate(self.condensibles):
+                self.gamma_A[ci] = brentq(
+                    lambda A: polygamma(1, A) - np.log(self.sig[ci])**2, 1e-6, 1e6
                 )
 
         # set fsed with the same length as condensibles
