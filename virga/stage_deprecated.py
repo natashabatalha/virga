@@ -6,6 +6,32 @@ import pandas as pd
 import numpy as np
 
 
+def picaso_format_custom_wavenumber_grid(opd, w0, g0, wavenumber_grid ):
+    """
+    This is currently redundant with picaso_format now that picaso_format
+    reads in wavenumber grid.
+    Keeping for now, but will discontinue soon.
+    """
+    df = pd.DataFrame(
+        index=[i for i in range(opd.shape[0]*opd.shape[1])],
+        columns=['pressure', 'wavenumber', 'opd', 'w0', 'g0']
+    )
+    LVL = []
+    WV, OPD, WW0, GG0 =[], [], [], []
+    for j in range(opd.shape[0]):
+        for w in range(opd.shape[1]):
+            LVL+=[j+1]
+            WV+=[wavenumber_grid[w]]
+            OPD+=[opd[j, w]]
+            WW0+=[w0[j, w]]
+            GG0+=[g0[j, w]]
+    df.iloc[:, 0] = LVL
+    df.iloc[:, 1] = WV
+    df.iloc[:, 2] = OPD
+    df.iloc[:, 3] = WW0
+    df.iloc[:, 4] = GG0
+    return df
+
 def sdep_vfall_legacy(r, grav,mw_atmos,mfp,visc,t,p, rhop):
     """
     Calculate fallspeed for a spherical particle at one layer in an
