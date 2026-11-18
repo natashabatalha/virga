@@ -1,7 +1,7 @@
 Tutorials
 =========
 
-Basics 
+Basics
 ------
 
 .. toctree::
@@ -12,7 +12,7 @@ Basics
    Analyzing your output </notebooks/3_AnalyzingRuns.ipynb>
    Different Options for Vertical Mixing </notebooks/3_Kzz_Options.ipynb>
 
-Pairing Cloud Models to Spectroscopy 
+Pairing Cloud Models to Spectroscopy
 ------------------------------------
 
 .. toctree::
@@ -20,7 +20,7 @@ Pairing Cloud Models to Spectroscopy
 
    Understanding how cloud models effect spectroscopy  </notebooks/4_PairingOutputToPICASO.ipynb>
 
-Changing out Index of Refraction 
+Changing out Index of Refraction
 --------------------------------
 
 .. toctree::
@@ -74,3 +74,11 @@ Fractal Aggregates
    Running Virga with Aggregates </notebooks/10_Fractal_Aggregate_Aerosols_in_a_Hot_Jupiter.ipynb>
    Creating spectra via PICASO with Aggregates </notebooks/11_Fractal_Aggregate_spectra_in_PICASO.ipynb>
    Creating Custom Fractal Optical Properties </notebooks/12_Custom_Fractal_Aggregate_Aerosols.ipynb>
+
+Mixed Cloud particles
+---------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   Running Virga with mixed cloud particles </notebooks/13_Mixed_Cloud_Particles.ipynb>

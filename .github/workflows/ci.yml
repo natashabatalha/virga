@@ -1,0 +1,45 @@
+# This workflow will perform the python testing
+
+name: CI
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  build:
+    name: Build (${{ matrix.python-version }} | ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ "ubuntu-latest" ]
+        python-version: [ "3.13" ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        shell: bash -l {0}
+        run: |
+          python3 -m pip install --upgrade numpy scipy bokeh pytest-cov matplotlib
+          python3 -m pip install --upgrade pandas astropy miepython requests
+          python3 -m pip install -e .
+          git clone https://github.com/MieNet-org/MieNet.git
+          python -m pip install -e ./MieNet
+      - run: pwd
+      - name: Run Tests
+        shell: bash -l {0}
+        run: |
+          pytest --cov --cov-report=xml tests/*.py
+      - name: Upload code coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: Kiefersv/Virga
